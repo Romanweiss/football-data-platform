@@ -1,0 +1,10 @@
+{
+  "source": "sample",
+  "match_id": 1,
+  "competition": "Test League",
+  "season": "2026",
+  "home_team": "Red FC",
+  "away_team": "Blue FC",
+  "home_score": 2,
+  "away_score": 1
+}

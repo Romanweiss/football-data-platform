@@ -62,7 +62,7 @@ s3://<bucket>/football/
         standings/
 ```
 
-Эта структура сейчас только документирует convention. Скрипты проекта не создают bucket, префиксы или объекты и не изменяют существующие данные.
+Эта структура документирует convention и не создаётся автоматически. Проверка `check_s3.py` выполняет только read-only запрос. По ручным командам roundtrip-тест записывает один тестовый объект, а StatsBomb ingestion сохраняет два исходных JSON в существующий bucket.
 
 ### Docker Compose
 
@@ -108,10 +108,10 @@ Copy-Item .env.example .env
 
 ## Команды
 
-Проверить итоговую Compose-конфигурацию:
+Проверить Compose-конфигурацию без вывода значений credentials:
 
 ```bash
-docker compose config
+docker compose config -q
 ```
 
 Собрать образ одноразовых Python-инструментов:
@@ -166,6 +166,111 @@ docker compose down -v
 ```
 
 > **Осторожно:** `docker compose down -v` безвозвратно удаляет named volumes `football_postgres_data` и `football_clickhouse_data`. Команда не удаляет и не изменяет данные во внешнем Selectel S3.
+
+## S3 Bronze roundtrip test
+
+Минимальный тест проверяет полный путь данных:
+
+```text
+data/samples/sample_match.json (исходные bytes)
+    -> put_object -> Selectel S3 Bronze -> get_object
+    -> скачанные bytes -> сравнение SHA-256
+```
+
+Bucket — контейнер объектов в S3; его имя берётся из `S3_BUCKET`.
+Object key — имя объекта внутри bucket. Для этого теста оно фиксировано:
+`football/bronze/_tests/s3_roundtrip/sample_match.json`. Имя bucket не входит в key.
+Часть `football/bronze/...` — это prefix object key, а не настоящая директория S3:
+символ `/` используется для удобной группировки объектов.
+
+Скрипт читает небольшой JSON с вымышленным матчем как bytes и передаёт их без
+повторной сериализации через `put_object`. Объект получает
+`ContentType="application/json"` и metadata `source=local-sample`, `layer=bronze`.
+После `get_object` скрипт сравнивает SHA-256 исходных и скачанных bytes.
+Совпадение хэшей подтверждает, что данные прошли этот путь без изменения;
+при несовпадении команда завершается с ненулевым exit code.
+
+RAW/Bronze слой должен сохранять исходные данные, чтобы можно было повторить
+обработку, исправить ошибки преобразования и сверить результат с источником.
+Поэтому этот тест не нормализует JSON и не меняет его форматирование.
+
+Запускать вручную из корня проекта при настроенных S3 environment variables:
+
+```bash
+docker compose run --rm football-python-tools python scripts/test_s3_roundtrip.py
+```
+
+Нужны права на запись и чтение этого test object в существующем bucket.
+При успехе выводятся `S3 roundtrip successful`, bucket, key, размер в bytes и SHA-256.
+Объект остаётся в S3; повторный запуск перезаписывает тот же key. Скрипт не удаляет
+объекты, не создаёт bucket и не меняет Bucket Policy или IAM.
+TLS-проверка и `AWS_CA_BUNDLE` сохраняются; общий S3 helper использует SigV4
+и virtual hosted addressing. `scripts/check_s3.py` остаётся read-only проверкой
+доступности bucket через `head_bucket`.
+
+## StatsBomb Bronze ingestion
+
+Первый ingestion реальных данных сохраняет два файла StatsBomb Open Data:
+
+- [competitions.json](https://raw.githubusercontent.com/hudl/open-data/master/data/competitions.json)
+  → `football/bronze/statsbomb/competitions/competitions.json`.
+- [FIFA World Cup 2022 matches](https://raw.githubusercontent.com/hudl/open-data/master/data/matches/43/106.json)
+  (`competition_id=43`, `season_id=106`)
+  → `football/bronze/statsbomb/matches/competition_id=43/season_id=106/matches.json`.
+
+```text
+Source -> HTTP download -> raw bytes -> SHA-256 -> S3 Bronze
+```
+
+HTTP helper использует стандартный `urllib.request`, User-Agent проекта,
+таймаут 30 секунд и включённую TLS-проверку. Ответ должен иметь статус `200`.
+Скрипт не парсит JSON, не меняет пробелы или кодировку и не сериализует данные
+заново: в `put_object` передаются ровно те bytes, которые получены по HTTP.
+RAW/Bronze сохраняет оригинал для повторной обработки и сверки с источником.
+
+Bucket берётся из `S3_BUCKET`; его имя не добавляется в object key.
+Используется существующий общий S3 helper с SigV4, virtual hosted addressing
+и настроенным `AWS_CA_BUNDLE`.
+Объект получает `ContentType="application/json"` и metadata:
+`source=statsbomb`, `layer=bronze`, `sha256=<checksum>`, `source_url=<source URL>`.
+Все metadata keys — lowercase ASCII; два фиксированных source URL также ASCII
+и достаточно короткие для S3 metadata.
+
+Перед записью `head_object` получает metadata без скачивания тела объекта
+([документация boto3](https://docs.aws.amazon.com/boto3/latest/reference/services/s3/client/head_object.html)).
+Если сохранённый `sha256` совпадает с новым, скрипт выводит `UNCHANGED: <key>`
+и пропускает запись. Если объект отсутствует, checksum отличается или metadata
+`sha256` нет, скрипт записывает исходные bytes и выводит `UPLOADED: <key>`.
+Это идемпотентность: повторный запуск при неизменных исходных данных не
+перезаписывает объект. Оба source-файла при каждом запуске скачиваются заново,
+чтобы рассчитать актуальные checksums.
+
+Ответ об отсутствии объекта (`404` / `NoSuchKey` / `NotFound`) допускает первую
+запись. Ошибки доступа, отсутствующего bucket и остальные ошибки S3 не считаются
+отсутствием объекта: скрипт завершается с ненулевым exit code. Для S3 ClientError
+выводятся HTTP status и код ошибки, без полного сообщения с потенциальными credentials.
+Если выполнение прервалось после записи первого файла, его запись остаётся в S3;
+следующий запуск пропустит её, если источник не изменился.
+
+Ручной запуск из корня проекта (одинаково для PowerShell и Linux/macOS):
+
+```bash
+docker compose run --rm football-python-tools python scripts/ingest_statsbomb_bronze.py
+```
+
+Для каждого объекта выводятся key, размер в bytes и SHA-256. При завершении:
+`StatsBomb Bronze ingestion complete`, `Downloaded: 2`, `Uploaded: N`, `Unchanged: N`.
+Скрипт не удаляет объекты, не создаёт bucket и не меняет Bucket Policy, IAM или базы данных.
+
+Проверки без реального HTTP/S3 ingestion:
+
+```bash
+docker compose run --rm --no-deps football-python-tools python -m compileall src scripts
+docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+docker compose config -q
+```
+
+Unit-тесты используют стандартный `unittest` и mocks для HTTP/S3; новые зависимости не нужны.
 
 ## Инициализация баз
 

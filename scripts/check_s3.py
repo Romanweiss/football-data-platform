@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
-import boto3
 from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
+
+# Support direct execution with `python scripts/check_s3.py`.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.common.s3 import create_s3_client
 
 
 REQUIRED_ENVIRONMENT_VARIABLES = (
@@ -42,13 +46,7 @@ def main() -> int:
     endpoint = settings["S3_ENDPOINT"]
 
     try:
-        client = boto3.client(
-            "s3",
-            endpoint_url=endpoint,
-            region_name=settings["S3_REGION"],
-            aws_access_key_id=settings["S3_ACCESS_KEY"],
-            aws_secret_access_key=settings["S3_SECRET_KEY"],
-        )
+        client = create_s3_client()
         client.head_bucket(Bucket=bucket)
     except ClientError as error:
         response = error.response

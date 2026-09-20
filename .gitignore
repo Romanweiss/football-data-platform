@@ -24,6 +24,10 @@ Thumbs.db
 # Logs and local temporary data
 *.log
 logs/
-data/
+data/*
+!data/samples/
+data/samples/*
+!data/samples/sample_match.json
 tmp/
 .tmp/
+keys.txt
