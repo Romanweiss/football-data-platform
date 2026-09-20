@@ -14,6 +14,7 @@ services:
     volumes:
       - football_postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infrastructure/postgres/migrations:/migrations:ro
     networks:
       - football-network
     healthcheck:
@@ -61,6 +62,11 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       AWS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      POSTGRES_HOST: football-postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - .:/app
     networks:
