@@ -25,6 +25,7 @@ Thumbs.db
 *.log
 logs/
 data/*
+data/work/
 !data/samples/
 data/samples/*
 !data/samples/sample_match.json

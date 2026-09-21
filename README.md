@@ -438,6 +438,153 @@ SHA-256 и `REGISTERED/ALREADY_REGISTERED`. Полный JSON и credentials н�
 образа для Stage 1D не нужны. Тесты reader, parser, catalog lookup и fan-out
 используют `unittest` и mocks без реальных обращений к GitHub, S3 или PostgreSQL.
 
+## Stage 2A - Spark Bronze to Silver preview
+
+Stage 2A добавляет `football-spark` на официальном образе `spark:4.2.0-python3`.
+Это отдельный processing runtime, а не master/worker cluster. `spark-submit --master "local[2]"`
+выполняет Spark job в одном контейнере с двумя локальными потоками. Для учебного preview
+этого достаточно; дополнительные сервисы, host ports и Spark UI не нужны.
+
+Поток данных на этом этапе:
+
+```text
+PostgreSQL: latest match_events (по одному artifact на source_url)
+                         |
+Selectel S3 Bronze -> boto3 + SHA-256 verification
+                         |
+data/work/bronze_events/match_id=<id>.json (исходные bytes)
+                         |
+Spark local[2] -> explicit schema -> event_core -> DQ
+                         |
+data/work/silver/event_core/ (локальный Snappy Parquet)
+```
+
+Bronze — raw immutable JSON: исходные bytes и дополнительные поля сохраняются без изменений.
+Silver — типизированная, нормализованная структура для аналитики. На этом этапе это только
+локальный disposable preview, не опубликованный Silver dataset. Parquet — колоночный формат:
+для аналитических scan workloads можно читать нужные столбцы, эффективно сжимать данные
+и использовать статистику файлов. JSON удобен для сохранения исходного документа, но обычно
+требует большего объёма чтения и повторного parsing для таких запросов.
+
+### Каталог, staging и схема
+
+`find_latest_ingestion_objects()` выбирает `source=statsbomb`, `dataset=match_events`.
+`DISTINCT ON (source_url)` оставляет последнюю зарегистрированную версию по
+`first_seen_at DESC, id DESC`; итоговый порядок — `source_url ASC`.
+`--limit N` берёт первые N artifacts в этом стабильном лексикографическом порядке.
+Все URL и отсутствие дубликатов logical source проверяются **до** применения limit.
+
+Текущий Stage 1D наполняет `match_events` только матчами World Cup 2022: job явно передаёт
+`competition_id=43`, `season_id=106` в transformation. Сам SQL не фильтрует competition/season:
+до расширения Bronze на другие турниры потребуется отдельный выбор соответствующего набора
+artifacts. Значения контекста не спрятаны внутри `transform_event_core()`.
+
+`match_id` определяется строгим canonical URL
+`https://raw.githubusercontent.com/hudl/open-data/master/data/events/<id>.json`,
+не содержимым event. Существующий `read_bronze_object()` скачивает bytes по bucket/key из
+каталога, закрывает S3 Body и проверяет фактический SHA-256 против catalog checksum.
+Только после этого bytes без JSON reserialization записываются в staging.
+Spark получает `match_id` из имени файла через `input_file_name()`, `regexp_extract()` и
+`try_cast()`; Python UDF не используются.
+
+`data/work/` явно исключён из Git и виден с Windows host через bind mount `.:/app`.
+Рабочая директория создаётся job при необходимости; пустые директории Git не хранит.
+Старые staging-файлы не удаляются: Spark читает точный список выбранных файлов, а не wildcard.
+Повторный запуск заменяет только выбранные staging-копии и локальный `event_core` preview.
+Не запускайте два preview job одновременно: они используют общий disposable workspace.
+
+Explicit `StructType` фиксирует контракт полей и типов, делает результат воспроизводимым
+при пропущенных полях и не требует inference по содержимому каждого запуска.
+JSON читается с `multiLine=true`, `mode=FAILFAST`: повреждённые/несовместимые записи не должны
+молча исчезать из результата. Дополнительные `pass`, `shot`, `tactics` и другие event-specific
+структуры игнорируются в Silver, но остаются в Bronze.
+
+`event_core` содержит:
+
+```text
+competition_id, season_id, match_id, event_id, event_index,
+period, timestamp, minute, second, type_id, type_name, possession,
+possession_team_id, possession_team_name, play_pattern_id, play_pattern_name,
+team_id, team_name, player_id, player_name, position_id, position_name,
+location_x, location_y, duration, under_pressure, counterpress
+```
+
+`event_id` и `event_index` берутся из `id` и `index`. `timestamp` остаётся строкой:
+это время внутри периода, а не календарная дата. `location` имеет тип `array<double>`;
+`location_x/y` — элементы 0/1. Nullable player, position, location, duration и flags
+остаются NULL; даже короткий location не вызывает ошибку индекса и не заполняется нулями.
+
+### DQ и локальная запись
+
+Перед записью job выводит агрегированные counts и требует:
+
+- `row_count > 0`;
+- отсутствие NULL в `match_id`, `event_id`, `event_index`, `type_id`, `team_id`;
+- отсутствие повторяющихся пар `(match_id, event_id)`;
+- наличие событий для каждого выбранного матча.
+
+`duplicate_keys` — число повторяющихся пар, не число лишних строк.
+На driver возвращаются только маленькие агрегаты, не весь dataset.
+При нарушении DQ job завершается с ненулевым кодом **до записи**. Ранее созданный preview
+при такой ошибке может остаться на диске, но не является результатом нового запуска.
+Сообщение `Silver event_core build complete` появляется только после успешной записи.
+Summary содержит выбранные artifacts, обработанные матчи, events read/written,
+output partitions, путь и Spark version. Spark parser stack traces отключены, поскольку
+могут содержать raw JSON; CLI выводит безопасный этап/тип ошибки или DQ counts.
+
+Перед записью используется `repartition(4)`, формат Parquet, `compression=snappy`,
+`mode=overwrite`. Это 4 Spark output partitions, а не директории по матчам;
+на очень маленьком fixture число непустых файлов может быть меньше.
+`partitionBy("match_id")` для 64 небольших матчей создавал бы много маленьких файлов:
+накладные расходы на listing/open/scheduling стали бы непропорциональны объёму данных.
+`coalesce(1)` тоже не используется: не сводим всю запись к одной task.
+
+Spark image переиспользует pinned `requirements/tools.txt` и минимальную CA setup для
+GlobalSign Root R6 из python-tools. boto3 использует системный bundle через `AWS_CA_BUNDLE`,
+AWS Signature v4 и virtual-hosted addressing. TLS verification включена; credentials
+поступают через существующие environment variables и не печатаются.
+Java S3A truststore и Hadoop S3A packages пока не настраиваются.
+
+### Проверки и ручной запуск Stage 2A
+
+Сборка и проверки без чтения реальных Bronze artifacts:
+
+```powershell
+docker compose config -q
+docker compose build football-spark
+docker compose run --rm football-spark spark-submit --version
+docker compose run --rm football-spark python3 -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm football-python-tools python -m unittest discover -s tests -v
+docker compose run --rm football-spark spark-submit --master "local[2]" tests/spark/test_event_core.py
+```
+
+Обычные unit tests используют mocks для PostgreSQL/S3/Spark orchestration. Spark suite
+использует только `tests/fixtures/statsbomb_events.json`, временные локальные файлы и
+`unittest`; отдельный запуск не требует PySpark в python-tools. Проверяются explicit schema,
+flatten, nullable/короткий location, filename identity, required columns, DQ failures,
+отсутствие записи при DQ failure и Snappy Parquet roundtrip/overwrite.
+Generated JSON/Parquet тестов находятся внутри отдельной temporary directory в `data/work/`
+и удаляются при завершении теста; никакие S3 objects не затрагиваются.
+
+Первый **ручной** build на двух реальных Bronze artifacts (PostgreSQL должен уже работать):
+
+```powershell
+docker compose run --rm football-spark spark-submit --master "local[2]" scripts/build_silver_event_core.py --limit 2
+```
+
+После проверки результата — все доступные World Cup 2022 event artifacts:
+
+```powershell
+docker compose run --rm football-spark spark-submit --master "local[2]" scripts/build_silver_event_core.py
+```
+
+Оба запуска читают реальные Bronze objects, но записывают только локальные файлы.
+Нет загрузки Silver в S3, регистрации Silver в PostgreSQL, ClickHouse writes, изменения
+Bronze, преобразования lineups или event-specific Silver tables.
+
+Stage 2B — будущий отдельный этап: Spark S3A direct access и persistent versioned Silver
+в Selectel. В Stage 2A это не реализовано.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

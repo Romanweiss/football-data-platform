@@ -11,6 +11,7 @@ from src.common.postgres import (
     IngestionObjectNotFoundError,
     create_postgres_connection,
     find_latest_ingestion_object,
+    find_latest_ingestion_objects,
     register_ingestion_object,
 )
 
@@ -145,6 +146,70 @@ class FindLatestIngestionObjectTests(unittest.TestCase):
         self.cursor.execute.side_effect = error
         with self.assertRaises(psycopg.OperationalError):
             find_latest_ingestion_object(self.connection, source="statsbomb", dataset="matches")
+        self.assertIs(self.connection.transaction.return_value.__exit__.call_args.args[1], error)
+
+
+class FindLatestIngestionObjectsTests(unittest.TestCase):
+    def setUp(self):
+        self.connection = MagicMock(spec=["cursor", "transaction"])
+        self.cursor = self.connection.cursor.return_value.__enter__.return_value
+
+    def test_parameterized_distinct_query_and_catalog_mapping(self):
+        seen_at = datetime(2026, 9, 22, tzinfo=timezone.utc)
+        row = (8, "source-url", "catalog-bucket", "catalog/key", "a" * 64, 123, seen_at)
+        self.cursor.fetchall.return_value = [row]
+        dataset = "match_events'; not SQL"
+        result = find_latest_ingestion_objects(self.connection, source="statsbomb", dataset=dataset)
+        self.assertEqual(result, [dict(zip(
+            ("id", "source_url", "s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at"), row,
+        ))])
+        query, params = self.cursor.execute.call_args.args
+        normalized = " ".join(query.split())
+        self.assertIn("SELECT DISTINCT ON (source_url)", normalized)
+        self.assertIn("FROM metadata.ingestion_objects WHERE source = %s AND dataset = %s", normalized)
+        self.assertIn("ORDER BY source_url ASC, first_seen_at DESC, id DESC", normalized)
+        self.assertEqual(query.count("%s"), 2)
+        self.assertEqual(params, ("statsbomb", dataset))
+        self.assertNotIn(dataset, query)
+        self.assertNotIn("LIMIT", normalized)
+        self.connection.transaction.return_value.__exit__.assert_called_once_with(None, None, None)
+
+    def test_empty_dataset_returns_empty_list(self):
+        self.cursor.fetchall.return_value = []
+        self.assertEqual(find_latest_ingestion_objects(
+            self.connection, source="statsbomb", dataset="match_events",
+        ), [])
+
+    def test_latest_per_logical_source_with_timestamp_tie_via_mock(self):
+        # This mock models DISTINCT ON's ordered first-row contract, not a live DB.
+        # Assert the actual SQL separately so changing its tie-breaker fails tests.
+        rows = [
+            (9, "url-b", "bucket", "b-new", "b" * 64, 10, 2),
+            (7, "url-a", "bucket", "a-tie-lower-id", "a" * 64, 10, 3),
+            (8, "url-a", "bucket", "a-latest", "c" * 64, 10, 3),
+            (99, "url-a", "bucket", "a-older", "d" * 64, 10, 1),
+            (6, "url-b", "bucket", "b-old", "e" * 64, 10, 1),
+        ]
+
+        def execute(query, params):
+            normalized = " ".join(query.split())
+            self.assertIn("SELECT DISTINCT ON (source_url)", normalized)
+            self.assertIn("ORDER BY source_url ASC, first_seen_at DESC, id DESC", normalized)
+            latest = {}
+            for row in sorted(rows, key=lambda item: (item[1], -item[6], -item[0])):
+                latest.setdefault(row[1], row)
+            self.cursor.fetchall.return_value = list(latest.values())
+
+        self.cursor.execute.side_effect = execute
+        result = find_latest_ingestion_objects(self.connection, source="statsbomb", dataset="match_events")
+        self.assertEqual([row["object_key"] for row in result], ["a-latest", "b-new"])
+        self.assertEqual([row["id"] for row in result], [8, 9])
+
+    def test_query_failure_propagates_and_closes_transaction(self):
+        error = psycopg.OperationalError("offline failure")
+        self.cursor.execute.side_effect = error
+        with self.assertRaises(psycopg.OperationalError):
+            find_latest_ingestion_objects(self.connection, source="statsbomb", dataset="match_events")
         self.assertIs(self.connection.transaction.return_value.__exit__.call_args.args[1], error)
 
 

@@ -72,6 +72,29 @@ services:
     networks:
       - football-network
 
+  football-spark:
+    build:
+      context: .
+      dockerfile: docker/spark/Dockerfile
+    working_dir: /app
+    environment:
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      AWS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      POSTGRES_HOST: football-postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SPARK_LOCAL_IP: 127.0.0.1
+    volumes:
+      - .:/app
+    networks:
+      - football-network
+
 networks:
   football-network:
     name: football-network

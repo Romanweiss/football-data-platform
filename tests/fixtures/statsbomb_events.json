@@ -1,0 +1,47 @@
+[
+  {
+    "id": "synthetic-event-1",
+    "index": 1,
+    "period": 1,
+    "timestamp": "00:00:01.250",
+    "minute": 0,
+    "second": 1,
+    "type": {"id": 30, "name": "Pass"},
+    "possession": 1,
+    "possession_team": {"id": 10, "name": "Red FC"},
+    "play_pattern": {"id": 1, "name": "Regular Play"},
+    "team": {"id": 10, "name": "Red FC"},
+    "player": {"id": 100, "name": "Test Player"},
+    "position": {"id": 6, "name": "Left Back"},
+    "location": [12.5, 23.75],
+    "duration": 0.5,
+    "under_pressure": true,
+    "counterpress": false,
+    "pass": {"recipient": {"id": 101}, "length": 4.0},
+    "unmodeled_test_field": "kept only in Bronze"
+  },
+  {
+    "id": "synthetic-event-2",
+    "index": 2,
+    "period": 1,
+    "timestamp": "00:00:02.000",
+    "minute": 0,
+    "second": 2,
+    "type": {"id": 35, "name": "Starting XI"},
+    "team": {"id": 20, "name": "Blue FC"},
+    "player": null,
+    "location": null,
+    "tactics": {"formation": 442}
+  },
+  {
+    "id": "synthetic-event-3",
+    "index": 3,
+    "period": 1,
+    "timestamp": "00:00:03.000",
+    "minute": 0,
+    "second": 3,
+    "type": {"id": 30, "name": "Pass"},
+    "team": {"id": 10, "name": "Red FC"},
+    "location": [42.0]
+  }
+]

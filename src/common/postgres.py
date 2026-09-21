@@ -100,3 +100,30 @@ def find_latest_ingestion_object(
         )
     columns = ("s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at")
     return dict(zip(columns, row, strict=True))
+
+
+def find_latest_ingestion_objects(
+    connection: psycopg.Connection, *, source: str, dataset: str
+) -> list[dict]:
+    """Return one latest version per logical source_url, in source_url order.
+
+    first_seen_at ties are resolved by id. Finish the read transaction before
+    the caller starts downloading Bronze; an empty dataset returns [].
+    """
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT DISTINCT ON (source_url)
+                    id, source_url, s3_bucket, object_key, sha256, size_bytes, first_seen_at
+                FROM metadata.ingestion_objects
+                WHERE source = %s AND dataset = %s
+                ORDER BY source_url ASC, first_seen_at DESC, id DESC
+                """,
+                (source, dataset),
+            )
+            rows = cursor.fetchall()
+    columns = (
+        "id", "source_url", "s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at",
+    )
+    return [dict(zip(columns, row, strict=True)) for row in rows]
