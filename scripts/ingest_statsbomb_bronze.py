@@ -5,12 +5,11 @@ import sys
 from pathlib import Path
 
 import psycopg
-from botocore.client import BaseClient
 from botocore.exceptions import BotoCoreError, ClientError
 
 # Support direct execution with `python scripts/ingest_statsbomb_bronze.py`.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.common.bronze import build_versioned_key
+from src.common.bronze import BronzeIntegrityError, build_versioned_key, put_immutable_object
 from src.common.checksum import sha256_bytes
 from src.common.http import DownloadError, download_bytes
 from src.common.postgres import create_postgres_connection, register_ingestion_object
@@ -32,74 +31,6 @@ SOURCES = (
 )
 
 
-class BronzeIntegrityError(RuntimeError):
-    """An immutable key and its expected SHA-256 metadata disagree."""
-
-
-def verify_object_integrity(existing: dict, key: str, checksum: str) -> None:
-    if existing.get("Metadata", {}).get("sha256") != checksum:
-        raise BronzeIntegrityError(
-            f"Immutable object integrity violation for {key}: "
-            "metadata sha256 is missing or mismatched; object was not modified."
-        )
-
-
-def upload_immutable_object(
-    client: BaseClient,
-    *,
-    bucket: str,
-    key: str,
-    data: bytes,
-    checksum: str,
-    source_url: str,
-    dataset: str,
-) -> bool:
-    """Create an absent version or verify an existing one; never overwrite it."""
-    parts = key.split("/")
-    if len(parts) < 3 or parts[-2] != f"sha256={checksum}":
-        raise BronzeIntegrityError("Immutable key does not match the source checksum.")
-
-    try:
-        existing = client.head_object(Bucket=bucket, Key=key)
-    except ClientError as error:
-        status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-        code = error.response.get("Error", {}).get("Code")
-        object_missing = code in {"404", "NoSuchKey", "NotFound"} or (
-            status == 404 and not code
-        )
-        if not object_missing:
-            raise
-    else:
-        verify_object_integrity(existing, key, checksum)
-        return False
-
-    try:
-        client.put_object(
-            Bucket=bucket,
-            Key=key,
-            Body=data,
-            ContentType="application/json",
-            Metadata={
-                "source": "statsbomb",
-                "layer": "bronze",
-                "sha256": checksum,
-                "source_url": source_url,
-                "dataset": dataset,
-            },
-            IfNoneMatch="*",
-        )
-    except ClientError as error:
-        status = error.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-        code = error.response.get("Error", {}).get("Code")
-        if status != 412 and code != "PreconditionFailed":
-            raise
-        # Another writer created this version after HEAD; verify, never overwrite.
-        existing = client.head_object(Bucket=bucket, Key=key)
-        verify_object_integrity(existing, key, checksum)
-        return False
-    return True
-
-
 def main() -> int:
     bucket = os.environ.get("S3_BUCKET", "").strip()
     if not bucket:
@@ -119,14 +50,19 @@ def main() -> int:
                 checksum = sha256_bytes(data)
                 key = build_versioned_key(source["base_prefix"], source["filename"], checksum)
                 current_key = key
-                if upload_immutable_object(
+                if put_immutable_object(
                     client,
                     bucket=bucket,
                     key=key,
                     data=data,
                     checksum=checksum,
-                    source_url=source["source_url"],
-                    dataset=source["dataset"],
+                    metadata={
+                        "source": "statsbomb",
+                        "layer": "bronze",
+                        "dataset": source["dataset"],
+                        "sha256": checksum,
+                        "source_url": source["source_url"],
+                    },
                 ):
                     uploaded += 1
                     print(f"UPLOADED: {key}")

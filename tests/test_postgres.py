@@ -2,11 +2,17 @@
 
 import os
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import psycopg
 
-from src.common.postgres import create_postgres_connection, register_ingestion_object
+from src.common.postgres import (
+    IngestionObjectNotFoundError,
+    create_postgres_connection,
+    find_latest_ingestion_object,
+    register_ingestion_object,
+)
 
 
 class PostgresConnectionTests(unittest.TestCase):
@@ -102,6 +108,44 @@ class RegisterIngestionObjectTests(unittest.TestCase):
         )
         with self.assertRaises(psycopg.OperationalError):
             register_ingestion_object(self.connection, **self.params)
+
+
+class FindLatestIngestionObjectTests(unittest.TestCase):
+    def setUp(self):
+        self.connection = MagicMock(spec=["cursor", "transaction"])
+        self.cursor = self.connection.cursor.return_value.__enter__.return_value
+
+    def test_latest_query_is_parameterized_and_returns_catalog_fields(self):
+        seen_at = datetime(2026, 9, 22, tzinfo=timezone.utc)
+        self.cursor.fetchone.return_value = ("parent-bucket", "registered/key", "a" * 64, 123, seen_at)
+        result = find_latest_ingestion_object(
+            self.connection, source="statsbomb", dataset="world_cup_2022_matches"
+        )
+        self.assertEqual(result, {
+            "s3_bucket": "parent-bucket", "object_key": "registered/key",
+            "sha256": "a" * 64, "size_bytes": 123, "first_seen_at": seen_at,
+        })
+        query, params = self.cursor.execute.call_args.args
+        normalized = " ".join(query.split())
+        self.assertIn("WHERE source = %s AND dataset = %s", normalized)
+        self.assertIn("ORDER BY first_seen_at DESC, id DESC LIMIT 1", normalized)
+        self.assertEqual(params, ("statsbomb", "world_cup_2022_matches"))
+        self.assertNotIn("world_cup_2022_matches", query)
+        # SELECT must finish its transaction before remote IO/registrations.
+        self.connection.transaction.return_value.__exit__.assert_called_once_with(None, None, None)
+
+    def test_missing_parent_raises_actionable_error(self):
+        self.cursor.fetchone.return_value = None
+        with self.assertRaisesRegex(IngestionObjectNotFoundError, "Ingest the parent dataset first"):
+            find_latest_ingestion_object(self.connection, source="statsbomb", dataset="world_cup_2022_matches")
+        self.connection.transaction.return_value.__exit__.assert_called_once_with(None, None, None)
+
+    def test_lookup_sql_error_propagates_and_exits_transaction(self):
+        error = psycopg.OperationalError("offline query failure")
+        self.cursor.execute.side_effect = error
+        with self.assertRaises(psycopg.OperationalError):
+            find_latest_ingestion_object(self.connection, source="statsbomb", dataset="matches")
+        self.assertIs(self.connection.transaction.return_value.__exit__.call_args.args[1], error)
 
 
 if __name__ == "__main__":

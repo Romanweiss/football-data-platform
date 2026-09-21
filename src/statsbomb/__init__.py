@@ -1,0 +1,1 @@
+"""StatsBomb-specific source interpretation."""

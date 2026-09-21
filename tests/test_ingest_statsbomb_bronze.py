@@ -10,6 +10,7 @@ import psycopg
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 from scripts import ingest_statsbomb_bronze as ingestion
+from src.common import bronze
 from src.common.bronze import build_versioned_key
 from src.common.checksum import sha256_bytes
 from src.common.http import DownloadError
@@ -37,13 +38,16 @@ class UploadImmutableObjectTests(unittest.TestCase):
         self.params = {
             "bucket": "test-bucket", "key": source_key(source, self.data),
             "data": self.data, "checksum": sha256_bytes(self.data),
-            "source_url": source["source_url"], "dataset": source["dataset"],
+            "metadata": {
+                "source": "statsbomb", "layer": "bronze", "sha256": sha256_bytes(self.data),
+                "source_url": source["source_url"], "dataset": source["dataset"],
+            },
         }
 
     def test_existing_version_is_verified_without_upload(self):
         metadata = {"sha256": self.params["checksum"], "custom": "keep-me"}
         self.client.head_object.return_value = {"Metadata": metadata}
-        self.assertFalse(ingestion.upload_immutable_object(self.client, **self.params))
+        self.assertFalse(bronze.put_immutable_object(self.client, **self.params))
         self.client.head_object.assert_called_once_with(Bucket="test-bucket", Key=self.params["key"])
         self.client.put_object.assert_not_called()
         self.assertEqual(metadata, {"sha256": self.params["checksum"], "custom": "keep-me"})
@@ -53,13 +57,13 @@ class UploadImmutableObjectTests(unittest.TestCase):
             with self.subTest(code=code):
                 self.client.reset_mock()
                 self.client.head_object.side_effect = s3_error(code, 404)
-                self.assertTrue(ingestion.upload_immutable_object(self.client, **self.params))
+                self.assertTrue(bronze.put_immutable_object(self.client, **self.params))
                 self.client.put_object.assert_called_once_with(
                     Bucket="test-bucket", Key=self.params["key"], Body=self.data,
                     ContentType="application/json", IfNoneMatch="*",
                     Metadata={
                         "source": "statsbomb", "layer": "bronze", "sha256": self.params["checksum"],
-                        "source_url": self.params["source_url"], "dataset": "competitions",
+                        "source_url": self.params["metadata"]["source_url"], "dataset": "competitions",
                     },
                 )
                 self.assertIs(self.client.put_object.call_args.kwargs["Body"], self.data)
@@ -68,14 +72,14 @@ class UploadImmutableObjectTests(unittest.TestCase):
         for response in ({}, {"Metadata": {}}, {"Metadata": {"sha256": "b" * 64}}):
             with self.subTest(response=response):
                 self.client.head_object.return_value = response
-                with self.assertRaisesRegex(ingestion.BronzeIntegrityError, "integrity violation"):
-                    ingestion.upload_immutable_object(self.client, **self.params)
+                with self.assertRaisesRegex(bronze.BronzeIntegrityError, "integrity violation"):
+                    bronze.put_immutable_object(self.client, **self.params)
         self.client.put_object.assert_not_called()
 
     def test_key_checksum_mismatch_fails_before_s3_access(self):
         self.params["key"] = build_versioned_key("football/bronze", "data.json", "b" * 64)
-        with self.assertRaises(ingestion.BronzeIntegrityError):
-            ingestion.upload_immutable_object(self.client, **self.params)
+        with self.assertRaises(bronze.BronzeIntegrityError):
+            bronze.put_immutable_object(self.client, **self.params)
         self.client.head_object.assert_not_called()
         self.client.put_object.assert_not_called()
 
@@ -85,7 +89,7 @@ class UploadImmutableObjectTests(unittest.TestCase):
                 error = s3_error(code, status)
                 self.client.head_object.side_effect = error
                 with self.assertRaises(ClientError) as caught:
-                    ingestion.upload_immutable_object(self.client, **self.params)
+                    bronze.put_immutable_object(self.client, **self.params)
                 self.assertIs(caught.exception, error)
         self.client.put_object.assert_not_called()
 
@@ -93,12 +97,12 @@ class UploadImmutableObjectTests(unittest.TestCase):
         self.client.head_object.side_effect = s3_error("404", 404)
         self.client.put_object.side_effect = s3_error("AccessDenied", 403)
         with self.assertRaises(ClientError):
-            ingestion.upload_immutable_object(self.client, **self.params)
+            bronze.put_immutable_object(self.client, **self.params)
 
     def test_network_error_is_not_treated_as_missing_object(self):
         self.client.head_object.side_effect = EndpointConnectionError(endpoint_url="https://example.invalid")
         with self.assertRaises(EndpointConnectionError):
-            ingestion.upload_immutable_object(self.client, **self.params)
+            bronze.put_immutable_object(self.client, **self.params)
         self.client.put_object.assert_not_called()
 
     def test_concurrent_creation_is_rechecked_after_precondition_failure(self):
@@ -106,7 +110,7 @@ class UploadImmutableObjectTests(unittest.TestCase):
             s3_error("404", 404), {"Metadata": {"sha256": self.params["checksum"]}},
         ]
         self.client.put_object.side_effect = s3_error("PreconditionFailed", 412)
-        self.assertFalse(ingestion.upload_immutable_object(self.client, **self.params))
+        self.assertFalse(bronze.put_immutable_object(self.client, **self.params))
         self.assertEqual(self.client.head_object.call_count, 2)
         self.client.put_object.assert_called_once()
         self.assertEqual(self.client.put_object.call_args.kwargs["IfNoneMatch"], "*")
@@ -114,15 +118,15 @@ class UploadImmutableObjectTests(unittest.TestCase):
     def test_concurrent_creation_with_wrong_metadata_fails_without_retrying_put(self):
         self.client.head_object.side_effect = [s3_error("404", 404), {"Metadata": {"sha256": "wrong"}}]
         self.client.put_object.side_effect = s3_error("PreconditionFailed", 412)
-        with self.assertRaises(ingestion.BronzeIntegrityError):
-            ingestion.upload_immutable_object(self.client, **self.params)
+        with self.assertRaises(bronze.BronzeIntegrityError):
+            bronze.put_immutable_object(self.client, **self.params)
         self.client.put_object.assert_called_once()
 
     def test_conditional_conflict_is_not_silently_ignored(self):
         self.client.head_object.side_effect = s3_error("404", 404)
         self.client.put_object.side_effect = s3_error("ConditionalRequestConflict", 409)
         with self.assertRaises(ClientError):
-            ingestion.upload_immutable_object(self.client, **self.params)
+            bronze.put_immutable_object(self.client, **self.params)
 
 
 class IngestionMainTests(unittest.TestCase):

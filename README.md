@@ -356,6 +356,88 @@ docker compose config -q
 Unit-тесты используют стандартный `unittest` и mocks для HTTP, S3 и PostgreSQL.
 Миграция при тестах не применяется.
 
+## StatsBomb match fan-out ingestion
+
+Stage 1D использует уже сохранённый parent dataset `world_cup_2022_matches`.
+Источник списка матчей находится внутри платформы:
+
+```text
+PostgreSQL catalog: latest world_cup_2022_matches
+    -> S3 parent object -> SHA-256 verification -> matches JSON -> unique match_id
+    -> for each match: events -> S3 Bronze -> catalog
+                      lineups -> S3 Bronze -> catalog
+```
+
+Fan-out ingestion означает, что один parent artifact содержит N match_id и порождает
+по две дочерние задачи на матч. Child datasets: `match_events` и `match_lineups`.
+Обработка последовательная: сначала events и lineups первого матча, затем второго.
+
+Parent выбирается из `metadata.ingestion_objects` по `source=statsbomb` и
+`dataset=world_cup_2022_matches` с `ORDER BY first_seen_at DESC, id DESC LIMIT 1`.
+Это последняя зарегистрированная версия. На один запуск выбирается один parent;
+его bucket, key и SHA-256 выводятся в логе. Bucket и key берутся из каталога,
+а не из захардкоженного пути или настройки целевого bucket.
+Запрос к каталогу завершает свою транзакцию до сетевого чтения.
+
+Parent скачивается через S3 `get_object`, StreamingBody обязательно закрывается,
+а SHA-256 полученных bytes сравнивается с каталогом до JSON parsing. При отсутствии
+parent или нарушении integrity pipeline останавливается до загрузки children.
+Matches JSON декодируется как UTF-8; root должен быть list, каждый элемент — object
+с integer `match_id` (boolean не допускается). Дубликаты удаляются с сохранением
+порядка первого появления. Исходные bytes parent не изменяются.
+
+Файл `matches/43/106.json` не скачивается из GitHub повторно. Так происхождение
+списка дочерних загрузок привязано к конкретному проверенному Bronze parent artifact.
+Новая таблица связей или история запусков на этом этапе не добавляется.
+
+По HTTP запрашиваются только:
+
+- `https://raw.githubusercontent.com/hudl/open-data/master/data/events/<match_id>.json`;
+- `https://raw.githubusercontent.com/hudl/open-data/master/data/lineups/<match_id>.json`.
+
+Children сохраняются в настроенный `S3_BUCKET` без JSON parsing или повторной
+сериализации. Используются общий `build_versioned_key()` и единственная реализация
+`put_immutable_object()` в `src/common/bronze.py`, общая со Stage 1C:
+
+```text
+football/bronze/statsbomb/events/match_id=<id>/sha256=<FULL_SHA256>/events.json
+football/bronze/statsbomb/lineups/match_id=<id>/sha256=<FULL_SHA256>/lineups.json
+```
+
+Metadata содержит `source=statsbomb`, `layer=bronze`, `dataset=match_events` или
+`match_lineups`, `match_id` как строку, `sha256` и конкретный `source_url`.
+После успешного immutable PUT или проверки существующего объекта вызывается
+`register_ingestion_object()`. Каждая регистрация фиксируется отдельно.
+
+При ошибке download/upload/registration выполнение останавливается; ранее
+сохранённые объекты и зафиксированные строки остаются. Повторный запуск снова
+проверяет источники: неизменённые children получают `UNCHANGED` и
+`ALREADY_REGISTERED`. Если PUT прошёл, а registration нет, повторный запуск
+добавит недостающую запись каталога без перезаписи S3 object.
+
+Ограниченный ручной запуск — первые два уникальных match_id, до четырёх children:
+
+```powershell
+docker compose run --rm football-python-tools python scripts/ingest_statsbomb_match_data.py --limit 2
+```
+
+`--limit` принимает только integer > 0. Это реальный ingestion с записью объектов
+и metadata, ограниченный числом матчей. Без `--limit` обрабатывается весь список:
+
+```powershell
+docker compose run --rm football-python-tools python scripts/ingest_statsbomb_match_data.py
+```
+
+Вывод включает `EVENTS/LINEUPS UPLOADED/UNCHANGED: match_id=<id>`, key, размер,
+SHA-256 и `REGISTERED/ALREADY_REGISTERED`. Полный JSON и credentials не печатаются.
+`Matches discovered` — число уникальных match_id в parent до применения limit.
+Счётчики `Objects downloaded/uploaded/unchanged/registered/already registered`
+относятся только к children; чтение parent в них не включается.
+
+Текущей схемы PostgreSQL и зависимостей достаточно: новые миграции и пересборка
+образа для Stage 1D не нужны. Тесты reader, parser, catalog lookup и fan-out
+используют `unittest` и mocks без реальных обращений к GitHub, S3 или PostgreSQL.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

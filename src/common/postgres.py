@@ -5,6 +5,10 @@ import os
 import psycopg
 
 
+class IngestionObjectNotFoundError(LookupError):
+    """No artifact has been registered for the requested source and dataset."""
+
+
 def create_postgres_connection() -> psycopg.Connection:
     """Connect using environment variables without logging credentials."""
     names = (
@@ -66,3 +70,33 @@ def register_ingestion_object(
             )
             registered = cursor.fetchone() is not None
     return registered
+
+
+def find_latest_ingestion_object(
+    connection: psycopg.Connection, *, source: str, dataset: str
+) -> dict:
+    """Return the latest registered artifact, ending SELECT's transaction first.
+
+    The caller supplies an idle connection so later artifact registrations can
+    commit independently, without an enclosing read transaction.
+    """
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT s3_bucket, object_key, sha256, size_bytes, first_seen_at
+                FROM metadata.ingestion_objects
+                WHERE source = %s AND dataset = %s
+                ORDER BY first_seen_at DESC, id DESC
+                LIMIT 1
+                """,
+                (source, dataset),
+            )
+            row = cursor.fetchone()
+    if row is None:
+        raise IngestionObjectNotFoundError(
+            f"No registered Bronze artifact for source={source}, dataset={dataset}. "
+            "Ingest the parent dataset first."
+        )
+    columns = ("s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at")
+    return dict(zip(columns, row, strict=True))

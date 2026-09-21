@@ -1,8 +1,9 @@
 """Versioned keys are deterministic and never need S3 access."""
 
 import unittest
+from unittest.mock import MagicMock
 
-from src.common.bronze import build_versioned_key
+from src.common.bronze import BronzeIntegrityError, build_versioned_key, put_immutable_object
 
 
 class BuildVersionedKeyTests(unittest.TestCase):
@@ -54,6 +55,20 @@ class BuildVersionedKeyTests(unittest.TestCase):
             with self.subTest(name=name):
                 with self.assertRaises(ValueError):
                     build_versioned_key(self.prefix, name, self.checksum)
+
+
+class GenericImmutableUploadTests(unittest.TestCase):
+    def test_inconsistent_upload_metadata_is_rejected_before_s3(self):
+        client = MagicMock(spec=["head_object", "put_object"])
+        checksum = "a" * 64
+        with self.assertRaisesRegex(BronzeIntegrityError, "Upload metadata sha256"):
+            put_immutable_object(
+                client, bucket="test-bucket",
+                key=build_versioned_key("bronze", "data.json", checksum),
+                data=b"raw", checksum=checksum, metadata={"sha256": "b" * 64},
+            )
+        client.head_object.assert_not_called()
+        client.put_object.assert_not_called()
 
 
 if __name__ == "__main__":
