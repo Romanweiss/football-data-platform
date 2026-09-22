@@ -1,0 +1,65 @@
+[
+  {
+    "id": "pass-normal", "index": 1, "period": 1, "timestamp": "00:00:01.250", "minute": 0, "second": 1,
+    "type": {"id": 30, "name": "Pass"}, "team": {"id": 10, "name": "Red FC"},
+    "player": {"id": 100, "name": "Pass Player"}, "location": [12.5, 23.75],
+    "pass": {
+      "recipient": {"id": 101, "name": "Recipient Player"}, "length": 15.25, "angle": -0.5,
+      "height": {"id": 1, "name": "Ground Pass"}, "end_location": [25.0, 30.0],
+      "body_part": {"id": 40, "name": "Right Foot"}, "type": {"id": 64, "name": "Recovery"},
+      "technique": {"id": 108, "name": "Through Ball"},
+      "cross": true, "cut_back": false, "switch": true, "shot_assist": true,
+      "goal_assist": false, "aerial_won": true, "through_ball": true,
+      "unused_nested": {"ignore": "synthetic"}
+    },
+    "tactics": {"formation": 433, "lineup": []}
+  },
+  {
+    "id": "pass-incomplete", "index": 2, "type": {"id": 30, "name": "Pass"},
+    "team": {"id": 10, "name": "Red FC"}, "location": [50.0],
+    "pass": {"length": 7.0, "angle": 0.25, "end_location": [55.0], "outcome": {"id": 9, "name": "Incomplete"}}
+  },
+  {
+    "id": "pass-no-recipient", "index": 3, "type": {"id": 30, "name": "Pass"},
+    "team": {"id": 10, "name": "Red FC"}, "location": [], "pass": {"end_location": []}
+  },
+  {
+    "id": "pass-goal-assist", "index": 4, "type": {"id": 30, "name": "Pass"},
+    "team": {"id": 10, "name": "Red FC"}, "location": null,
+    "pass": {"recipient": {"id": 102, "name": "Scorer"}, "length": 0.0, "goal_assist": true, "shot_assist": true}
+  },
+  {
+    "id": "shot-normal", "index": 5, "period": 1, "timestamp": "00:00:05.500", "minute": 0, "second": 5,
+    "type": {"id": 16, "name": "Shot"}, "team": {"id": 10, "name": "Red FC"},
+    "player": {"id": 102, "name": "Scorer"}, "location": [100.0, 40.0],
+    "shot": {
+      "statsbomb_xg": 0.12, "end_location": [120.0, 42.0], "key_pass_id": "pass-normal",
+      "body_part": {"id": 40, "name": "Right Foot"}, "type": {"id": 87, "name": "Open Play"},
+      "technique": {"id": 93, "name": "Normal"}, "outcome": {"id": 100, "name": "Saved"},
+      "first_time": false, "open_goal": false, "one_on_one": true, "aerial_won": false, "deflected": true,
+      "freeze_frame": [{"ignored": true}]
+    }
+  },
+  {
+    "id": "shot-goal", "index": 6, "type": {"id": 16, "name": "Shot"},
+    "team": {"id": 10, "name": "Red FC"}, "location": [112.0, 39.0],
+    "shot": {
+      "statsbomb_xg": 0.75, "end_location": [120.0, 40.0, 1.25], "key_pass_id": "pass-goal-assist",
+      "outcome": {"id": 97, "name": "Goal"}, "first_time": true, "open_goal": true, "aerial_won": true
+    }
+  },
+  {
+    "id": "shot-null-optionals", "index": 7, "type": {"id": 16, "name": "Shot"},
+    "team": {"id": 10, "name": "Red FC"}, "location": [],
+    "shot": {"statsbomb_xg": 0.0, "outcome": {"id": 96, "name": "Blocked"}, "end_location": null}
+  },
+  {
+    "id": "other-with-domain-structs", "index": 8, "type": {"id": 43, "name": "Carry"},
+    "team": {"id": 10, "name": "Red FC"},
+    "pass": {"length": 3.0}, "shot": {"statsbomb_xg": 0.1, "outcome": {"id": 97, "name": "Goal"}}
+  },
+  {"id": "pass-missing-struct", "index": 9, "type": {"id": 30, "name": "Pass"}, "team": {"id": 10}},
+  {"id": "pass-null-struct", "index": 10, "type": {"id": 30, "name": "Pass"}, "team": {"id": 10}, "pass": null},
+  {"id": "shot-missing-struct", "index": 11, "type": {"id": 16, "name": "Shot"}, "team": {"id": 10}},
+  {"id": "shot-null-struct", "index": 12, "type": {"id": 16, "name": "Shot"}, "team": {"id": 10}, "shot": null}
+]

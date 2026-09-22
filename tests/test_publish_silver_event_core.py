@@ -12,27 +12,27 @@ from silver_fakes import FakeS3, artifact
 from scripts import publish_silver_event_core as job
 from src.common.bronze import BronzeIntegrityError
 from src.common.checksum import sha256_bytes
-from src.silver import publish
+from src.silver import job as pipeline, publish
 from src.silver.manifest import SilverIntegrityError
 
 
 class PublishJobTests(unittest.TestCase):
     def setUp(self):
         self.enterContext(patch.dict(os.environ, {"S3_BUCKET": "test-bucket"}, clear=True))
-        self.pg = self.enterContext(patch.object(job, "create_postgres_connection"))
+        self.pg = self.enterContext(patch.object(pipeline, "create_postgres_connection"))
         self.client = FakeS3()
-        self.enterContext(patch.object(job, "create_s3_client", return_value=self.client))
+        self.enterContext(patch.object(pipeline, "create_s3_client", return_value=self.client))
         parent_raw = b'[{"match_id": 1}, {"match_id": 2}, {"match_id": 3}]'
         self.parent = {"s3_bucket": "test-bucket", "object_key": "parent.json", "sha256": sha256_bytes(parent_raw)}
         self.client.seed("test-bucket", "parent.json", parent_raw)
-        self.parent_lookup = self.enterContext(patch.object(job, "find_latest_ingestion_object", return_value=self.parent))
+        self.parent_lookup = self.enterContext(patch.object(pipeline, "find_latest_ingestion_object", return_value=self.parent))
         self.inputs = [artifact(3), artifact(2), artifact(1), artifact(99)]
         for item in self.inputs:
             self.client.seed(item["s3_bucket"], item["object_key"], b"unused-event-body", {"sha256": item["sha256"]})
-        self.lookup = self.enterContext(patch.object(job, "find_latest_ingestion_objects", return_value=self.inputs))
-        self.spark_factory = self.enterContext(patch.object(job, "create_spark_session"))
-        self.configure = self.enterContext(patch.object(job, "configure_s3a"))
-        self.enterContext(patch.object(job, "runtime_versions", return_value={
+        self.lookup = self.enterContext(patch.object(pipeline, "find_latest_ingestion_objects", return_value=self.inputs))
+        self.spark_factory = self.enterContext(patch.object(pipeline, "create_spark_session"))
+        self.configure = self.enterContext(patch.object(pipeline, "configure_s3a"))
+        self.enterContext(patch.object(pipeline, "runtime_versions", return_value={
             "Spark version": "4.2.0", "Hadoop version": "3.5.0", "S3A filesystem implementation": "S3AFileSystem",
         }))
         self.frame = MagicMock()
@@ -40,7 +40,7 @@ class PublishJobTests(unittest.TestCase):
         self.build = self.enterContext(patch.object(job, "build_event_frame", side_effect=lambda spark, paths: (
             self.frame, {"row_count": len(paths) * 3, "match_count": len(paths)},
         )))
-        self.publish = self.enterContext(patch.object(job, "publish_build", return_value={
+        self.publish = self.enterContext(patch.object(pipeline, "publish_build", return_value={
             "file_count": 4, "build_id": "b" * 64, "output_uri": "s3a://test-bucket/output/",
             "catalog": "REGISTERED", "output_status": "CREATED",
         }))

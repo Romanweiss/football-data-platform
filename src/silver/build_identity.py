@@ -8,6 +8,7 @@ from src.common.s3_paths import s3a_uri
 from src.statsbomb.events import extract_match_id_from_events_url
 
 TRANSFORM_VERSION = "event_core_v1"
+SILVER_DATASETS = ("event_core", "pass_events", "shot_events")
 INPUT_FIELDS = ("match_id", "source_url", "s3_bucket", "object_key", "sha256")
 SPEC_FIELDS = (
     "source", "layer", "dataset", "competition_id", "season_id",
@@ -47,14 +48,16 @@ def input_fingerprint(artifacts: list[dict]) -> str:
 
 def build_specification(
     *, input_fingerprint: str, schema_sha256: str, transform_version: str,
-    competition_id: int, season_id: int,
+    competition_id: int, season_id: int, dataset: str = "event_core",
 ) -> dict:
     require_sha256(input_fingerprint)
     require_sha256(schema_sha256)
     if not transform_version or type(competition_id) is not int or type(season_id) is not int:
         raise ValueError("Invalid Silver build context.")
+    if dataset not in SILVER_DATASETS:
+        raise ValueError("Unsupported Silver dataset.")
     return {
-        "source": "statsbomb", "layer": "silver", "dataset": "event_core",
+        "source": "statsbomb", "layer": "silver", "dataset": dataset,
         "competition_id": competition_id, "season_id": season_id,
         "transform_version": transform_version,
         "input_fingerprint": input_fingerprint, "schema_sha256": schema_sha256,
@@ -69,8 +72,10 @@ def calculate_build_id(specification: dict) -> str:
 
 def silver_prefix(specification: dict, build_id: str) -> str:
     require_sha256(build_id)
+    if specification["dataset"] not in SILVER_DATASETS:
+        raise ValueError("Unsupported Silver dataset.")
     return (
-        "football/silver/statsbomb/event_core/"
+        f"football/silver/statsbomb/{specification['dataset']}/"
         f"competition_id={specification['competition_id']}/"
         f"season_id={specification['season_id']}/build_id={build_id}/"
     )

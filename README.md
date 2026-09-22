@@ -816,6 +816,157 @@ docker compose run --rm football-spark spark-submit --master "local[2]" scripts/
 Ожидаемый текущий full build: 64 матча, 234637 events, 4 part files, если inputs не изменились.
 Stage 2A local preview, Bronze, lineups и ClickHouse остаются без изменений.
 
+## Stage 2C - Event domain Silver
+
+Stage 2C добавляет два независимых persistent Silver datasets:
+`pass_events` (`pass_events_v1`) и `shot_events` (`shot_events_v1`).
+Они читают исходные immutable `match_events` JSON через S3A. Существующий
+`event_core` содержит общие поля всех событий и сохраняет свой контракт/build.
+Pass/shot не извлекаются из `event_core`: вложенные поля передач и ударов есть в Bronze.
+
+Логическая связь трёх datasets — `(match_id, event_id)`. Для сопоставления builds
+используйте одинаковый `input_fingerprint`: он подтверждает один набор версий Bronze.
+Имена datasets, transform versions и схемы различаются, поэтому `build_id` различается.
+
+Мы разделяем данные по смыслу футбольного события. Сверхширокая таблица
+`event_core + pass + shot + goalkeeper + duel + ...` содержала бы множество почти
+всегда пустых columns и объединяла бы разные правила заполнения. Отдельные datasets
+упрощают DQ, аналитические запросы и последующее моделирование ClickHouse.
+Это логическое разделение доменов, а не OLTP-style third normal form.
+
+### Общий pipeline и lineage
+
+`src/silver/job.py` содержит вынесенную из Stage 2B orchestration:
+parent catalog → GET/SHA-256 → membership → child HEAD → exact S3A paths →
+Spark/S3A setup → dataset read/transform/DQ → fingerprints → publication.
+Оба CLI используют этот pipeline; каждый передаёт только свою функцию подготовки DataFrame.
+
+Parent выбирается как `source=statsbomb, dataset=world_cup_2022_matches`.
+Из него берутся match IDs (для текущего World Cup parent — 64), затем latest
+`source=statsbomb, dataset=match_events` для каждого ID. Другие турниры исключаются;
+пропущенный или дублированный match artifact останавливает job ещё до Spark.
+Полнота parent проверяется до применения `--limit`.
+
+`src/silver/publish.py`, `src/silver/manifest.py` и PostgreSQL helpers переиспользуются:
+exact-prefix inventory, `_SUCCESS`, read-back схемы/числа строк/матчей, conditional
+manifest publication, `find_silver_build`, `register_silver_build` и recovery.
+В `build_specification` добавлен dataset с прежним default `event_core`.
+Алгоритм canonical inputs/fingerprints/build ID остался прежним.
+
+### Schemas и transformations
+
+`src/silver/statsbomb/event_domains.py` определяет `PASS_SCHEMA`, `SHOT_SCHEMA`
+и `DOMAIN_EVENT_SCHEMA = core fields + pass + shot`. Все вложенные поля nullable;
+именованные сущности имеют `id: long, name: string`, координаты — `array<double>`,
+числа length/angle/xG — `double`, флаги — `boolean`, `key_pass_id` — `string`.
+Schema inference не используется, лишние RAW структуры игнорируются.
+Исходный `EVENT_SCHEMA` для event_core не расширяется и не мутируется.
+
+`transform_pass_events` оставляет `type.name == "Pass" AND pass IS NOT NULL`;
+`transform_shot_events` — `type.name == "Shot" AND shot IS NOT NULL`.
+Обе функции получают competition/season параметрами и используют встроенные Spark
+выражения. Они сохраняют отсутствующие поля как NULL, включая outcome успешной
+передачи и неуказанные boolean flags: никаких придуманных default values.
+
+Общие выходные поля: competition/season, match/event IDs, event index, period,
+timestamp/minute/second, team/player IDs и names, `start_x`, `start_y`.
+Pass дополняет их recipient, length/angle, end x/y, height, body part, pass type,
+outcome, technique и флагами cross/cut_back/switch/shot_assist/goal_assist/aerial_won/through_ball.
+Shot содержит xG, end x/y/z, key_pass_id, body part, shot type, technique,
+outcome и first_time/open_goal/one_on_one/aerial_won/deflected.
+`F.get` возвращает NULL для коротких/пустых/null массивов и работает при ANSI mode;
+у shot без третьей координаты `end_z = NULL`.
+
+### Data quality
+
+Оба validator используют небольшие агрегаты, не собирая весь dataset в Python.
+Для каждого домена проверяются nonempty output, уникальность `(match_id, event_id)`
+и обязательные `match_id`, `event_id`, `event_index`, `team_id`.
+Проверяются точное множество выбранных match IDs и отсутствие чужих матчей.
+Как и в Stage 2B, текущий publish contract требует представленность каждого
+выбранного матча в output; отсутствие доменных событий для одного из них вызывает DQ failure.
+
+Для pass отрицательный `pass_length` вызывает ошибку. NULL в остальных optional
+полях допустим; отдельно печатаются informational NULL counts для `player_id`,
+`recipient_id`, `outcome_id`, `body_part_id`, `technique_id`.
+
+Для shot дополнительно обязательны `statsbomb_xg` и `outcome_id`.
+xG должен находиться в `[0, 1]`; NaN также вызывает ошибку. Informational NULL counts:
+`player_id`, `key_pass_id`, `body_part_id`, `technique_id`, `end_z`.
+
+Expected count вычисляется из RAW по тем же условиям type + non-null struct,
+после чего сравнивается с числом domain rows. Потеря событий при transformation
+вызывает DQ failure. Конкретные World Cup pass/shot counts в коде не зашиты.
+
+### Layout, manifest и recovery
+
+```text
+football/silver/statsbomb/{pass_events|shot_events}/
+  competition_id=43/season_id=106/build_id=<sha256>/
+    part-*.snappy.parquet
+    _SUCCESS
+    _manifest.json
+```
+
+Writer использует `repartition(4)`, Snappy и `errorifexists`; `partitionBy(match_id)`
+и `coalesce(1)` не используются. На очень маленьких synthetic datasets число физических
+part files может быть меньше четырёх из-за пустых partitions.
+
+Manifest сохраняет Stage 2B contract: source/layer/dataset, competition/season,
+transform_version, input_fingerprint, schema_sha256, build_id, row_count,
+match_count, file_count, exact input artifacts и output inventory.
+Full pass/shot build включает все event artifacts parent (сейчас 64).
+В PostgreSQL используется существующая `metadata.silver_builds`; новой migration нет.
+
+Повторный identical publish проверяет output и возвращает
+`UNCHANGED / ALREADY_BUILT` и `ALREADY_REGISTERED`, не переписывая Parquet.
+После DB failure повтор восстанавливает регистрацию для того же build ID.
+При валидном Parquet + `_SUCCESS` без manifest и catalog восстанавливается manifest.
+Если запись catalog уже существует, исчезнувший manifest считается нарушением
+целостности, как в Stage 2B. Partial/corrupt prefix даёт `SilverIntegrityError`.
+Автоматическая очистка S3 не выполняется; ограничения IAM/committer Stage 2B сохраняются.
+
+### Проверки и ручной запуск Stage 2C
+
+Offline-проверки используют mocks и локальный synthetic JSON с pass/shot событиями:
+
+```powershell
+docker compose config -q
+docker compose run --rm --no-deps football-spark python3 -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_event_core.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_s3a_event_core.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_event_domains.py
+git diff --check
+```
+
+Docker/dependencies не менялись; код подключён bind mount, rebuild для Stage 2C не нужен.
+
+Следующие команды запускаются вручную и обращаются к реальному Selectel/PostgreSQL.
+Двухматчевые проверки выполняют read/transform/DQ, печатают версии, Dataset,
+Transform version, Parent matches, Bronze artifacts selected, Matches processed,
+Input events, Domain events, DQ, fingerprints и Build ID, затем
+`CHECK ONLY - nothing published`. Silver и PostgreSQL registration не записываются.
+
+```powershell
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_event_domains.py --dataset passes --limit 2 --check-only
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_event_domains.py --dataset shots --limit 2 --check-only
+```
+
+Для проверки всего parent без публикации уберите `--limit 2`.
+`--limit` разрешён только с `--check-only`. `--dataset` обязателен и принимает
+только `passes` или `shots`.
+
+Полная публикация — отдельная команда для каждого dataset, с независимым recovery:
+
+```powershell
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_event_domains.py --dataset passes
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_event_domains.py --dataset shots
+```
+
+Повторите каждую команду для проверки `UNCHANGED / ALREADY_BUILT` и `ALREADY_REGISTERED`.
+Публикация `event_core` для этого этапа не требуется.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

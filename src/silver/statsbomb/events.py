@@ -97,10 +97,10 @@ def s3a_match_id(path_column):
     ).try_cast("long")
 
 
-def read_s3a_events(spark: SparkSession, paths: list[str]) -> DataFrame:
+def read_s3a_events(spark: SparkSession, paths: list[str], *, schema: StructType = EVENT_SCHEMA) -> DataFrame:
     """Read the exact preflighted immutable keys directly; never stage JSON."""
     return (
-        spark.read.schema(EVENT_SCHEMA).option("multiLine", "true")
+        spark.read.schema(schema).option("multiLine", "true")
         .option("mode", "FAILFAST").option("recursiveFileLookup", "true").json(paths)
         .withColumn("match_id", s3a_match_id(F.input_file_name()))
     )
