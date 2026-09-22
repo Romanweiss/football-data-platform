@@ -127,3 +127,61 @@ def find_latest_ingestion_objects(
         "id", "source_url", "s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at",
     )
     return [dict(zip(columns, row, strict=True)) for row in rows]
+
+
+SILVER_BUILD_COLUMNS = (
+    "id", "source", "dataset", "competition_id", "season_id", "transform_version",
+    "input_fingerprint", "schema_sha256", "build_id", "s3_bucket", "s3_prefix",
+    "row_count", "file_count", "created_at",
+)
+
+
+def find_silver_build(
+    connection: psycopg.Connection, *, dataset: str, competition_id: int,
+    season_id: int, build_id: str,
+) -> dict | None:
+    """Find a published build; finish the SELECT transaction before remote IO."""
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, source, dataset, competition_id, season_id, transform_version,
+                    input_fingerprint, schema_sha256, build_id, s3_bucket, s3_prefix,
+                    row_count, file_count, created_at
+                FROM metadata.silver_builds
+                WHERE dataset = %s AND competition_id = %s AND season_id = %s AND build_id = %s
+                """,
+                (dataset, competition_id, season_id, build_id),
+            )
+            row = cursor.fetchone()
+    return None if row is None else dict(zip(SILVER_BUILD_COLUMNS, row, strict=True))
+
+
+def register_silver_build(
+    connection: psycopg.Connection, *, source: str, dataset: str,
+    competition_id: int, season_id: int, transform_version: str,
+    input_fingerprint: str, schema_sha256: str, build_id: str,
+    s3_bucket: str, s3_prefix: str, row_count: int, file_count: int,
+) -> bool:
+    """Register only verified output; caller must validate any conflicting row.
+
+    No UPDATE: repeat registration never changes a published build's metadata.
+    """
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO metadata.silver_builds
+                    (source, dataset, competition_id, season_id, transform_version,
+                     input_fingerprint, schema_sha256, build_id, s3_bucket, s3_prefix,
+                     row_count, file_count)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (dataset, competition_id, season_id, build_id) DO NOTHING
+                RETURNING id
+                """,
+                (source, dataset, competition_id, season_id, transform_version,
+                 input_fingerprint, schema_sha256, build_id, s3_bucket, s3_prefix,
+                 row_count, file_count),
+            )
+            registered = cursor.fetchone() is not None
+    return registered

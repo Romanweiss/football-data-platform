@@ -582,8 +582,239 @@ docker compose run --rm football-spark spark-submit --master "local[2]" scripts/
 Нет загрузки Silver в S3, регистрации Silver в PostgreSQL, ClickHouse writes, изменения
 Bronze, преобразования lineups или event-specific Silver tables.
 
-Stage 2B — будущий отдельный этап: Spark S3A direct access и persistent versioned Silver
-в Selectel. В Stage 2A это не реализовано.
+Stage 2B реализован отдельно ниже: Spark S3A direct access и persistent versioned Silver
+в Selectel. Stage 2A остаётся независимым local preview.
+
+## Stage 2B - Direct S3A and immutable Silver builds
+
+Stage 2A (`scripts/build_silver_event_core.py`) по-прежнему читает verified local staging
+и записывает только локальный preview. Новый `scripts/publish_silver_event_core.py`
+читает events непосредственно из Selectel через Spark S3A и публикует immutable Silver build.
+Spark остаётся `local[2]`; новых сервисов, UI ports и ClickHouse writes нет.
+
+```text
+PostgreSQL catalog -> verified small World Cup parent -> exact event membership
+                         |
+                    boto3 HEAD preflight (без event bodies)
+                         |
+                   Spark S3A: exact immutable event keys
+                         |
+                   EVENT_SCHEMA -> transform_event_core -> DQ
+                         |
+              deterministic build identity -> inspect exact output prefix
+                         |
+       new prefix: directory committer / existing prefix: validate, never rewrite
+                         |
+                _SUCCESS + parts -> S3A read-back -> _manifest.json
+                         |
+                     metadata.silver_builds
+```
+
+### Runtime, TLS и credentials
+
+В текущем образе фактически проверены Spark **4.2.0**, Hadoop **3.5.0**, Scala **2.13.18**.
+В `docker/spark/Dockerfile` закреплён S3A-набор из dependency contract опубликованного
+`org.apache.spark:spark-hadoop-cloud_2.13:4.2.0`:
+
+| JAR | Версия |
+| --- | --- |
+| spark-hadoop-cloud_2.13 | 4.2.0 |
+| hadoop-aws | 3.5.0 |
+| AWS SDK v2 bundle | 2.35.4 |
+| analyticsaccelerator-s3 | 1.3.1 |
+| wildfly-openssl | 2.2.5.Final |
+| jackson-dataformat-cbor | 2.21.2 |
+
+JAR-файлы скачиваются по versioned Maven Central URLs только при Docker build и находятся
+в `/opt/spark/jars`. Hadoop client, Jackson core/databind, HTTP client и SLF4J уже есть
+в закреплённом Spark image. Ненужные Azure/GCS connectors не добавляются.
+Runtime-команды не используют `--packages`, Ivy download или другую загрузку dependencies.
+
+boto3 — Python SDK для небольшого parent JSON, HEAD metadata и manifest. S3A — Hadoop
+filesystem connector: URI `s3a://bucket/key` позволяет Spark/JVM читать и писать object storage.
+Event bodies в Stage 2B читает только Spark; `data/work/bronze_events/` не создаётся.
+HEAD preflight сверяет catalog SHA-256, immutable key SHA-256 и S3 metadata SHA-256.
+Это проверка согласованности metadata, **не повторное вычисление SHA-256 всех event bytes**,
+как в Stage 2A. S3A чтение доверяет неизменности опубликованных Bronze objects.
+
+Python использует прежний `AWS_CA_BUNDLE`. JVM использует свой `cacerts`: GlobalSign Root R6
+уже присутствует; Docker build проверяет его SHA-256 fingerprint, не импортирует дубликат
+и не заменяет truststore. Реальный Java TLS handshake с Selectel проверяется только ручным
+smoke test. TLS verification не отключается.
+
+Только `football-spark` дополнительно получает `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`
+из тех же Compose substitutions, что и `S3_ACCESS_KEY`/`S3_SECRET_KEY` для boto3.
+`configure_s3a()` использует
+`software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider`.
+Секреты не записываются в source, SparkConf, Hadoop Configuration или XML/conf-файлы.
+Endpoint/region берутся из `S3_ENDPOINT`/`S3_REGION`; virtual-hosted addressing включён
+через `fs.s3a.path.style.access=false`, SSL — через `fs.s3a.connection.ssl.enabled=true`.
+
+### Почему S3A directory committer
+
+S3 — не POSIX filesystem: директории являются prefixes, а переименование набора objects
+не является атомарным directory rename. Классический rename-based commit может превратиться
+в дорогие copy/delete операции и оставить промежуточное состояние.
+
+Для S3 настроены `S3ACommitterFactory`, `PathOutputCommitProtocol` и
+`BindingParquetOutputCommitter`. Directory committer подходит для нашего целиком нового
+неpartitioned dataset prefix: Parquet tasks используют локальные временные файлы и
+multipart uploads с отложенным завершением. Pending-upload metadata хранится в локальном
+`file:///tmp/football-s3a-commits`, buffer — `/tmp/football-s3a-buffer`; это не staging Bronze.
+Внутренний FileOutputCommitter обслуживает только локальную служебную информацию,
+не выполняет classic S3 rename publication.
+
+Конфигурация:
+
+```text
+mapreduce.outputcommitter.factory.scheme.s3a=org.apache.hadoop.fs.s3a.commit.S3ACommitterFactory
+fs.s3a.committer.name=directory
+fs.s3a.committer.staging.conflict-mode=fail
+fs.s3a.committer.staging.unique-filenames=true
+fs.s3a.committer.abort.pending.uploads=true
+fs.s3a.multipart.purge=false
+spark.sql.sources.commitProtocolClass=org.apache.spark.internal.io.cloud.PathOutputCommitProtocol
+spark.sql.parquet.output.committer.class=org.apache.spark.internal.io.cloud.BindingParquetOutputCommitter
+```
+
+Запись использует `mode("errorifexists")`, `repartition(4)`, Snappy Parquet, без
+`partitionBy(match_id)`. `conflict-mode=fail` запрещает replace/append существующего build.
+Bucket-wide multipart purge выключен; abort pending uploads относится к текущему destination.
+Запускайте только **одного publisher для одного build_id**: S3 prefix не является
+транзакционной блокировкой, а directory committer не даёт атомарного compare-and-swap каталога.
+
+### Lineage, fingerprints и manifest
+
+Job читает latest `world_cup_2022_matches` parent через существующий SHA-verified reader.
+Из parent извлекаются match ids. Для каждого требуется ровно один latest `match_events`
+artifact; missing/duplicate — ошибка, artifacts других турниров игнорируются.
+Весь membership проверяется до `--limit`. Текущий полный parent содержит 64 матча.
+Дополнительно URL match id сверяется с match id в immutable key.
+
+Spark читает точный список URI, а не wildcard. Используется существующий `EVENT_SCHEMA`,
+`multiLine=true`, `mode=FAILFAST`. Built-in regexp извлекает match id из строгого suffix
+`/match_id=<positive integer>/sha256=<64 lowercase hex>/events.json`.
+Transformation и DQ общие со Stage 2A; competition=43 и season=106 передаются явно.
+
+- **Input fingerprint:** SHA-256 canonical UTF-8 JSON списка inputs, отсортированного по
+  match id. Поля: `match_id`, `source_url`, `s3_bucket`, `object_key`, `sha256`.
+- **Schema fingerprint:** SHA-256 UTF-8 строки `transformed_df.schema.json()`, без данных.
+- **Build ID:** SHA-256 canonical build specification: source/layer/dataset,
+  competition/season, `TRANSFORM_VERSION="event_core_v1"`, input fingerprint и schema hash.
+  Время, UUID, Git commit, имя машины и временные пути не участвуют.
+- **Transform version:** при изменении смысла transformation нужно явно перейти на v2;
+  Git commit не заменяет эту версию контракта.
+
+Bronze object version определяется bytes одного исходного документа.
+Silver dataset build version определяется всем выбранным набором Bronze inputs,
+выходной схемой и версией transformation. Поэтому одинаковые inputs/schema/version
+дают тот же build prefix независимо от порядка Python list.
+
+```text
+football/silver/statsbomb/event_core/competition_id=43/season_id=106/build_id=<64hex>/
+├── part-....snappy.parquet
+├── ...
+├── _SUCCESS
+└── _manifest.json
+```
+
+После записи проверяются `_SUCCESS`, непустой inventory part files, read-back row count,
+match count и схема. Parquet reader расширяет nullability, поэтому при сравнении обе схемы
+приводятся к nullable; имена, порядок, типы и metadata должны совпадать.
+Fingerprint при этом остаётся hash исходной transformed schema.
+
+`_manifest.json` содержит build specification, build_id, row/match/file counts, canonical
+inputs и file inventory (keys, sizes, ETags). ETag используется как идентификатор inventory,
+не объявляется SHA-256 содержимого Parquet. Manifest создаётся с `IfNoneMatch="*"`, metadata
+`build_id` и `sha256`; существующий документ должен совпасть, перезапись запрещена.
+Только после read-back и подтверждённого manifest выполняется registration в PostgreSQL.
+
+### Recovery и ограничения без DeleteObject
+
+| Состояние exact prefix | Поведение повторного запуска |
+| --- | --- |
+| Отсутствует, записи каталога нет | Новый Spark write, validation, manifest, registration |
+| `_SUCCESS` + Parquet + manifest + catalog | Read-back validation, `UNCHANGED / ALREADY_BUILT`, без записи |
+| Complete output + manifest, catalog отсутствует | Validation и повторная registration, без Spark write |
+| Complete output + `_SUCCESS`, manifest/catalog отсутствуют | Validation, conditional manifest create, registration |
+| Нет `_SUCCESS`, неверный manifest/inventory/schema/counts | `SilverIntegrityError`, никаких изменений |
+| Catalog существует, output или manifest исчез | `SilverIntegrityError`, автоматическое восстановление bytes запрещено |
+
+При сбое PostgreSQL после публикации S3 данные сохраняются. Повторный запуск вычисляет
+тот же build_id. `ON CONFLICT ... DO NOTHING RETURNING id` не меняет existing catalog row;
+конфликтующая запись дополнительно сравнивается с ожидаемым контрактом.
+
+Python-код не вызывает DeleteObject/DeleteObjects, IAM и bucket policy не меняются.
+Но directory committer **нельзя считать библиотекой без каких-либо delete-paths**:
+в Hadoop 3.5.0 setup проверяет/удаляет старый `<build-prefix>/_SUCCESS`, cleanup проверяет
+`<build-prefix>/_temporary/`. Для отсутствующих путей `S3AFileSystem.delete()` сначала
+делает status probe и возвращает false без S3 DELETE. Наш publisher запускает write
+только для отсутствующего prefix; Hadoop 3.5 сохраняет directory markers.
+
+При ошибке после частичного завершения multipart commit внутренний rollback Hadoop может
+вызвать DeleteObject для уже завершённых объектов по адресу
+`s3a://<bucket>/football/silver/statsbomb/event_core/competition_id=43/season_id=106/build_id=<hash>/part-<actual-name>.snappy.parquet`.
+Это требует DeleteObject; текущая IAM policy должна отказать. Частичный prefix останется
+для ручного разбора, следующий запуск завершится ошибкой. Код не подавляет проблему
+путём смены IAM/committer, удаления данных или принудительного overwrite.
+Для успешного нового build по анализу кода удалять существующие objects не требуется;
+реальный Selectel write/permissions пока не проверен. При DELETE/403 в ручном запуске
+остановитесь: не добавляйте широкие Delete-права и не очищайте prefix автоматически.
+Устранение внутренних rollback-delete путей потребовало бы отдельно согласованного
+изменения committer; в этот этап такой обход не входит.
+
+Основание: исходники Hadoop 3.5.0
+[AbstractS3ACommitter](https://github.com/apache/hadoop/blob/rel/release-3.5.0/hadoop-tools/hadoop-aws/src/main/java/org/apache/hadoop/fs/s3a/commit/AbstractS3ACommitter.java),
+[StagingCommitter](https://github.com/apache/hadoop/blob/rel/release-3.5.0/hadoop-tools/hadoop-aws/src/main/java/org/apache/hadoop/fs/s3a/commit/staging/StagingCommitter.java),
+[S3AFileSystem](https://github.com/apache/hadoop/blob/rel/release-3.5.0/hadoop-tools/hadoop-aws/src/main/java/org/apache/hadoop/fs/s3a/S3AFileSystem.java).
+
+### Проверки и ручной запуск Stage 2B
+
+Offline-проверки, без Selectel/PostgreSQL calls и без применения migration:
+
+```powershell
+docker compose config -q
+docker compose build football-spark
+docker compose run --rm football-spark spark-submit --version
+docker compose run --rm football-spark java -cp "/opt/spark/jars/*" org.apache.hadoop.util.VersionInfo
+docker compose run --rm football-spark python3 -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm football-python-tools python -m unittest discover -s tests
+docker compose run --rm football-spark spark-submit --master "local[2]" tests/spark/test_event_core.py
+docker compose run --rm football-spark spark-submit --master "local[2]" tests/spark/test_s3a_event_core.py
+```
+
+Следующие команды — **только ручные**, уже обращаются к реальным сервисам.
+Сначала read-only S3A smoke и двухматчевый check:
+
+```powershell
+docker compose run --rm football-spark spark-submit --master "local[2]" scripts/check_s3a.py
+docker compose run --rm football-spark spark-submit --master "local[2]" scripts/publish_silver_event_core.py --limit 2 --check-only
+```
+
+`--check-only` печатает версии, filesystem class, parent/selected/processed counts, DQ,
+input/schema hashes и calculated build_id, затем `CHECK ONLY - nothing published`.
+Он не пишет Silver и не обращается к таблице `silver_builds`. `--limit` без `--check-only`
+запрещён до любого IO. Без limit check-only проверяет полный parent.
+
+Перед первой публикацией вручную примените новую migration; старые migrations не менялись:
+
+```powershell
+docker compose exec football-postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /migrations/002_create_silver_builds.sql'
+```
+
+Migration использует `CREATE TABLE/INDEX IF NOT EXISTS`, hash/count checks и две UNIQUE
+constraints. Повтор безопасен для той же схемы, но не исправляет вручную изменённую таблицу.
+
+Полная публикация и повтор для проверки идемпотентности/recovery:
+
+```powershell
+docker compose run --rm football-spark spark-submit --master "local[2]" scripts/publish_silver_event_core.py
+docker compose run --rm football-spark spark-submit --master "local[2]" scripts/publish_silver_event_core.py
+```
+
+Это команды с реальной записью S3/metadata; автоматически они не выполняются.
+Ожидаемый текущий full build: 64 матча, 234637 events, 4 part files, если inputs не изменились.
+Stage 2A local preview, Bronze, lineups и ClickHouse остаются без изменений.
 
 ## Инициализация баз
 

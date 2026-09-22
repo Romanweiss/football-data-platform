@@ -88,6 +88,24 @@ def transform_event_core(
     )
 
 
+def s3a_match_id(path_column):
+    """Strict immutable event-key suffix; invalid paths become NULL for DQ."""
+    return F.regexp_extract(
+        path_column,
+        r"/match_id=([1-9][0-9]*)/sha256=[0-9a-f]{64}/events\.json$",
+        1,
+    ).try_cast("long")
+
+
+def read_s3a_events(spark: SparkSession, paths: list[str]) -> DataFrame:
+    """Read the exact preflighted immutable keys directly; never stage JSON."""
+    return (
+        spark.read.schema(EVENT_SCHEMA).option("multiLine", "true")
+        .option("mode", "FAILFAST").option("recursiveFileLookup", "true").json(paths)
+        .withColumn("match_id", s3a_match_id(F.input_file_name()))
+    )
+
+
 def validate_event_core(df: DataFrame) -> dict[str, int]:
     """Return small aggregate counts or raise before any Parquet write."""
     counts = df.agg(

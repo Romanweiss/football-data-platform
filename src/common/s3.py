@@ -24,5 +24,8 @@ def create_s3_client() -> BaseClient:
         config=Config(
             signature_version="s3v4",
             s3={"addressing_style": "virtual"},
+            retries={"mode": "standard", "max_attempts": 5},
+            connect_timeout=10,
+            read_timeout=60,
         ),
     )
