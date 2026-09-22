@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 from src.common.checksum import sha256_bytes
 from src.common.s3_paths import s3a_uri
 from src.silver.build_identity import (
-    SPEC_FIELDS, calculate_build_id, canonical_inputs, canonical_json, input_fingerprint,
+    DIMENSION_DATASETS, LINEUP_DATASETS, SPEC_FIELDS, calculate_build_id, canonical_inputs, canonical_json, input_fingerprint,
 )
 
 
@@ -57,21 +57,27 @@ def inspect_silver_output(client, *, bucket: str, prefix: str) -> list[dict] | N
 
 def make_manifest(specification: dict, inputs: list[dict], counts: dict, files: list[dict]) -> dict:
     """Whitelist fields; exclude timestamps, credentials and ambient environment."""
-    if specification["input_fingerprint"] != input_fingerprint(inputs):
+    artifact_kind = "lineups" if specification["dataset"] in LINEUP_DATASETS else "events"
+    is_dimension = specification["dataset"] in DIMENSION_DATASETS
+    if specification["input_fingerprint"] != input_fingerprint(inputs, artifact_kind=artifact_kind):
         raise SilverIntegrityError("Manifest inputs do not match the build specification fingerprint.")
-    if counts["row_count"] <= 0 or counts["match_count"] != len(inputs) or not files:
+    match_count = counts.get("input_match_count") if is_dimension else counts.get("match_count")
+    if counts["row_count"] <= 0 or match_count != len(inputs) or not files:
         raise SilverIntegrityError("Manifest requires nonempty, fully validated output.")
     inventory = [
         {name: item[name] for name in ("object_key", "size_bytes", "etag")}
         for item in files
     ]
-    return {
+    result = {
         **{name: specification[name] for name in SPEC_FIELDS},
         "build_id": calculate_build_id(specification),
-        "row_count": counts["row_count"], "match_count": counts["match_count"],
-        "file_count": len(files), "inputs": canonical_inputs(inputs),
+        "row_count": counts["row_count"],
+        "file_count": len(files), "inputs": canonical_inputs(inputs, artifact_kind=artifact_kind),
         "files": sorted(inventory, key=lambda item: item["object_key"]),
     }
+    if not is_dimension:
+        result["match_count"] = counts["match_count"]
+    return result
 
 
 def read_manifest(client, *, bucket: str, prefix: str, build_id: str) -> dict | None:

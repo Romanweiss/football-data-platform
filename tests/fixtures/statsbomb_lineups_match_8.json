@@ -1,0 +1,18 @@
+[
+  {
+    "team_id": 10, "team_name": "Red FC",
+    "lineup": [
+      {"player_id": 101, "player_name": "Sam", "player_nickname": "Sammy", "jersey_number": 9,
+       "country": {"id": 3000, "name": "Country C"}},
+      {"player_id": 102, "player_name": "Dana", "jersey_number": 8, "country": {"id": 1000, "name": "Country A"}}
+    ]
+  },
+  {
+    "team_id": 30, "team_name": "Green FC",
+    "lineup": [
+      {"player_id": 100, "player_name": "Alex", "player_nickname": "Alex", "jersey_number": 10,
+       "country": {"id": 1000, "name": "Country A"}},
+      {"player_id": 300, "player_name": "Emery", "jersey_number": 1, "country": {"id": 3000, "name": "Country C"}}
+    ]
+  }
+]

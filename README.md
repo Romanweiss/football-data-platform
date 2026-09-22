@@ -967,6 +967,178 @@ docker compose run --rm --no-deps football-spark spark-submit --master "local[2]
 Повторите каждую команду для проверки `UNCHANGED / ALREADY_BUILT` и `ALREADY_REGISTERED`.
 Публикация `event_core` для этого этапа не требуется.
 
+## Stage 2D - Lineups domain Silver
+
+Stage 2D читает existing Bronze `source=statsbomb, dataset=match_lineups` и создаёт
+три competition-season scoped datasets:
+
+| Dataset | Смысл | Ключ | Transform version | Output partitions |
+| --- | --- | --- | --- | --- |
+| `teams` | Команды из выбранных составов турнира | `team_id` | `teams_v1` | 1 |
+| `players` | Игроки из выбранных составов турнира | `player_id` | `players_v1` | 2 |
+| `match_squads` | Связь match ↔ team ↔ player | `(match_id, team_id, player_id)` | `match_squads_v1` | 2 |
+
+`team_id` и `player_id` — **StatsBomb source IDs**, а не canonical platform-wide IDs.
+Будущая поддержка нескольких источников потребует отдельного entity-resolution layer:
+StatsBomb player/team ↔ API-Football ↔ Kaggle ↔ другие источники.
+Canonical IDs на этом этапе не создаются.
+
+`players` не содержит `team_id`: identity игрока и его принадлежность команде в
+конкретном матче — разные сущности. Эта принадлежность хранится в `match_squads`.
+Состав не называется `starting_lineup`; выбранные поля не доказывают старт, капитанство,
+роль запасного или позицию. Эти признаки не выводятся из косвенных данных.
+Более богатые RAW поля остаются в Bronze для последующего расширения Silver.
+
+### Lineage, input schema и transformations
+
+Используется тот же parent `source=statsbomb, dataset=world_cup_2022_matches`.
+Из каталога выбирается ровно один latest lineup artifact для каждого parent match.
+Для текущего World Cup это 64 матча и 64 inputs. Другие матчи игнорируются;
+missing/duplicate logical match identity вызывает ошибку до Spark.
+Проверяется весь parent даже при `--limit N --check-only`.
+
+`src/statsbomb/lineups.py` принимает только canonical URL
+`https://raw.githubusercontent.com/hudl/open-data/master/data/lineups/<positive-bigint>.json`.
+URL, match ID в immutable key и catalog SHA-256 сверяются до HEAD preflight.
+Metadata SHA-256 проверяется существующим Bronze helper.
+
+Небольшой parent JSON читается verified Bronze reader с GET/SHA-256.
+Lineup bulk JSON читает только Spark S3A по списку exact immutable paths:
+
+```text
+s3a://<bucket>/football/bronze/statsbomb/lineups/
+  match_id=<id>/sha256=<64-lowercase-hex>/lineups.json
+```
+
+`match_id` получается из `input_file_name()` через regex и `try_cast("long")`.
+Некорректный путь, нулевой ID или BIGINT overflow дают NULL и DQ failure.
+
+`src/silver/statsbomb/lineups.py` задаёт explicit `LINEUP_SCHEMA`:
+
+```text
+team_id: long
+team_name: string
+lineup: array<struct<
+  player_id: long,
+  player_name: string,
+  player_nickname: string,
+  jersey_number: int,
+  country: struct<id: long, name: string>
+>>
+```
+
+Поля nullable на входе, обязательность проверяется DQ. Schema inference не используется.
+Неиспользуемые поля, включая positions/cards, игнорируются Spark.
+Контракт проверен на synthetic fixtures; real cloud reads выполняются вручную.
+
+`transform_match_squads` использует built-in `explode(lineup)` и сохраняет team/player
+identity, nickname, jersey и country. Competition/season передаются параметрами;
+NULL не заменяется значениями `Unknown`, `-1` или `0`.
+
+`transform_teams` и `transform_players` используют текущий lineup-derived squad frame,
+не читают event_core или опубликованные dimensions. До dedup проверяются distinct
+non-null attributes по source ID. Для team это `team_name`; для player —
+`player_name`, `player_nickname`, `country_id`, `country_name`.
+Два известных различных значения вызывают DQ failure. NULL + одно известное значение
+не конфликтуют. После доказанной consistency используется детерминированный `min`,
+который сохраняет известное значение либо NULL, если известных значений нет.
+
+### DQ и referential integrity
+
+Match squads должны быть непустыми; обязательны match/team/player IDs и team/player names.
+Дубликаты `(match_id, team_id, player_id)` запрещены. Проверяются exact parent membership,
+две distinct teams в каждом матче, непустой состав каждой match/team пары и число
+explode rows относительно RAW arrays. Пустые/null lineup arrays проверяются также
+до их исчезновения при `explode`, включая лишнюю пустую третью team.
+Размер состава не зашит в код.
+
+Для teams/players проверяются nonempty output, уникальные IDs, обязательные ID/name.
+Информационно выводятся actual row/entity counts и NULL counts nickname/jersey/country.
+Количество команд и игроков не хардкодится.
+
+`validate_references` выполняет Spark `left_anti` joins и считает отсутствующие ссылки:
+`match_squads.team_id ⊆ teams.team_id`, `match_squads.player_id ⊆ players.player_id`.
+Полные наборы IDs не собираются в Python.
+Каждый запуск строит и проверяет все три связанных представления текущих inputs,
+но публикует только выбранный dataset. Поэтому referential DQ не зависит от порядка
+публикации teams/players/match_squads и наличия предыдущих builds в S3.
+
+### Общая публикация и manifest
+
+Stage 2D расширяет существующие `job.py`, membership, build identity и publisher.
+Все три datasets используют один canonical fingerprint exact lineup inputs:
+match_id/source_url/s3_bucket/object_key/sha256, отсортированные по match ID.
+Build IDs различаются за счёт dataset, transform version и schema SHA-256.
+Для event_core/pass_events/shot_events прежние inputs, fingerprints и defaults сохранены.
+
+```text
+football/silver/statsbomb/{teams|players|match_squads}/
+  competition_id=43/season_id=106/build_id=<sha256>/
+    part-*.snappy.parquet
+    _SUCCESS
+    _manifest.json
+```
+
+Writer использует `repartition(1)` для teams, `repartition(2)` для players/match_squads,
+Snappy и `errorifexists`. По entity IDs partitioning не выполняется.
+Прежние event datasets сохраняют четыре output partitions.
+
+Manifest переиспользует source/layer/dataset, context, version, hashes, build_id,
+row_count/file_count, inputs и file inventory. У match_squads есть `match_count`.
+У teams/players этот показатель неприменим к output и не записывается; `row_count`
+равен entity count. Полнота входных матчей проверяется отдельно по `input_match_count`
+до создания manifest; полный lineup lineage сохраняется в `inputs`.
+Не вводятся дополнительные произвольные metadata fields.
+Read-back проверяет schema/row_count, а match_count — у datasets с match rows.
+
+`metadata.silver_builds`, generic SQL helpers и recovery остаются общими.
+Complete identical build даёт `UNCHANGED / ALREADY_BUILT` и `ALREADY_REGISTERED`.
+После DB failure повтор регистрирует тот же build без Parquet rewrite.
+Валидный unregistered output без manifest восстанавливает manifest.
+Partial/corrupt prefix даёт `SilverIntegrityError`; автоматической очистки S3 нет.
+Новые migrations, IAM permissions и Docker services не требуются.
+
+### Проверки и ручные команды Stage 2D
+
+Offline/synthetic проверки:
+
+```powershell
+docker compose config -q
+docker compose run --rm --no-deps football-spark python3 -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_event_core.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_s3a_event_core.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_event_domains.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_lineup_domains.py
+git diff --check
+```
+
+Следующие команды обращаются к реальным сервисам и выполняются вручную:
+
+```powershell
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_lineup_domains.py --dataset teams --limit 2 --check-only
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_lineup_domains.py --dataset players --limit 2 --check-only
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_lineup_domains.py --dataset match-squads --limit 2 --check-only
+```
+
+Check-only печатает Dataset, Transform version, Parent matches, Bronze artifacts selected,
+Matches processed, Raw lineup team rows, Raw lineup player rows, Output rows, DQ,
+Input fingerprint, Schema SHA256, Build ID и `CHECK ONLY - nothing published`.
+S3 output и PostgreSQL registration не записываются. Для полного check-only уберите
+`--limit 2`. Limit без check-only запрещён до IO.
+
+Независимые full publishes:
+
+```powershell
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_lineup_domains.py --dataset teams
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_lineup_domains.py --dataset players
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_lineup_domains.py --dataset match-squads
+```
+
+Повтор каждой команды проверяет идемпотентность/registration recovery.
+Rebuild Docker для изменений Python-кода не нужен: проект подключён bind mount.
+Пересоздавать event_core/pass_events/shot_events для Stage 2D не требуется.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

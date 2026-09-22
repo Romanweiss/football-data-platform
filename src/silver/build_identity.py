@@ -6,9 +6,12 @@ import re
 from src.common.checksum import sha256_bytes
 from src.common.s3_paths import s3a_uri
 from src.statsbomb.events import extract_match_id_from_events_url
+from src.statsbomb.lineups import extract_match_id_from_lineups_url
 
 TRANSFORM_VERSION = "event_core_v1"
-SILVER_DATASETS = ("event_core", "pass_events", "shot_events")
+LINEUP_DATASETS = ("teams", "players", "match_squads")
+DIMENSION_DATASETS = ("teams", "players")
+SILVER_DATASETS = ("event_core", "pass_events", "shot_events", *LINEUP_DATASETS)
 INPUT_FIELDS = ("match_id", "source_url", "s3_bucket", "object_key", "sha256")
 SPEC_FIELDS = (
     "source", "layer", "dataset", "competition_id", "season_id",
@@ -25,12 +28,13 @@ def require_sha256(value: str) -> None:
         raise ValueError("Expected a lowercase SHA-256 digest.")
 
 
-def canonical_inputs(artifacts: list[dict]) -> list[dict]:
+def canonical_inputs(artifacts: list[dict], *, artifact_kind: str = "events") -> list[dict]:
+    extract_id = {"events": extract_match_id_from_events_url, "lineups": extract_match_id_from_lineups_url}[artifact_kind]
     inputs = [{name: artifact[name] for name in INPUT_FIELDS} for artifact in artifacts]
     seen = set()
     for item in inputs:
         match_id = item["match_id"]
-        if type(match_id) is not int or match_id != extract_match_id_from_events_url(item["source_url"]):
+        if type(match_id) is not int or match_id != extract_id(item["source_url"]):
             raise ValueError("Input match identity does not match its canonical URL.")
         if match_id in seen:
             raise ValueError("Duplicate input match identity.")
@@ -42,8 +46,8 @@ def canonical_inputs(artifacts: list[dict]) -> list[dict]:
     return sorted(inputs, key=lambda item: item["match_id"])
 
 
-def input_fingerprint(artifacts: list[dict]) -> str:
-    return sha256_bytes(canonical_json(canonical_inputs(artifacts)))
+def input_fingerprint(artifacts: list[dict], *, artifact_kind: str = "events") -> str:
+    return sha256_bytes(canonical_json(canonical_inputs(artifacts, artifact_kind=artifact_kind)))
 
 
 def build_specification(

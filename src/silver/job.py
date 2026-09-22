@@ -15,12 +15,15 @@ from src.common.s3 import create_s3_client
 from src.common.s3_paths import s3a_uri
 from src.common.spark_s3a import configure_s3a, runtime_versions
 from src.silver.build_identity import (
-    build_specification, calculate_build_id, input_fingerprint,
+    LINEUP_DATASETS, build_specification, calculate_build_id, input_fingerprint,
 )
 from src.silver.diagnostics import PublishDiagnostics
 from src.silver.manifest import SilverIntegrityError
 from src.silver.publish import publish_build
-from src.silver.statsbomb.membership import event_artifact_s3a_path, select_parent_event_artifacts
+from src.silver.statsbomb.membership import (
+    event_artifact_s3a_path, select_parent_event_artifacts,
+    lineup_artifact_s3a_path, select_parent_lineup_artifacts,
+)
 from src.statsbomb.matches import extract_match_ids
 
 COMPETITION_ID = 43
@@ -65,6 +68,10 @@ def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_
     diagnostics = PublishDiagnostics()
     exit_code = 0
     try:
+        is_lineup = dataset in LINEUP_DATASETS
+        artifact_kind = "lineups" if is_lineup else "events"
+        selector = select_parent_lineup_artifacts if is_lineup else select_parent_event_artifacts
+        artifact_path = lineup_artifact_s3a_path if is_lineup else event_artifact_s3a_path
         bucket = os.environ.get("S3_BUCKET", "")
         if not check_only:
             s3a_uri(bucket, "football/silver/")  # Validate destination before any remote IO.
@@ -83,16 +90,16 @@ def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_
             parent_ids = extract_match_ids(parent_raw)
             print(f"Parent matches discovered: {len(parent_ids)}", flush=True)
             diagnostics.set("membership", "find_latest_ingestion_objects")
-            artifacts = find_latest_ingestion_objects(connection, source="statsbomb", dataset="match_events")
-            diagnostics.set("membership", "select_parent_event_artifacts")
-            selected = select_parent_event_artifacts(parent_ids, artifacts)
+            artifacts = find_latest_ingestion_objects(connection, source="statsbomb", dataset=f"match_{artifact_kind}")
+            diagnostics.set("membership", "select_parent_lineup_artifacts" if is_lineup else "select_parent_event_artifacts")
+            selected = selector(parent_ids, artifacts)
             selected = selected[:limit]
-            print(f"Event artifacts selected: {len(selected)}", flush=True)
+            print(f"{'Lineup' if is_lineup else 'Event'} artifacts selected: {len(selected)}", flush=True)
             paths = []
             for artifact in selected:
-                diagnostics.set("membership", "event_artifact_s3a_path",
+                diagnostics.set("membership", "lineup_artifact_s3a_path" if is_lineup else "event_artifact_s3a_path",
                                 match_id=artifact["match_id"], key=artifact["object_key"])
-                paths.append(event_artifact_s3a_path(artifact))
+                paths.append(artifact_path(artifact))
             for index, artifact in enumerate(selected, start=1):
                 diagnostics.set("child HEAD preflight", "HeadObject/verify_metadata",
                                 match_id=artifact["match_id"], key=artifact["object_key"])
@@ -111,7 +118,7 @@ def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_
             frame, counts = build_frame(spark, paths, [artifact["match_id"] for artifact in selected])
             diagnostics.set("build identity", "build_specification")
             specification = build_specification(
-                input_fingerprint=input_fingerprint(selected),
+                input_fingerprint=input_fingerprint(selected, artifact_kind=artifact_kind),
                 schema_sha256=sha256_bytes(frame.schema.json().encode("utf-8")),
                 transform_version=transform_version, competition_id=COMPETITION_ID, season_id=SEASON_ID,
                 dataset=dataset,
@@ -119,8 +126,13 @@ def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_
             print(f"Dataset: {dataset}")
             print(f"Parent matches: {len(parent_ids)}")
             print(f"Bronze artifacts selected: {len(selected)}")
-            print(f"Matches processed: {counts['match_count']}")
-            print(f"Events read: {counts['row_count']}")
+            print(f"Matches processed: {counts.get('match_count', counts.get('input_match_count'))}")
+            if is_lineup:
+                print(f"Raw lineup team rows: {counts['raw_lineup_team_rows']}")
+                print(f"Raw lineup player rows: {counts['raw_lineup_player_rows']}")
+                print(f"Output rows: {counts['row_count']}")
+            else:
+                print(f"Events read: {counts['row_count']}")
             if "input_row_count" in counts:
                 print(f"Input events: {counts['input_row_count']}")
                 print(f"Domain events: {counts['row_count']}")
@@ -140,7 +152,7 @@ def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_
                     diagnostics=diagnostics,
                 )
                 print(f"Silver {dataset} publish complete")
-                print(f"Events written: {counts['row_count']}")
+                print(f"{'Rows' if is_lineup else 'Events'} written: {counts['row_count']}")
                 print(f"Output files: {result['file_count']}")
                 print(f"Build ID: {result['build_id']}")
                 print(f"Output: {result['output_uri']}")

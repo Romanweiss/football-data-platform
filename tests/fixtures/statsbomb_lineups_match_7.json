@@ -1,0 +1,17 @@
+[
+  {
+    "team_id": 10, "team_name": "Red FC", "unused_team_field": "ignored",
+    "lineup": [
+      {"player_id": 100, "player_name": "Alex", "player_nickname": null, "jersey_number": 7,
+       "country": {"id": 1000, "name": "Country A"}, "positions": [{"position_id": 1}], "cards": []},
+      {"player_id": 101, "player_name": "Sam", "player_nickname": "Sammy", "jersey_number": 9, "country": null}
+    ]
+  },
+  {
+    "team_id": 20, "team_name": "Blue FC",
+    "lineup": [
+      {"player_id": 200, "player_name": "Blair", "country": {"id": 2000, "name": "Country B"}},
+      {"player_id": 201, "player_name": "Casey", "jersey_number": 4}
+    ]
+  }
+]

@@ -9,15 +9,18 @@ from src.silver.manifest import (
     make_manifest, read_manifest, validate_manifest,
 )
 
+LINEUP_OUTPUT_PARTITIONS = {"teams": 1, "players": 2, "match_squads": 2}
 
-def write_new_silver(frame, output_uri: str) -> None:
-    """Only the new Stage 2B path uses the configured S3A directory committer."""
-    from src.silver.statsbomb.events import OUTPUT_PARTITIONS
+
+def write_new_silver(frame, output_uri: str, *, partitions: int = 4) -> None:
+    """Write a new destination with the existing S3A directory committer."""
 
     if not output_uri.startswith("s3a://"):
         raise ValueError("Silver publication requires an S3A destination.")
+    if type(partitions) is not int or partitions <= 0:
+        raise ValueError("Output partitions must be a positive integer.")
     (
-        frame.repartition(OUTPUT_PARTITIONS).write.mode("errorifexists")
+        frame.repartition(partitions).write.mode("errorifexists")
         .option("compression", "snappy").parquet(output_uri)
     )
 
@@ -32,10 +35,11 @@ def validate_readback(spark, frame, counts: dict, *, bucket: str, files: list[di
         # Parquet readers widen nullability; field names/order/types/metadata must match.
         if restored.schema.toNullable() != frame.schema.toNullable():
             raise SilverIntegrityError("Silver read-back schema mismatch.")
-        actual = restored.agg(
-            F.count("*").alias("row_count"), F.countDistinct("match_id").alias("match_count"),
-        ).first().asDict()
-        if any(actual[name] != counts[name] for name in ("row_count", "match_count")):
+        metrics = [F.count("*").alias("row_count")]
+        if "match_count" in counts:
+            metrics.append(F.countDistinct("match_id").alias("match_count"))
+        actual = restored.agg(*metrics).first().asDict()
+        if any(actual[name] != counts[name] for name in actual):
             raise SilverIntegrityError("Silver read-back row_count or match_count mismatch.")
     except SilverIntegrityError:
         raise
@@ -71,7 +75,8 @@ def publish_build(
         if existing_catalog is not None:
             raise SilverIntegrityError("Registered Silver output is missing; refusing to recreate it.")
         diagnostics.set("Silver output write", "write_new_silver", key=prefix)
-        write_new_silver(frame, output_uri)
+        options = {"partitions": LINEUP_OUTPUT_PARTITIONS[specification["dataset"]]} if specification["dataset"] in LINEUP_OUTPUT_PARTITIONS else {}
+        write_new_silver(frame, output_uri, **options)
         diagnostics.set("Silver output validation", "inspect_silver_output", key=prefix)
         files = inspect_silver_output(client, bucket=bucket, prefix=prefix)
         if files is None:
