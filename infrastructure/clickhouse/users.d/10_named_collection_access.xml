@@ -1,0 +1,8 @@
+<clickhouse>
+    <users>
+        <football_user>
+            <named_collection_control>1</named_collection_control>
+            <show_named_collections>1</show_named_collections>
+        </football_user>
+    </users>
+</clickhouse>

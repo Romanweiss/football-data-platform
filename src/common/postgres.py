@@ -1,6 +1,7 @@
 """PostgreSQL connections and registration of confirmed Bronze artifacts."""
 
 import os
+from contextlib import contextmanager
 
 import psycopg
 
@@ -185,3 +186,81 @@ def register_silver_build(
             )
             registered = cursor.fetchone() is not None
     return registered
+
+
+def find_latest_silver_build(
+    connection: psycopg.Connection, *, source: str, dataset: str,
+    competition_id: int, season_id: int,
+) -> dict | None:
+    """Resolve once, with a deterministic tie-break; never infer a build from S3."""
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT {', '.join(SILVER_BUILD_COLUMNS)} FROM metadata.silver_builds "
+                "WHERE source = %s AND dataset = %s AND competition_id = %s AND season_id = %s "
+                "ORDER BY created_at DESC, id DESC LIMIT 1",
+                (source, dataset, competition_id, season_id),
+            )
+            row = cursor.fetchone()
+    return None if row is None else dict(zip(SILVER_BUILD_COLUMNS, row, strict=True))
+
+
+CLICKHOUSE_LOAD_FIELDS = (
+    "source", "dataset", "competition_id", "season_id", "silver_build_id",
+    "input_fingerprint", "schema_sha256", "s3_bucket", "s3_prefix",
+    "clickhouse_database", "clickhouse_table", "row_count",
+)
+CLICKHOUSE_LOAD_COLUMNS = ("id", *CLICKHOUSE_LOAD_FIELDS, "loaded_at")
+
+
+def find_clickhouse_load(
+    connection: psycopg.Connection, *, clickhouse_database: str,
+    clickhouse_table: str, silver_build_id: str,
+) -> dict | None:
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT {', '.join(CLICKHOUSE_LOAD_COLUMNS)} FROM metadata.clickhouse_loads "
+                "WHERE clickhouse_database = %s AND clickhouse_table = %s AND silver_build_id = %s",
+                (clickhouse_database, clickhouse_table, silver_build_id),
+            )
+            row = cursor.fetchone()
+    return None if row is None else dict(zip(CLICKHOUSE_LOAD_COLUMNS, row, strict=True))
+
+
+def register_clickhouse_load(connection: psycopg.Connection, **record) -> bool:
+    """Register only a validated target; caller checks any conflicting metadata."""
+    values = tuple(record[name] for name in CLICKHOUSE_LOAD_FIELDS)
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"INSERT INTO metadata.clickhouse_loads ({', '.join(CLICKHOUSE_LOAD_FIELDS)}) "
+                f"VALUES ({', '.join(['%s'] * len(CLICKHOUSE_LOAD_FIELDS))}) "
+                "ON CONFLICT (clickhouse_database, clickhouse_table, silver_build_id) "
+                "DO NOTHING RETURNING id",
+                values,
+            )
+            registered = cursor.fetchone() is not None
+    return registered
+
+
+@contextmanager
+def clickhouse_load_lock(connection: psycopg.Connection):
+    """Serialize this loader's writers; session lock spans independently committed SQL.
+
+    No schema changes or persistent rows. Closing the connection also releases it.
+    Other/manual writers must not bypass this cooperative lock.
+    """
+    lock_id = 0x466F6F7443483341  # Stable namespace: FootCH3A.
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_try_advisory_lock(%s)", (lock_id,))
+            acquired = cursor.fetchone()[0]
+    if not acquired:
+        raise RuntimeError("Another Stage 3A loader is active; retry after it finishes.")
+    try:
+        yield
+    finally:
+        with connection.transaction():
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_unlock(%s)", (lock_id,))

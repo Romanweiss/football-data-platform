@@ -1,2 +1,3 @@
 boto3==1.40.21
 psycopg[binary]==3.3.6
+clickhouse-connect==0.15.0

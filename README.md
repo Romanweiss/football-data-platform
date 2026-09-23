@@ -1139,6 +1139,206 @@ docker compose run --rm --no-deps football-spark spark-submit --master "local[2]
 Rebuild Docker для изменений Python-кода не нужен: проект подключён bind mount.
 Пересоздавать event_core/pass_events/shot_events для Stage 2D не требуется.
 
+## Stage 3A - ClickHouse analytics foundation
+
+Stage 3A загружает **только `event_core`** из зарегистрированного immutable Silver build.
+S3 Silver остаётся source of truth: проверяемым, воспроизводимым batch snapshot.
+ClickHouse — serving/analytical storage для быстрых SQL-запросов, а не новый источник
+истины и не замена PostgreSQL metadata catalog. Остальные Silver datasets пока не загружаются.
+
+Поток: PostgreSQL `metadata.silver_builds` → exact build → manifest/checksum/inventory
+→ ClickHouse `s3()` читает Parquet напрямую → `football.event_core` → target validation
+→ PostgreSQL `metadata.clickhouse_loads`. Python читает только небольшой manifest;
+Parquet не скачивается через boto3, Spark в загрузке не участвует.
+
+### Конфигурация и совместимость
+
+Используется прежний ClickHouse `25.8.23.13-alpine` и pinned официальный Python-клиент
+`clickhouse-connect==0.15.0`. Python-tools подключается к `football-clickhouse:8123`,
+не к `localhost:18124`. Переменные CLICKHOUSE_DB/USER/PASSWORD передаются из environment.
+Существующие переменные PostgreSQL/S3 сохранены.
+
+`infrastructure/clickhouse/config.d/10_selectel_s3.xml` задаёт named collection
+`selectel_s3`: access_key_id/secret_access_key берутся через `from_env` из
+S3_ACCESS_KEY/S3_SECRET_KEY. Значения не попадают в Git, SQL или application diagnostics.
+Не выводите содержимое named collection или полный `docker compose config`.
+Named collection скрывает credentials из SQL, но не заменяет контроль доступа:
+администраторам доступен серверный config; произвольные SQL и URL от недоверенных
+пользователей в этом stage не поддерживаются.
+
+Поддерживаемый синтаксис проверен по исходникам/документации точного тега:
+
+- [S3 named collection whitelist, v25.8.23.13-lts](https://github.com/ClickHouse/ClickHouse/blob/v25.8.23.13-lts/src/Storages/ObjectStorage/S3/Configuration.cpp)
+- [Named collections XML](https://github.com/ClickHouse/ClickHouse/blob/v25.8.23.13-lts/docs/en/operations/named-collections.md)
+- [Config from_env](https://github.com/ClickHouse/ClickHouse/blob/v25.8.23.13-lts/docs/en/operations/configuration-files.md)
+- [MergeTree deduplication setting](https://github.com/ClickHouse/ClickHouse/blob/v25.8.23.13-lts/src/Storages/MergeTree/MergeTreeSettings.cpp)
+- [clickhouse-connect 0.15.0 command/settings](https://github.com/ClickHouse/clickhouse-connect/blob/v0.15.0/clickhouse_connect/driver/httpclient.py)
+
+`region` отсутствует в whitelist параметров S3 named collection этой версии, поэтому
+в XML его **нет**. S3_REGION передаётся контейнеру, но выдуманный setting не добавляется.
+URL передаётся отдельно: `https://<S3_BUCKET>.s3.<pool>.storage.selcloud.ru/<key>`.
+Helper принимает только generic Selectel HTTPS endpoint без credentials, port,
+path, query и fragment; bucket/key валидируются. Bucket с точками отклоняется из-за
+wildcard TLS certificate. Префикс обязан совпадать с resolved build identity.
+Единственный wildcard добавляется кодом: `part-*.parquet` внутри exact build prefix;
+manifest, `_SUCCESS`, соседние builds и вложенные каталоги не читаются как Parquet.
+
+ClickHouse использует собственный системный CA trust, не JVM/S3A truststore и не
+AWS_CA_BUNDLE Python-контейнера. TLS verification не отключается. Если ручной cloud
+smoke выявит certificate error, нужно отдельно исправить CA trust, не обходить TLS.
+
+Mount всей `config.d` скрывает `docker_related_config.xml` из образа. Поэтому
+`00_docker_network.xml` сохраняет его исходные listen_host `::`/`0.0.0.0` и listen_try=1.
+Init directory сохранён; ClickHouse migrations подключены отдельно, read-only.
+
+### MergeTree, схема и ключи
+
+Исходная схема находится в `infrastructure/clickhouse/migrations/001_create_event_core.sql`;
+уже применённая migration 001 не изменяется. Migration `002_event_core_float64_metrics.sql`
+расширяет только location_x/location_y/duration до `Nullable(Float64)`.
+Silver Spark хранит эти поля как Double/Float64, поэтому ClickHouse сохраняет Float64,
+чтобы избежать потери точности. INSERT сохраняет `accurateCast(..., 'Nullable(Float64)')`.
+Используется обычная `MergeTree`: данные хранятся отсортированными parts и объединяются
+фоновыми merges. LowCardinality используется только для type_name/team_name.
+Необязательные player/position/location/duration/flags остаются Nullable; NULL не
+заменяется нулями или пустыми строками. INSERT содержит явные колонки и casts;
+`accurateCast` дополнительно отклоняет переполнение unsigned integer вместо wraparound.
+
+`ORDER BY (competition_id, season_id, match_id, period, event_index, event_id)`
+группирует события турнира/матча и сохраняет удобный порядок внутри матча.
+Без отдельного PRIMARY KEY этот sorting key используется также для sparse primary
+index: индекс хранит отметки для гранул, а не отдельную запись на каждую строку.
+**ClickHouse PRIMARY KEY не обеспечивает уникальность.** Уникальность пары
+(match_id, event_id) внутри build проверяет загрузчик через uniqExact.
+
+`PARTITION BY (competition_id, season_id)` — lifecycle-oriented граница турнира/сезона,
+не замена sorting key и не partition-per-match. Secondary indexes, projections,
+materialized views не добавлены. ReplacingMergeTree не нужен: это immutable batch
+snapshots, не CDC/row-level updates; merge-дедупликация не должна скрывать ошибки loader.
+
+`silver_build_id` даёт lineage каждой строки до Silver manifest/catalog. Разные builds
+могут содержать одни и те же события: аналитические запросы должны выбирать один build.
+`scripts/clickhouse_smoke_queries.sql` требует build_id parameter и содержит пять
+read-only запросов: общее число событий, top matches, event types, teams и события
+одного детерминированно выбранного матча.
+
+### Проверки, идемпотентность и recovery
+
+Latest build разрешается один раз по source=statsbomb, dataset=event_core,
+competition_id=43, season_id=106; порядок `created_at DESC, id DESC`.
+`--build-id` использует существующий exact lookup с тем же контекстом. Поддерживается
+только `event_core_v1`; arbitrary S3 prefix через CLI не принимается.
+
+Перед INSERT проверяются manifest checksum, build identity, input fingerprint,
+dataset/context/version/schema hash, row/file counts и match_count по lineage inputs.
+Проверяются `_SUCCESS`, точный inventory Parquet (keys/sizes/ETags) и число файлов;
+Parquet bodies не скачиваются. Затем DESCRIBE проверяет весь target column/type contract,
+loaded_at default, а system.tables — engine/keys/dedup setting. Auto-ALTER отсутствует.
+
+Source через `s3()` и target по silver_build_id проверяются по count, uniqExact(match_id),
+uniqExact(tuple(match_id,event_id)), min/max competition_id и season_id.
+Ожидаемые counts берутся из manifest, не из констант 234637/64.
+
+- В target 0 строк и отсутствует load registration: один логический INSERT SELECT.
+- В target ровно expected rows: полная validation, без INSERT; можно восстановить
+  отсутствующую PostgreSQL registration после timeout/DB failure.
+- Частичный/избыточный target, отсутствующий зарегистрированный target или конфликт
+  metadata: ClickHouseIntegrityError; никаких DELETE, reload, ALTER или cleanup.
+- Регистрация выполняется только после target validation: ON CONFLICT DO NOTHING
+  RETURNING id, затем проверка совпадения metadata. Идентичный повтор даёт
+  `UNCHANGED / ALREADY_LOADED`, `ALREADY_REGISTERED`.
+
+Защита повторов: `non_replicated_deduplication_window=1000` и
+`client.command(..., settings={"insert_deduplication_token": build_id, ...})`.
+INSERT SELECT имеет ORDER BY ALL и фиксированный single-thread execution для
+воспроизводимого порядка; loaded_at вычисляется DEFAULT. Dedup window — дополнительная
+ограниченная защита, не гарантия уникальности и не замена проверкам target/catalog.
+Ручных retry loops нет. Session advisory lock PostgreSQL сериализует экземпляры этого
+loader, не удерживая длинную SQL transaction во время удалённого IO. Он не защищает
+от ручных INSERT, которые обходят loader.
+
+При timeout серверный INSERT может ещё выполняться: дождитесь завершения запроса
+перед повтором. Автоматической отмены/удаления/перезагрузки нет. Следующий запуск
+проверит target и восстановит только недостающую регистрацию, если build полный.
+Diagnostics показывают stage/operation/exception class, но не raw exception text.
+
+`--check-only` выполняет resolution, manifest/table/source/target/catalog checks,
+показывает Would load и не выполняет INSERT или registration. S3 smoke не требует
+target table: он проверяет latest build, named collection и direct source read.
+
+### Локальные проверки Stage 3A
+
+```powershell
+docker compose config -q
+docker compose build football-python-tools
+docker compose run --rm --no-deps football-python-tools python -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+docker compose run --rm --no-deps football-python-tools python tests/integration/test_clickhouse_local.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_event_core.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_s3a_event_core.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_event_domains.py
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_lineup_domains.py
+git diff --check
+```
+
+Offline tests используют fake S3/ClickHouse/PostgreSQL и не обращаются в облако.
+Opt-in local integration test требует запущенный football-clickhouse, создаёт только
+уникальные TEMPORARY session tables с synthetic rows. Они автоматически исчезают
+после expiry HTTP session (60 секунд); DROP/DELETE/TRUNCATE не выполняются.
+Migration в football.event_core этот тест не применяет, PostgreSQL/S3 не использует.
+
+### Ручной запуск Stage 3A
+
+Следующие команды **не выполняются автоматически**. Запускать из корня проекта
+в PowerShell. Сначала обновить только ClickHouse service, сохранив существующий volume:
+
+```powershell
+docker compose config -q
+docker compose build football-python-tools
+docker compose up -d --no-deps football-clickhouse
+```
+
+При первоначальной установке применить PostgreSQL migration 003 и ClickHouse migrations
+001, затем 002. Если 001 уже применена, для исправления типов выполнить только ClickHouse
+migration 002 ниже. Here-string передаёт shell script через
+stdin, поэтому PowerShell не раскрывает переменные credentials; значения не печатаются:
+
+```powershell
+@'
+exec psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /migrations/003_create_clickhouse_loads.sql
+'@ | docker compose exec -T football-postgres sh
+
+@'
+exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < /migrations/001_create_event_core.sql
+'@ | docker compose exec -T football-clickhouse sh
+
+@'
+exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < /migrations/002_event_core_float64_metrics.sql
+'@ | docker compose exec -T football-clickhouse sh
+```
+
+Cloud smoke, затем check-only, загрузка и идентичный повтор:
+
+```powershell
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_s3.py
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_event_core.py --check-only
+
+$silverBuildId = Read-Host 'Введите Silver build ID из успешного check-only (64 lowercase hex)'
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_event_core.py --build-id $silverBuildId
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_event_core.py --build-id $silverBuildId
+```
+
+Без --build-id loader выбирает latest; для воспроизводимого повторного теста выше
+зафиксирован один ID. Также поддерживается `--build-id $silverBuildId --check-only`.
+После загрузки выполнить read-only smoke SQL через официальный клиент:
+
+```powershell
+docker compose run --rm --no-deps football-python-tools python -c "import sys; from pathlib import Path; from src.common.clickhouse import create_clickhouse_client; c=create_clickhouse_client(); sql=Path('scripts/clickhouse_smoke_queries.sql').read_text(); [print(c.query(q, parameters={'build_id':sys.argv[1]}).result_rows) for q in sql.split(';') if q.strip()]; c.close()" $silverBuildId
+```
+
+Rebuild Spark, повторная публикация Silver, изменение IAM и удаление объектов не нужны.
+Stage 3B в этот этап не входит.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.
