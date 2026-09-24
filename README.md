@@ -1552,6 +1552,165 @@ docker compose run --rm --no-deps football-python-tools python -c "from pathlib 
 
 No replacement workflow, Stage 3C, marts, BI, API или orchestration в этот этап не входят.
 
+## Stage 3C - Gold Match Analytics
+
+Gold — business-oriented analytical datasets; Silver остаётся нормализованным,
+source-aligned immutable слоем. Цепочка: Bronze → Silver S3 → Gold S3 → ClickHouse.
+В Stage 3C ClickHouse **не читается и не записывается**: materialization Gold относится
+к будущему Stage 3D. BI, API и orchestration здесь не добавляются.
+
+### Входы, grain и метрики
+
+Оба Gold datasets используют ровно четыре latest зарегистрированных Silver build:
+`event_core`, `pass_events`, `shot_events`, `match_squads`, для StatsBomb / 43 / 106.
+Latest определяется PostgreSQL `created_at DESC, id DESC` один раз для каждого input;
+далее используются только зафиксированные build IDs и exact immutable parts.
+`teams` и `players` не нужны этим расчётам: имена уже есть в match_squads.
+Не нужно переиздавать Silver или зависеть от состояния serving tables.
+
+| Gold dataset | Grain внутри competition/season | Версия | Output partitions |
+|---|---|---|---:|
+| team_match_stats | match_id, team_id | team_match_stats_v1 | 1 |
+| player_match_stats | match_id, team_id, player_id | player_match_stats_v1 | 2 |
+
+Base grain получается только из match_squads. Team base — distinct match/team/name;
+player base сохраняет source match-level team_name/player_name, а не representative
+имя из competition-level players. Игрок без событий и команда без ударов остаются в output.
+
+Каждый fact агрегируется **отдельно** до нужного grain, затем агрегаты присоединяются
+к base через left joins. Raw events/passes/shots друг с другом не соединяются:
+это предотвращает many-to-many размножение строк и завышение метрик.
+
+Общие метрики: `event_count`, `pass_attempts`, `shot_count`, `shot_xg`, `shot_goals`,
+`under_pressure_events`, `counterpress_events`. У teams также есть
+`players_with_events = countDistinct(player_id)`, игнорирующий NULL.
+Player aggregates исключают NULL player_id; team aggregates учитывают эти события.
+Отсутствующие после joins count metrics становятся long 0, xG — double 0.0;
+identity/name поля не заменяются sentinels. Для флагов учитывается только true.
+
+`shot_goals` считает только shot_events.outcome_id=97 (`Goal`), как в существующем
+`tests/fixtures/statsbomb_event_domains.json`. Это **не** итоговый счёт матча:
+own-goal events не переосмысляются как обычные shot goals. Pass completion пока нет.
+`shot_xg` суммирует Double values в детерминированном порядке: Spark sort_array +
+collect_list внутри каждой группы + встроенный aggregate. Это не Python UDF/driver collect
+и не lossy Decimal/Float32 cast; порядок floating-point сложения не зависит от partitions.
+Для текущих небольших матчевых групп такой in-group массив приемлем.
+Minutes/per90 отсутствуют: интервалы игрового времени ещё не смоделированы.
+
+### Проверки и lineage
+
+До Spark проверяются Silver catalog context/version/bucket/exact prefix, manifest identity,
+checksum metadata, input fingerprint, `_SUCCESS`, exact part inventory и file_count.
+Наборы входных матчей у выбранных Silver builds должны совпадать.
+Python GET используется только для manifests; Parquet читает Spark S3A по exact file paths
+из inventory с recursiveFileLookup, без partition inference из build_id/context paths.
+Manifest и _SUCCESS не попадают в Parquet reader. Проверяются фактические row/match counts
+и competition/season входного Parquet.
+
+Для каждого event/pass/shot агрегата Spark left_anti проверяет наличие всех metric keys
+в base. Non-null player keys вне squads — hard failure, даже если orphan counts были
+информационными в Stage 3B. Gold не должен молча терять метрики; исправление такого
+расхождения потребует отдельного решения по source semantics, не автоматического удаления.
+
+Output DQ: непустой frame, обязательные context/identity/name поля, unique grain,
+неотрицательные non-null метрики, finite nonnegative xG, shot_goals <= shot_count.
+Для teams — ровно две строки на матч. Дополнительно проверяется равенство row_count
+base и результата joins. Числа 64/128/32/3244 не зашиты в Gold DQ.
+`pass_attempts <= event_count` не вводится как независимый invariant: этот этап не доказывает
+event-key membership между произвольно выбранными immutable snapshots.
+
+`src/gold/build_identity.py` сортирует inputs по dataset, оставляя только dataset,
+build_id, transform_version, schema_sha256, s3_bucket, s3_prefix. Input fingerprint —
+SHA-256 canonical JSON этого списка. Build ID — SHA-256 canonical JSON specification:
+layer=gold, source, dataset, competition_id, season_id, transform_version,
+input_fingerprint, schema_sha256. Schema SHA считается от Spark output schema JSON.
+DB IDs, created_at, runtime timestamp, machine и случайные UUID не входят в identity.
+
+Lineage: Gold manifest → exact Silver build IDs/locations → Silver manifests → Bronze.
+Gold остаётся воспроизводимым analytical artifact/source of truth для будущего serving слоя.
+
+### Immutable publish и каталог
+
+`004_create_gold_builds.sql` создаёт metadata.gold_builds с identity PK, source/dataset/context,
+transform version, тремя SHA-256 hashes, S3 location, row/file counts и created_at.
+Hash CHECKs требуют lowercase 64 hex; counts > 0. Unique keys: dataset/context/build_id
+и bucket/prefix; lookup index: source/dataset/context. Silver catalog не меняется.
+`find_gold_build`, `find_latest_gold_build`, `register_gold_build` используют параметризованный
+SQL; регистрация — ON CONFLICT DO NOTHING RETURNING id, затем проверка существующей записи.
+
+```text
+football/gold/statsbomb/{team_match_stats|player_match_stats}/
+  competition_id=43/season_id=106/build_id=<sha256>/
+    part-*.snappy.parquet
+    _SUCCESS
+    _manifest.json
+```
+
+Gold package переиспользует только generic части Silver: canonical JSON/SHA checks,
+immutable inventory/manifest transport и writer errorifexists/Snappy с прежним S3A committer.
+Gold identity/manifest/publisher отдельные; большого рефакторинга Silver нет.
+Manifest содержит спецификацию, build_id, counts, exact inputs и sorted part inventory.
+Manifest создаётся условным PUT IfNoneMatch="*" с build_id/SHA-256 metadata.
+Overwrite и DeleteObject не используются; запускать один publisher за раз.
+
+Первый запуск: CREATED / REGISTERED. Повтор: UNCHANGED / ALREADY_BUILT и ALREADY_REGISTERED.
+Перед registration читаются exact Gold parts и сравниваются schema и **все логические строки**
+с детерминированным rebuild через Spark exceptAll в обе стороны, без driver collect.
+Это также защищает recovery после успешных Parquet/_SUCCESS и сбоя manifest/catalog:
+совпадающие данные не переписываются, восстанавливаются только отсутствующие metadata.
+Partial/corrupt prefix либо missing output/manifest у зарегистрированного build — integrity error.
+Автоматической очистки нет. После timeout дождаться завершения прежнего server job перед повтором.
+Произвольный raw exception text не печатается; diagnostics содержат stage/operation/dataset/class.
+
+### Проверки Stage 3C и ручные команды
+
+Offline checks:
+
+```powershell
+docker compose config -q
+docker compose run --rm --no-deps football-python-tools python -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_gold_match_stats.py
+git diff --check
+```
+
+Также сохраняются все предыдущие Spark suites из Stage 2D и offline Stage 3A/3B tests.
+Новые Gold synthetic fixtures содержат два матча, две команды/матч, игрока без событий,
+passes без shots, goal/xG, nullable flags, orphan keys и zero-metric строки.
+
+Следующие команды **ручные**, Codex их не запускает. Сначала применить только migration 004:
+
+```powershell
+@'
+exec psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /migrations/004_create_gold_builds.sql
+'@ | docker compose exec -T football-postgres sh
+```
+
+Затем полный read/transform/DQ check-only обоих datasets (обращается к реальным S3/PostgreSQL):
+
+```powershell
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/build_gold_match_stats.py --dataset team-match-stats --check-only
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/build_gold_match_stats.py --dataset player-match-stats --check-only
+```
+
+Печатаются selected Silver datasets/short build IDs, transform version, input fingerprint,
+schema SHA, build ID, matches, output rows, DQ и CHECK ONLY - nothing published.
+Нет S3 writes и PostgreSQL registration. CLI не принимает --limit/--build-id.
+
+Только после успешных check-only — publish и повтор для проверки идемпотентности:
+
+```powershell
+foreach ($dataset in @('team-match-stats', 'player-match-stats')) {
+    docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/build_gold_match_stats.py --dataset $dataset
+    if ($LASTEXITCODE -ne 0) { throw "Gold publish failed: $dataset" }
+    docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/build_gold_match_stats.py --dataset $dataset
+    if ($LASTEXITCODE -ne 0) { throw "Gold repeat failed: $dataset" }
+}
+```
+
+Для одинакового build ID между запусками не публикуйте новые Silver inputs.
+Новые Docker services/dependencies, IAM changes и Gold → ClickHouse в этот этап не входят.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

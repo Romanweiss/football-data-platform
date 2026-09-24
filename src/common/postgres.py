@@ -264,3 +264,48 @@ def clickhouse_load_lock(connection: psycopg.Connection):
         with connection.transaction():
             with connection.cursor() as cursor:
                 cursor.execute("SELECT pg_advisory_unlock(%s)", (lock_id,))
+
+
+GOLD_BUILD_COLUMNS = SILVER_BUILD_COLUMNS
+GOLD_BUILD_FIELDS = GOLD_BUILD_COLUMNS[1:-1]
+
+
+def find_gold_build(connection: psycopg.Connection, *, dataset: str, competition_id: int,
+                    season_id: int, build_id: str) -> dict | None:
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT {', '.join(GOLD_BUILD_COLUMNS)} FROM metadata.gold_builds "
+                "WHERE dataset = %s AND competition_id = %s AND season_id = %s AND build_id = %s",
+                (dataset, competition_id, season_id, build_id),
+            )
+            row = cursor.fetchone()
+    return None if row is None else dict(zip(GOLD_BUILD_COLUMNS, row, strict=True))
+
+
+def find_latest_gold_build(connection: psycopg.Connection, *, source: str, dataset: str,
+                           competition_id: int, season_id: int) -> dict | None:
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT {', '.join(GOLD_BUILD_COLUMNS)} FROM metadata.gold_builds "
+                "WHERE source = %s AND dataset = %s AND competition_id = %s AND season_id = %s "
+                "ORDER BY created_at DESC, id DESC LIMIT 1",
+                (source, dataset, competition_id, season_id),
+            )
+            row = cursor.fetchone()
+    return None if row is None else dict(zip(GOLD_BUILD_COLUMNS, row, strict=True))
+
+
+def register_gold_build(connection: psycopg.Connection, **record) -> bool:
+    """Register verified immutable output; caller must validate conflicting metadata."""
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"INSERT INTO metadata.gold_builds ({', '.join(GOLD_BUILD_FIELDS)}) "
+                f"VALUES ({', '.join(['%s'] * len(GOLD_BUILD_FIELDS))}) "
+                "ON CONFLICT DO NOTHING RETURNING id",
+                tuple(record[name] for name in GOLD_BUILD_FIELDS),
+            )
+            registered = cursor.fetchone() is not None
+    return registered

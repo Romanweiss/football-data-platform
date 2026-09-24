@@ -1,0 +1,79 @@
+"""Resolve once from PostgreSQL, verify Silver metadata, then read exact parts via Spark."""
+
+import os
+
+from src.common.postgres import find_latest_silver_build
+from src.common.s3_paths import s3a_uri
+from src.gold.build_identity import REQUIRED_INPUTS
+from src.gold.manifest import GoldIntegrityError
+from src.silver.build_identity import calculate_build_id, input_fingerprint, require_sha256, silver_prefix
+from src.silver.manifest import inspect_silver_output, read_manifest
+
+
+def resolve_inputs(connection, client, *, competition_id, season_id, diagnostics):
+    selected, manifests = [], {}
+    for dataset in REQUIRED_INPUTS:
+        diagnostics.set("Silver catalog", "find_latest_silver_build", dataset=dataset)
+        context = dict(source="statsbomb", dataset=dataset, competition_id=competition_id, season_id=season_id)
+        build = find_latest_silver_build(connection, **context)
+        if build is None or any(build.get(key) != value for key, value in context.items()):
+            raise GoldIntegrityError("Missing or mismatched registered Silver build.")
+        for field in ("build_id", "input_fingerprint", "schema_sha256"):
+            require_sha256(build[field])
+        if (build["transform_version"] != dataset + "_v1" or build["s3_bucket"] != os.environ.get("S3_BUCKET")
+                or build["s3_prefix"] != silver_prefix(build, build["build_id"])
+                or any(type(build.get(field)) is not int or build[field] <= 0 for field in ("row_count", "file_count"))):
+            raise GoldIntegrityError("Silver catalog version/location/counts mismatch.")
+        diagnostics.set("Silver manifest", "verify_manifest", dataset=dataset)
+        manifest = read_manifest(client, bucket=build["s3_bucket"], prefix=build["s3_prefix"], build_id=build["build_id"])
+        fields = (*context, "transform_version", "input_fingerprint", "schema_sha256", "build_id", "row_count", "file_count")
+        if manifest is None or any(manifest.get(field) != build[field] for field in fields):
+            raise GoldIntegrityError("Silver manifest differs from registered build.")
+        if manifest.get("layer") != "silver" or calculate_build_id(manifest) != build["build_id"]:
+            raise GoldIntegrityError("Silver manifest identity mismatch.")
+        kind = "lineups" if dataset == "match_squads" else "events"
+        try:
+            fingerprint = input_fingerprint(manifest["inputs"], artifact_kind=kind)
+        except (KeyError, TypeError, ValueError):
+            raise GoldIntegrityError("Malformed Silver input lineage.") from None
+        if fingerprint != build["input_fingerprint"]:
+            raise GoldIntegrityError("Silver manifest lineage mismatch.")
+        if (type(manifest.get("match_count")) is not int or manifest["match_count"] <= 0
+                or manifest["match_count"] != len(manifest["inputs"])):
+            raise GoldIntegrityError("Silver match count mismatch.")
+        diagnostics.set("Silver completeness", "inventory/_SUCCESS", dataset=dataset)
+        files = inspect_silver_output(client, bucket=build["s3_bucket"], prefix=build["s3_prefix"])
+        if files is None or len(files) != build["file_count"] or files != manifest.get("files"):
+            raise GoldIntegrityError("Silver part inventory mismatch.")
+        selected.append(build)
+        manifests[dataset] = manifest
+    # Gold combines one tournament snapshot, not incompatible match selections.
+    memberships = [{item["match_id"] for item in manifest["inputs"]} for manifest in manifests.values()]
+    if any(ids != memberships[0] for ids in memberships[1:]):
+        raise GoldIntegrityError("Selected Silver builds cover different matches.")
+    return selected, manifests
+
+
+def read_inputs(spark, builds, manifests, *, diagnostics):
+    from pyspark.sql import functions as F
+
+    frames = {}
+    try:
+        for build in builds:
+            dataset = build["dataset"]
+            diagnostics.set("Spark Silver read", "read_exact_parts/validate_counts", dataset=dataset)
+            paths = [s3a_uri(build["s3_bucket"], item["object_key"]) for item in manifests[dataset]["files"]]
+            frame = spark.read.option("recursiveFileLookup", "true").parquet(*paths).cache()
+            frames[dataset] = frame
+            row = frame.agg(F.count("*").alias("rows"), F.countDistinct("match_id").alias("matches"),
+                            F.count(F.when(F.col("match_id").isNull()
+                                | F.col("competition_id").isNull() | F.col("season_id").isNull()
+                                | (F.col("competition_id") != build["competition_id"])
+                                | (F.col("season_id") != build["season_id"]), 1)).alias("invalid")).first()
+            if (row.rows != build["row_count"] or row.matches != manifests[dataset]["match_count"] or row.invalid):
+                raise GoldIntegrityError("Silver Parquet row/match/context mismatch.")
+        return frames
+    except Exception:
+        for frame in frames.values():
+            frame.unpersist()
+        raise
