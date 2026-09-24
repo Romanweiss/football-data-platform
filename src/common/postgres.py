@@ -257,7 +257,7 @@ def clickhouse_load_lock(connection: psycopg.Connection):
             cursor.execute("SELECT pg_try_advisory_lock(%s)", (lock_id,))
             acquired = cursor.fetchone()[0]
     if not acquired:
-        raise RuntimeError("Another Stage 3A loader is active; retry after it finishes.")
+        raise RuntimeError("Another ClickHouse Silver loader is active; retry after it finishes.")
     try:
         yield
     finally:

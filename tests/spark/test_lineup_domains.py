@@ -1,6 +1,7 @@
 """Stage 2D synthetic Spark tests; exact local fixture paths and mocked cloud IO."""
 
 import io
+import json
 import os
 import sys
 import unittest
@@ -19,6 +20,7 @@ from silver_fakes import FakeS3
 from test_lineup_inputs import lineup_artifact
 from src.common.checksum import sha256_bytes
 from src.silver import job, publish
+from src.silver.diagnostics import PublishDiagnostics
 from src.silver.statsbomb import lineups as domain
 
 SQUAD_COLUMNS = ["competition_id", "season_id", "match_id", "team_id", "team_name", "player_id", "player_name",
@@ -154,8 +156,11 @@ class LineupSparkTests(unittest.TestCase):
 
     def test_team_identity_conflict_fails_before_dedup(self):
         bad = self.squads.withColumn("team_name", F.when(F.col("match_id") == 8, "conflict").otherwise(F.col("team_name")))
-        with self.assertRaisesRegex(domain.LineupQualityError, "Conflicting team_id"):
+        output = io.StringIO()
+        with redirect_stdout(output), self.assertRaisesRegex(domain.LineupQualityError, "Conflicting team_id"):
             domain.transform_teams(bad, **self.context)
+        self.assertIn("identity=team_id attribute=team_name conflicting_ids=1", output.getvalue())
+        self.assertIn('sample: team_id=10 values=["Red FC", "conflict"]', output.getvalue())
 
     def test_players_dedup_nullable_enrichment_and_membership_separation(self):
         self.assertEqual(self.players.columns, PLAYER_COLUMNS)
@@ -169,19 +174,151 @@ class LineupSparkTests(unittest.TestCase):
         self.assertIsNone(self.players.filter(F.col("player_id") == 201).first().country_id)
         shuffled = domain.transform_players(self.squads.repartition(3), **self.context)
         self.assertEqual(self.players.exceptAll(shuffled).count(), 0)
+        # Preserve the exact pre-canonicalization schema, including nullability/order.
+        attributes = ("player_name", "player_nickname", "country_id", "country_name")
+        previous_schema = self.squads.groupBy("player_id").agg(*[F.min(name).alias(name) for name in attributes]).select(
+            F.lit(43).cast("long").alias("competition_id"), F.lit(106).cast("long").alias("season_id"),
+            "player_id", *attributes,
+        ).schema
+        self.assertEqual(self.players.schema, previous_schema)
 
-    def test_conflicting_player_attributes_fail_before_dedup(self):
-        for name, value in (("player_name", "conflict"), ("player_nickname", "different"), ("country_id", 9999), ("country_name", "conflict")):
-            # Sam has known nickname in both matches; country becomes known in both here.
-            base = self.squads.withColumn(name, F.when(F.col("player_id") == 101, F.lit(3000 if name == "country_id" else "known")).otherwise(F.col(name)))
-            bad = base.withColumn(name, F.when((F.col("match_id") == 8) & (F.col("player_id") == 101), F.lit(value)).otherwise(F.col(name)))
-            with self.subTest(attribute=name), self.assertRaisesRegex(domain.LineupQualityError, "Conflicting player_id"):
-                domain.transform_players(bad, **self.context)
+    def test_player_representatives_frequency_length_and_lexical_order(self):
+        cases = {
+            4354: [("Phil Foden", None), ("Philip Foden", None)],
+            2: [("Phil Foden", "Short")] * 2 + [("Philip Foden", "LongNickname")],
+            3: [("Zeta", "Zulu"), ("Beta", "Able")],
+            4: [("Name", None), ("Name", "Nick")],
+            5: [("Name", "X"), ("Name", "Long")],
+            6: [("Name", None)] * 2,
+            7: [("Name", "N")] * 2 + [("Name", "Muchlonger")],
+        }
+        rows = [(identity, name, nickname, None, None)
+                for identity, values in cases.items() for name, nickname in values]
+        frame = self.spark.createDataFrame(rows,
+            "player_id long, player_name string, player_nickname string, country_id long, country_name string")
+        output = io.StringIO()
+        with redirect_stdout(output):
+            players = domain.transform_players(frame, **self.context)
+        expected = {4354: ("Philip Foden", None), 2: ("Phil Foden", "Short"),
+                    3: ("Beta", "Able"), 4: ("Name", "Nick"), 5: ("Name", "Long"),
+                    6: ("Name", None), 7: ("Name", "N")}
+        self.assertEqual({row.player_id: (row.player_name, row.player_nickname) for row in players.collect()}, expected)
+        self.assertIn("player_name_variant_ids=3", output.getvalue())
+        self.assertIn("player_nickname_variant_ids=4", output.getvalue())
+        self.assertIn("country_pair_variant_ids=0", output.getvalue())
+        self.assertEqual(len(output.getvalue().splitlines()), 1)
+        self.assertEqual(domain.validate_players(players)["row_count"], len(cases))
+        shuffled = domain.transform_players(frame.orderBy(F.col("player_id").desc()).repartition(3), **self.context)
+        self.assertEqual(players.exceptAll(shuffled).count(), 0)
+        self.assertEqual(players.schema, self.players.schema)
+        self.assertNotIn("PythonUDF", players._jdf.queryExecution().executedPlan().toString())
+
+    def test_country_pairs_never_mix_fields_and_conflicts_are_informational(self):
+        cases = {
+            1: [(22, "Belgium")] * 2,
+            2: [(None, None), (154, "Morocco")],
+            131037: [(22, "Belgium"), (154, "Morocco")],
+            4: [(None, None)],
+            5: [(22, None), (None, "Belgium")],
+            6: [(22, "Zulu"), (154, "Able")],  # Independent minima would invent (22, Able).
+            7: [(22, "Belgium"), (22, "Other")],
+            8: [(22, "Belgium"), (154, "Belgium")],
+            9: [(22, None), (None, "Other"), (154, "Morocco")],
+        }
+        frame = self.spark.createDataFrame(
+            [(identity, "Name", None, country_id, country_name)
+             for identity, pairs in cases.items() for country_id, country_name in pairs],
+            "player_id long, player_name string, player_nickname string, country_id long, country_name string",
+        )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            players = domain.transform_players(frame, **self.context)
+        found = {row.player_id: (row.country_id, row.country_name) for row in players.collect()}
+        expected = {identity: (None, None) for identity in cases}
+        expected.update({1: (22, "Belgium"), 2: (154, "Morocco"), 9: (154, "Morocco")})
+        self.assertEqual(found, expected)
+        self.assertIn("country_pair_variant_ids=4", output.getvalue())
+        for identity, pair in found.items():
+            self.assertTrue(pair == (None, None) or pair in cases[identity])
+        shuffled = domain.transform_players(frame.repartition(3), **self.context)
+        self.assertEqual(players.exceptAll(shuffled).count(), 0)
+        self.assertEqual(domain.validate_players(players)["row_count"], len(cases))
+
+    def test_source_player_variations_preserved_in_squads_and_full_build_passes(self):
+        # Alter synthetic source metadata across matches, never the stored fixtures.
+        raw = self.raw.withColumn("lineup", F.transform("lineup", lambda player:
+            player.withField("player_name", F.when(player.player_id == 100,
+                F.when(F.col("match_id") == 7, "Phil Foden").otherwise("Philip Foden")).otherwise(player.player_name))
+            .withField("country", F.when(player.player_id == 100, F.struct(
+                F.when(F.col("match_id") == 7, F.lit(22)).otherwise(F.lit(154)).cast("long").alias("id"),
+                F.when(F.col("match_id") == 7, "Belgium").otherwise("Morocco").alias("name"),
+            )).otherwise(player.country))))
+        squads = domain.transform_match_squads(raw, **self.context)
+        before = squads.orderBy("match_id", "team_id", "player_id").collect()
+        for dataset in ("teams", "players", "match_squads"):
+            with patch.object(domain, "read_s3a_lineups", return_value=raw), redirect_stdout(io.StringIO()):
+                frame, counts = domain.build_lineup_frame(self.spark, self.paths, [7, 8], dataset=dataset, **self.context)
+            try:
+                self.assertEqual(counts["input_match_count"], 2)
+                if dataset == "players":
+                    player = frame.filter(F.col("player_id") == 100).first()
+                    self.assertEqual((player.player_name, player.country_id, player.country_name), ("Philip Foden", None, None))
+                if dataset == "match_squads":
+                    self.assertEqual(frame.orderBy("match_id", "team_id", "player_id").collect(), before)
+                    values = frame.filter(F.col("player_id") == 100).orderBy("match_id").collect()
+                    self.assertEqual([(row.player_name, row.country_id, row.country_name) for row in values],
+                                     [("Phil Foden", 22, "Belgium"), ("Philip Foden", 154, "Morocco")])
+            finally:
+                frame.unpersist()
+
+    def test_all_null_player_names_remain_a_hard_failure(self):
+        players = domain.transform_players(self.squads.withColumn("player_name", F.lit(None).cast("string")), **self.context)
+        self.assertEqual(players.count(), self.players.count())
+        with self.assertRaises(domain.LineupQualityError):
+            domain.validate_players(players)
 
     def test_null_plus_known_player_name_is_consistent_during_dedup(self):
         raw = self.squads.withColumn("player_name", F.when(F.col("match_id") == 7, F.lit(None)).otherwise(F.col("player_name")))
         players = domain.transform_players(raw, **self.context)
         self.assertEqual(players.filter(F.col("player_id") == 100).first().player_name, "Alex")
+
+    def test_team_identity_diagnostics_collect_only_ten_sorted_groups(self):
+        rows = [(identity, name) for identity in range(15, 0, -1)
+                for name in ("Name B", None, "Name A", "Name B")]
+        frame = self.spark.createDataFrame(rows, "team_id long, team_name string").repartition(3)
+        output = io.StringIO()
+        collected = []
+        original_collect = type(frame).collect
+        def bounded_collect(dataframe):
+            result = original_collect(dataframe)
+            self.assertEqual(dataframe.columns, ["team_id", "values"])
+            self.assertLessEqual(len(result), 10)
+            collected.append(result)
+            return result
+        with patch.object(type(frame), "collect", bounded_collect), redirect_stdout(output):
+            with self.assertRaisesRegex(domain.LineupQualityError, "identity attributes: 15") as caught:
+                domain.transform_teams(frame, **self.context)
+        self.assertEqual(len(collected), 1)
+        for sample in collected:
+            self.assertEqual([row.team_id for row in sample], list(range(1, 11)))
+        lines = output.getvalue().splitlines()
+        self.assertEqual(len(lines), 11)
+        self.assertEqual(lines[0], "Identity consistency conflict: identity=team_id attribute=team_name conflicting_ids=15")
+        for line in lines[1:11]:
+            self.assertEqual(json.loads(line.split("values=", 1)[1]), ["Name A", "Name B"])
+        diagnostic = PublishDiagnostics().failure(caught.exception)
+        self.assertIn('detail="Conflicting team_id identity attributes: 15."', diagnostic)
+        self.assertIn("category=integrity", diagnostic)
+
+    def test_null_plus_one_known_team_name_has_no_conflict_diagnostics(self):
+        frame = self.spark.createDataFrame(
+            [(1, None), (1, "Known"), (1, "Known"), (2, None)],
+            "team_id long, team_name string",
+        )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            domain.transform_teams(frame, **self.context)
+        self.assertEqual(output.getvalue(), "")
 
     def test_dimension_required_nulls_duplicates_and_empty_output_fail(self):
         for frame, validate, names in ((self.teams, domain.validate_teams, ("team_id", "team_name")),

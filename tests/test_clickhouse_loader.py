@@ -34,6 +34,8 @@ class FakeClickHouse:
             rows = [(1,)]
         elif "FROM s3(" in sql:
             rows = [self.source]
+        elif "uniqExact(silver_build_id)" in sql:
+            rows = [(self.metrics[0], int(self.metrics[0] > 0), 0, options["parameters"]["build_id"])]
         else:
             rows = [self.metrics]
         return SimpleNamespace(result_rows=rows)
@@ -50,8 +52,8 @@ class ClickHouseLoaderTests(unittest.TestCase):
         _, self.build, self.manifest = fixture()
         self.client = FakeClickHouse()
         self.catalog = None
-        self.find = patch.object(loader, "find_clickhouse_load", side_effect=lambda *a, **k: self.catalog)
-        self.register = patch.object(loader, "register_clickhouse_load", side_effect=self.save)
+        self.find = patch("src.analytics.loader.find_clickhouse_load", side_effect=lambda *a, **k: self.catalog)
+        self.register = patch("src.analytics.loader.register_clickhouse_load", side_effect=self.save)
         self.find_mock = self.find.start()
         self.register_mock = self.register.start()
         self.addCleanup(self.find.stop)
@@ -271,7 +273,7 @@ class ClickHouseJobTests(unittest.TestCase):
         self.assertIn("category=integrity", diagnostics.failure(loader.ClickHouseIntegrityError(secret)))
 
     @patch.object(job, "clickhouse_load_lock")
-    @patch.object(job, "load_event_core")
+    @patch.object(job, "load_dataset")
     @patch.object(job, "verify_named_collection")
     @patch.object(job, "create_clickhouse_client")
     @patch.object(job, "verify_silver_manifest")

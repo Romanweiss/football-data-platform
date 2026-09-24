@@ -1,6 +1,8 @@
 """StatsBomb lineup schemas, source dimensions, squad bridge and Spark DQ."""
 
-from pyspark.sql import DataFrame, functions as F
+import json
+
+from pyspark.sql import DataFrame, Window, functions as F
 from pyspark.sql.types import ArrayType, IntegerType, LongType, StringType, StructField, StructType
 
 from src.silver.statsbomb.events import NAMED_ENTITY_SCHEMA
@@ -57,6 +59,27 @@ def _identity_consistency(df: DataFrame, identity: str, attributes: tuple[str, .
     counts = df.groupBy(identity).agg(*[F.countDistinct(name).alias(name) for name in attributes])
     conflicts = counts.filter(F.greatest(*[F.col(name) for name in attributes], F.lit(0)) > 1).count()
     if conflicts:
+        for attribute in attributes:
+            conflicting = counts.filter(F.col(attribute) > 1)
+            conflicting_ids = conflicting.count()
+            if not conflicting_ids:
+                continue
+            print(f"Identity consistency conflict: identity={identity} "
+                  f"attribute={attribute} conflicting_ids={conflicting_ids}")
+            selected = conflicting.select(identity).orderBy(identity).limit(10).alias("sample")
+            source = df.select(identity, attribute).alias("source")
+            # Keep aggregation in Spark and collect at most ten identity groups.
+            # Null-safe matching also diagnoses a NULL identity without changing DQ.
+            sample = (
+                source.join(selected, F.col(f"source.{identity}").eqNullSafe(F.col(f"sample.{identity}")), "left_semi")
+                .filter(F.col(attribute).isNotNull())
+                .groupBy(identity).agg(F.sort_array(F.collect_set(attribute)).alias("values"))
+                .orderBy(identity).limit(10).collect()
+            )
+            for row in sample:
+                # JSON escaping keeps source names on one diagnostic line.
+                print(f"sample: {identity}={json.dumps(row[identity])} "
+                      f"values={json.dumps(row['values'], ensure_ascii=True)}")
         raise LineupQualityError(f"Conflicting {identity} identity attributes: {conflicts}.")
 
 
@@ -68,12 +91,46 @@ def transform_teams(squads: DataFrame, *, competition_id: int, season_id: int) -
     )
 
 
+def _representative_player_text(squads: DataFrame, attribute: str):
+    frequencies = squads.filter(F.col(attribute).isNotNull()).groupBy("player_id", attribute).count()
+    variant_ids = frequencies.groupBy("player_id").count().filter(F.col("count") > 1).count()
+    ordering = Window.partitionBy("player_id").orderBy(
+        F.col("count").desc(), F.length(attribute).desc(), F.col(attribute).asc(),
+    )
+    representative = (
+        frequencies.withColumn("rank", F.row_number().over(ordering)).filter(F.col("rank") == 1)
+        .select("player_id", attribute)
+    )
+    return representative, variant_ids
+
+
 def transform_players(squads: DataFrame, *, competition_id: int, season_id: int) -> DataFrame:
-    attributes = ("player_name", "player_nickname", "country_id", "country_name")
-    _identity_consistency(squads, "player_id", attributes)
-    return squads.groupBy("player_id").agg(*[F.min(name).alias(name) for name in attributes]).select(
+    """Source identity with deterministic descriptive metadata, not identity invariants."""
+    names, name_variants = _representative_player_text(squads, "player_name")
+    nicknames, nickname_variants = _representative_player_text(squads, "player_nickname")
+    # A usable country pair has BOTH fields. Never assemble fields from different rows.
+    pairs = squads.filter(F.col("country_id").isNotNull() & F.col("country_name").isNotNull()).select(
+        "player_id", "country_id", "country_name",
+    ).distinct()
+    countries = pairs.groupBy("player_id").agg(
+        F.count("*").alias("pair_count"), F.min(F.struct("country_id", "country_name")).alias("pair"),
+    )
+    country_variants = countries.filter(F.col("pair_count") > 1).count()
+    # min(struct) is used only for a SINGLE distinct pair; conflicting pairs yield NULL.
+    countries = countries.select(
+        "player_id",
+        F.when(F.col("pair_count") == 1, F.col("pair.country_id")).alias("country_id"),
+        F.when(F.col("pair_count") == 1, F.col("pair.country_name")).alias("country_name"),
+    )
+    print(f"Informational player attribute variations: player_name_variant_ids={name_variants}, "
+          f"player_nickname_variant_ids={nickname_variants}, country_pair_variant_ids={country_variants}")
+    return (
+        squads.select("player_id").distinct().join(names, "player_id", "left")
+        .join(nicknames, "player_id", "left").join(countries, "player_id", "left")
+    ).select(
         F.lit(competition_id).cast("long").alias("competition_id"),
-        F.lit(season_id).cast("long").alias("season_id"), "player_id", *attributes,
+        F.lit(season_id).cast("long").alias("season_id"),
+        "player_id", "player_name", "player_nickname", "country_id", "country_name",
     )
 
 

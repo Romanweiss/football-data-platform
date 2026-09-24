@@ -8,27 +8,29 @@ from src.silver.build_identity import (
     calculate_build_id, input_fingerprint, require_sha256, silver_prefix,
 )
 from src.silver.manifest import SilverIntegrityError, inspect_silver_output, read_manifest
+from src.analytics.specs import EVENT_CORE
 
 CONTEXT = {"source": "statsbomb", "dataset": "event_core", "competition_id": 43, "season_id": 106}
 
 
-def resolve_silver_build(connection, build_id: str | None = None) -> dict:
+def resolve_silver_build(connection, build_id: str | None = None, *, spec=EVENT_CORE) -> dict:
+    context = {**CONTEXT, "dataset": spec.dataset}
     if build_id is None:
-        build = find_latest_silver_build(connection, **CONTEXT)
+        build = find_latest_silver_build(connection, **context)
     else:
         require_sha256(build_id)
         build = find_silver_build(
-            connection, dataset=CONTEXT["dataset"], competition_id=CONTEXT["competition_id"],
+            connection, dataset=spec.dataset, competition_id=CONTEXT["competition_id"],
             season_id=CONTEXT["season_id"], build_id=build_id,
         )
     if build is None:
-        raise SilverIntegrityError("No matching registered event_core build.")
+        raise SilverIntegrityError("No matching registered Silver build.")
     if build_id is not None and build.get("build_id") != build_id:
         raise SilverIntegrityError("Exact Silver build lookup returned a different identity.")
-    if any(build.get(name) != value for name, value in CONTEXT.items()):
+    if any(build.get(name) != value for name, value in context.items()):
         raise SilverIntegrityError("Silver build context mismatch.")
-    if build.get("transform_version") != "event_core_v1":
-        raise SilverIntegrityError("Stage 3A requires event_core_v1.")
+    if build.get("transform_version") != spec.transform_version:
+        raise SilverIntegrityError("Unsupported Silver transform version for this dataset.")
     for name in ("build_id", "input_fingerprint", "schema_sha256"):
         require_sha256(build[name])
     for name in ("row_count", "file_count"):
@@ -43,7 +45,9 @@ def resolve_silver_build(connection, build_id: str | None = None) -> dict:
     return build
 
 
-def verify_silver_manifest(client, build: dict) -> dict:
+def verify_silver_manifest(client, build: dict, *, spec=EVENT_CORE) -> dict:
+    if build.get("dataset") != spec.dataset or build.get("transform_version") != spec.transform_version:
+        raise SilverIntegrityError("Silver build does not match dataset specification.")
     bucket, prefix = build["s3_bucket"], build["s3_prefix"]
     manifest = read_manifest(client, bucket=bucket, prefix=prefix, build_id=build["build_id"])
     if manifest is None:
@@ -57,13 +61,15 @@ def verify_silver_manifest(client, build: dict) -> dict:
     if manifest.get("layer") != "silver" or calculate_build_id(manifest) != build["build_id"]:
         raise SilverIntegrityError("Silver manifest identity mismatch.")
     try:
-        fingerprint = input_fingerprint(manifest["inputs"])
+        fingerprint = input_fingerprint(manifest["inputs"], artifact_kind=spec.artifact_kind)
     except (KeyError, TypeError, ValueError):
         raise SilverIntegrityError("Silver manifest input lineage is malformed.") from None
     if fingerprint != build["input_fingerprint"]:
         raise SilverIntegrityError("Silver manifest input fingerprint mismatch.")
     matches = manifest.get("match_count")
-    if type(matches) is not int or not 0 < matches <= build["row_count"] or matches != len(manifest["inputs"]):
+    if spec.has_match_count and (
+        type(matches) is not int or not 0 < matches <= build["row_count"] or matches != len(manifest["inputs"])
+    ):
         raise SilverIntegrityError("Silver manifest match_count is invalid.")
     files = inspect_silver_output(client, bucket=bucket, prefix=prefix)
     if files is None or len(files) != build["file_count"] or files != manifest.get("files"):

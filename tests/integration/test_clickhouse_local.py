@@ -7,6 +7,7 @@ expired by ClickHouse with the HTTP session. No DROP/TRUNCATE/DELETE is executed
 
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
@@ -39,6 +40,7 @@ class LocalClickHouseTests(unittest.TestCase):
         self.assertNotIn("football.event_core", ddl)
         self.client.command(ddl)
         self.build_id = "a" * 64
+        self.spec = replace(loader.EVENT_CORE, clickhouse_database="", clickhouse_table=self.table)
 
     def source(self, overrides=None):
         values = {
@@ -59,8 +61,7 @@ class LocalClickHouseTests(unittest.TestCase):
         return "(SELECT " + ", ".join(f"{values[name]} AS `{name}`" for name, _ in loader.EVENT_COLUMNS) + " FROM numbers(2))"
 
     def insert(self, *, overrides=None, token=None):
-        with patch.object(loader, "TARGET", self.table):
-            sql = loader.insert_sql().replace(loader.S3_SOURCE, self.source(overrides))
+        sql = loader.insert_sql(spec=self.spec).replace(loader.S3_SOURCE, self.source(overrides))
         self.assertNotIn("s3(", sql)
         self.client.command(sql, parameters={"build_id": self.build_id}, settings={
             **loader.INSERT_SETTINGS, "insert_deduplication_token": token or self.build_id,
@@ -68,13 +69,11 @@ class LocalClickHouseTests(unittest.TestCase):
 
     def test_schema_engine_keys_and_default(self):
         # system.tables lists temporary tables with an empty database name.
-        with patch.multiple(loader, TARGET=self.table, DATABASE="", TABLE=self.table):
-            loader.validate_table_schema(self.client)
+        loader.validate_table_schema(self.client, spec=self.spec)
 
     def test_explicit_casts_nulls_and_postload_metrics(self):
         self.insert()
-        with patch.object(loader, "TARGET", self.table):
-            metrics = loader.target_metrics(self.client, self.build_id)
+        metrics = loader.target_metrics(self.client, self.build_id, spec=self.spec)
         loader.validate_metrics(metrics, {"row_count": 2, "match_count": 2, "competition_id": 43, "season_id": 106})
         rows = self.client.query(
             f"SELECT player_id, player_name, location_x, under_pressure, counterpress, silver_build_id, loaded_at "

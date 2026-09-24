@@ -1036,12 +1036,37 @@ identity, nickname, jersey и country. Competition/season передаются �
 NULL не заменяется значениями `Unknown`, `-1` или `0`.
 
 `transform_teams` и `transform_players` используют текущий lineup-derived squad frame,
-не читают event_core или опубликованные dimensions. До dedup проверяются distinct
-non-null attributes по source ID. Для team это `team_name`; для player —
-`player_name`, `player_nickname`, `country_id`, `country_name`.
-Два известных различных значения вызывают DQ failure. NULL + одно известное значение
-не конфликтуют. После доказанной consistency используется детерминированный `min`,
-который сохраняет известное значение либо NULL, если известных значений нет.
+не читают event_core или опубликованные dimensions. Для команд остаётся hard invariant
+`team_id → team_name`: два distinct non-null имени вызывают `LineupQualityError`.
+NULL + одно известное имя не конфликтуют; после проверки используется `min`.
+
+StatsBomb `player_id` — source identity. Описательные player_name/player_nickname/country
+могут различаться между source artifacts (например, Phil Foden / Philip Foden).
+`match_squads` сохраняет исходные match-level значения имени, nickname, country и jersey
+для `(match_id, team_id, player_id)` без канонизации.
+`players` — детерминированная competition/season-level проекция: одна строка на player_id.
+Имя и nickname выбираются из non-null значений по `frequency DESC, length DESC, value ASC`
+через Spark groupBy/Window, без Python UDF и недетерминированного first/last.
+Если известного nickname нет, сохраняется NULL; отсутствие player_name по-прежнему
+нарушает hard DQ. Перестановка строк/partitions не меняет выбор.
+
+Country рассматривается только как пара `(country_id, country_name)`, где оба поля non-null.
+Одна distinct полная пара сохраняется; нет полной пары или их несколько — оба поля NULL.
+Частично заполненные пары не используются и никогда не объединяются друг с другом.
+Например, Belgium / Morocco для player_id=131037 остаются в match_squads,
+но в players country_id/country_name намеренно NULL, а не произвольно выбранная страна.
+Выводятся только три агрегата: `player_name_variant_ids`, `player_nickname_variant_ids`,
+`country_pair_variant_ids`. Их ненулевые значения информационные и сами по себе не
+останавливают build; полные datasets не собираются в Python.
+Будущий entity-resolution/canonical profile слой сможет решать более сложную
+cross-source идентификацию; этот этап такой слой не вводит.
+
+Версии `teams_v1`, `players_v1`, `match_squads_v1` сохранены: по подтверждению владельца
+проекта persistent Silver builds этих datasets ещё не публиковались. Изменение
+неопубликованной реализации не требует bump. Если выяснится, что старый players build
+уже опубликован, перед публикацией изменённой семантики потребуется новая версия;
+immutable build нельзя переиспользовать с другим содержимым. Удалённое состояние
+каталога при этой правке не проверялось.
 
 ### DQ и referential integrity
 
@@ -1338,6 +1363,194 @@ docker compose run --rm --no-deps football-python-tools python -c "import sys; f
 
 Rebuild Spark, повторная публикация Silver, изменение IAM и удаление объектов не нужны.
 Stage 3B в этот этап не входит.
+
+## Stage 3B - Complete ClickHouse Silver model
+
+Stage 3B материализует оставшиеся Silver datasets через тот же direct `s3()` pipeline.
+ClickHouse остаётся serving storage; immutable Silver в S3 — source of truth.
+Никакие Spark/Bronze/Silver transforms, build identity, IAM или credentials не меняются.
+
+### Спецификации и общий loader
+
+`src/analytics/specs.py` содержит frozen dataclass `DatasetSpec` и шесть явных specs:
+dataset/version, database/table, schema, source→target SELECT expressions, identity,
+context/partition/sorting columns и небольшие настройки validation.
+`loader.py` реализует единственный load/recovery state machine, `validation.py` —
+aggregate checks. `silver_input.py` переиспользует существующие manifest checksum,
+input fingerprint, `_SUCCESS` и exact part inventory checks; Python Parquet не скачивает.
+`event_core.py` — compatibility exports, а прежний `load_clickhouse_event_core.py`
+продолжает вызывать общий job с event_core по умолчанию.
+
+| CLI dataset | Silver / ClickHouse table | Transform version | Уникальный ключ внутри build |
+|---|---|---|---|
+| event-core | event_core | event_core_v1 | match_id, event_id |
+| passes | pass_events | pass_events_v1 | match_id, event_id |
+| shots | shot_events | shot_events_v1 | match_id, event_id |
+| teams | teams | teams_v1 | team_id |
+| players | players | players_v1 | player_id |
+| match-squads | match_squads | match_squads_v1 | match_id, team_id, player_id |
+
+Fact-like tables: event_core/pass_events/shot_events. Dimension-like: teams/players.
+Bridge match_squads описывает membership игрока в команде конкретного матча; team_id
+не хранится в players. Идентификаторы остаются StatsBomb source identities, не глобальной
+cross-source моделью сущностей. Все шесть таблиц — материализации отдельных immutable builds.
+Loader не зависит от порядка загрузки; межтабличные проверки выполняются отдельно.
+
+### ClickHouse schemas и точность
+
+`003_create_remaining_silver_tables.sql` создаёт пять новых таблиц через IF NOT EXISTS.
+Применённые 001/002 не изменяются; PostgreSQL migration 004 не нужна.
+Все таблицы используют plain MergeTree, partition (competition_id, season_id),
+non_replicated_deduplication_window=1000, lineage silver_build_id FixedString(64)
+и loaded_at DateTime64(3, 'UTC') DEFAULT now64(3).
+
+Полные пять schemas находятся в migration 003 и сверяются тестами со specs.
+Fact sorting: competition_id, season_id, match_id, period, event_index, event_id.
+Teams/players sorting: competition_id, season_id, entity ID.
+Squads sorting: competition_id, season_id, match_id, team_id, player_id.
+
+Исходные типы проверены по Stage 2C/2D code/tests: координаты/length/angle/xG —
+DoubleType, key_pass_id — nullable String, идентификаторы — Long, jersey_number — Integer.
+Source→target projections перечисляют все колонки явно, без SELECT *:
+
+- числовые ID/context → `accurateCast(column, 'UInt32'/'UInt64'/'UInt16'/...)`;
+- необязательные ID/числа/строки/flags → accurateCast в соответствующий Nullable type;
+- location/start/end coordinates, pass_length/pass_angle/duration → Nullable(Float64);
+- statsbomb_xg → Float64; сужений до Float32 нет;
+- event_id → toUUID(event_id);
+- nullable key_pass_id → toUUID(key_pass_id): NULL остаётся NULL, неверная non-null
+  строка отклоняется. В 25.8 accurateCast в Nullable(UUID) может скрыть неверную строку
+  как NULL, поэтому для UUID он не используется;
+- LowCardinality strings → явный CAST в заданный LowCardinality type.
+
+Важная синтаксическая корректировка: `players.country_name` использует
+`LowCardinality(Nullable(String))`. Обратная вложенность `Nullable(LowCardinality(String))`
+не поддерживается ClickHouse 25.8.23.13; это проверено локально. Смысл сохраняется:
+nullable dictionary-encoded string. NULL не заменяется на sentinel/zero UUID.
+
+Source и target проверяются по manifest row_count, уникальному ключу, context min/max
+и обязательным полям. Для facts и squads также сравнивается manifest match_count;
+для teams/players он не придумывается. Для shots xG должен быть finite и в [0,1],
+outcome_id — non-null. Для squads проверяются две разные команды на каждый матч,
+без предположения о размере состава. Ожидаемые World Cup counts не захардкожены.
+
+### Один build на dataset/context
+
+Начиная со Stage 3B ClickHouse поддерживает **ровно один materialized Silver build**
+на dataset + competition_id + season_id. Это ужесточает историческую политику Stage 3A:
+два snapshot одного контекста больше не могут автоматически сосуществовать в serving table.
+
+Перед INSERT loader получает только агрегаты target context: count, uniqExact(build_id),
+count строк с другим build_id. Проверка выполняется и в check-only:
+
+- 0 строк → разрешена первая загрузка, если нет конфликтующей регистрации;
+- полный запрошенный build → DQ, ALREADY_LOADED, без повторного INSERT;
+- другой build или смесь builds → ClickHouseBuildConflictError;
+- partial/excessive target → ClickHouseIntegrityError.
+
+Замены, DELETE, DROP PARTITION и append второго snapshot нет. Старые Silver builds
+остаются в S3 и metadata.silver_builds для lineage/reproducibility. Отдельный replacement
+workflow (validation, переключение snapshot и каталогов) будет спроектирован позже.
+Это предотвращает двойной счёт в аналитике. Другой competition/season не конфликтует.
+
+Сохранены insert_deduplication_token=build_id, ORDER BY ALL и прежние insert settings.
+Общий PostgreSQL advisory lock использует прежний namespace и сериализует старый
+и новый CLI. Он не защищает от ручных INSERT в обход loader.
+После успешного INSERT и timeout/сбоя регистрации следующий запуск проверяет target,
+не повторяет INSERT для полного build и восстанавливает metadata.clickhouse_loads.
+После timeout сначала дождитесь завершения серверного запроса; автоматических retries
+или cleanup нет. Registration выполняется только после post-load validation.
+
+### Read-only model check и аналитика
+
+`scripts/check_clickhouse_model.py` разрешает **текущие builds из ClickHouse**, а не
+latest Silver. Для каждой из шести таблиц требует один непустой build в контексте,
+matching Silver/load catalog records и совпадение row_count. Затем выполняет SQL
+LEFT ANTI JOIN с фильтрами context + текущий build с каждой стороны:
+
+- squads.team_id → teams.team_id;
+- squads.player_id → players.player_id;
+- event_core.match_id → match_squads.match_id;
+- passes/shot event keys → event_core event keys.
+
+Это hard checks. Player/team orphan row counts в трёх fact tables выводятся INFO:
+NULL player IDs не считаются orphan, а non-null отсутствующие ссылки пока не являются
+hard failure. Все ID не собираются в Python. Между запросами нет распределённого
+snapshot isolation: запускать после загрузок; в конце current builds проверяются повторно.
+
+`scripts/clickhouse_model_smoke_queries.sql` добавляет десять read-only запросов:
+passes по командам/outcome, shots/xG по командам и игрокам, squads, joins facts→dimensions
+и timeline одного матча. Они фильтруют context и требуют успешный model check с
+one-build policy. Прежний `clickhouse_smoke_queries.sql` Stage 3A сохранён.
+NULL pass outcome трактуется как normally complete только в StatsBomb semantics,
+уже описанной в Stage 2C README, а не как универсальное правило для NULL.
+
+### Проверки Stage 3B без облака
+
+```powershell
+docker compose config -q
+docker compose run --rm --no-deps football-python-tools python -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+docker compose run --rm --no-deps football-python-tools python tests/integration/test_clickhouse_local.py
+docker compose run --rm --no-deps football-python-tools python tests/integration/test_clickhouse_datasets.py
+git diff --check
+```
+
+Local tests создают только TEMPORARY session tables с synthetic rows (включая 0.1 для
+проверки Float64, nullable/invalid UUID, конфликты builds и orphan references).
+Migration 003 не применяется к football; production data, S3 и PostgreSQL не используются.
+Session tables автоматически истекают через 60 секунд после последнего запроса.
+Image rebuild и новые зависимости не нужны.
+
+### Ручные команды Stage 3B
+
+Следующие команды Codex автоматически не выполняет. Из корня проекта в PowerShell.
+Миграция 003 создаёт только пять новых таблиц; event_core не перезагружается:
+
+```powershell
+docker compose config -q
+@'
+exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < /migrations/003_create_remaining_silver_tables.sql
+'@ | docker compose exec -T football-clickhouse sh
+```
+
+Read-only совместимость event_core через оба CLI (обращаются к S3):
+
+```powershell
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_event_core.py --check-only
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_silver.py --dataset event-core --check-only
+```
+
+Для остальных datasets recommended order: teams → players → match-squads → passes → shots.
+Цикл ниже останавливается при первой ошибке. Для каждого dataset: сначала check-only,
+затем вручную скопировать его build ID, загрузить и повторить **тот же ID** для проверки
+ALREADY_LOADED / ALREADY_REGISTERED:
+
+```powershell
+foreach ($dataset in @('teams', 'players', 'match-squads', 'passes', 'shots')) {
+    docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_silver.py --dataset $dataset --check-only
+    if ($LASTEXITCODE -ne 0) { throw "Check-only failed: $dataset" }
+    $silverBuildId = Read-Host "Введите build ID из успешного check-only для $dataset"
+    docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_silver.py --dataset $dataset --build-id $silverBuildId
+    if ($LASTEXITCODE -ne 0) { throw "Load failed: $dataset" }
+    docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_silver.py --dataset $dataset --build-id $silverBuildId
+    if ($LASTEXITCODE -ne 0) { throw "Repeat failed: $dataset" }
+}
+```
+
+После всех загрузок:
+
+```powershell
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py
+```
+
+Только после успешного model check выполнить аналитические запросы:
+
+```powershell
+docker compose run --rm --no-deps football-python-tools python -c "from pathlib import Path; from src.common.clickhouse import create_clickhouse_client; c=create_clickhouse_client(); sql=Path('scripts/clickhouse_model_smoke_queries.sql').read_text(); [print(c.query(q, parameters={'competition_id':43,'season_id':106}).result_rows) for q in sql.split(';') if q.strip()]; c.close()"
+```
+
+No replacement workflow, Stage 3C, marts, BI, API или orchestration в этот этап не входят.
 
 ## Инициализация баз
 
