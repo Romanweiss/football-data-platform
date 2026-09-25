@@ -309,3 +309,38 @@ def register_gold_build(connection: psycopg.Connection, **record) -> bool:
             )
             registered = cursor.fetchone() is not None
     return registered
+
+
+CLICKHOUSE_GOLD_LOAD_FIELDS = (
+    "source", "dataset", "competition_id", "season_id", "gold_build_id",
+    "input_fingerprint", "schema_sha256", "s3_bucket", "s3_prefix",
+    "clickhouse_database", "clickhouse_table", "row_count",
+)
+CLICKHOUSE_GOLD_LOAD_COLUMNS = ("id", *CLICKHOUSE_GOLD_LOAD_FIELDS, "loaded_at")
+
+
+def find_clickhouse_gold_load(connection: psycopg.Connection, *, clickhouse_database: str,
+                              clickhouse_table: str, gold_build_id: str) -> dict | None:
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT {', '.join(CLICKHOUSE_GOLD_LOAD_COLUMNS)} FROM metadata.clickhouse_gold_loads "
+                "WHERE clickhouse_database = %s AND clickhouse_table = %s AND gold_build_id = %s",
+                (clickhouse_database, clickhouse_table, gold_build_id),
+            )
+            row = cursor.fetchone()
+    return None if row is None else dict(zip(CLICKHOUSE_GOLD_LOAD_COLUMNS, row, strict=True))
+
+
+def register_clickhouse_gold_load(connection: psycopg.Connection, **record) -> bool:
+    """Register only a validated Gold materialization; never update old metadata."""
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"INSERT INTO metadata.clickhouse_gold_loads ({', '.join(CLICKHOUSE_GOLD_LOAD_FIELDS)}) "
+                f"VALUES ({', '.join(['%s'] * len(CLICKHOUSE_GOLD_LOAD_FIELDS))}) "
+                "ON CONFLICT DO NOTHING RETURNING id",
+                tuple(record[field] for field in CLICKHOUSE_GOLD_LOAD_FIELDS),
+            )
+            registered = cursor.fetchone() is not None
+    return registered

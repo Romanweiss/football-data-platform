@@ -1711,6 +1711,181 @@ foreach ($dataset in @('team-match-stats', 'player-match-stats')) {
 Для одинакового build ID между запусками не публикуйте новые Silver inputs.
 Новые Docker services/dependencies, IAM changes и Gold → ClickHouse в этот этап не входят.
 
+## Stage 3D - Gold Serving in ClickHouse
+
+Gold S3 остаётся воспроизводимым аналитическим артефактом/source of truth.
+ClickHouse `football.team_match_stats` и `football.player_match_stats` — serving copies
+готовых Gold Parquet, без повторного расчёта business metrics. Они убирают повторяющиеся
+joins сырых Silver events для обычной аналитики и будущего BI. BI/Superset/API пока нет.
+Per90 не рассчитывается до появления отдельной модели игрового времени.
+
+```text
+metadata.gold_builds → exact registered Gold build → manifest/_SUCCESS/inventory
+    → ClickHouse s3(selectel_s3, exact-build/part-*.parquet)
+    → explicit INSERT SELECT → MergeTree → target DQ → metadata.clickhouse_gold_loads
+```
+
+### Контракты и миграции
+
+Новые миграции выполняются вручную: PostgreSQL
+`005_create_clickhouse_gold_loads.sql` и ClickHouse `004_create_gold_match_stats.sql`.
+Ранее применённые миграции, Silver loaders и Gold business calculations не меняются.
+Gold catalog использует `gold_build_id`, а не `silver_build_id`: три SHA-256 checks,
+`row_count > 0`, UNIQUE `(clickhouse_database, clickhouse_table, gold_build_id)` и индекс
+`(source, dataset, competition_id, season_id)`. Registration параметризован,
+`ON CONFLICT DO NOTHING RETURNING id`. Существующие exact/latest Gold helpers переиспользуются;
+latest определяется `ORDER BY created_at DESC, id DESC`.
+
+Обе serving tables — обычный MergeTree, partition `(competition_id, season_id)`.
+Team grain: `(match_id, team_id)`; player grain: `(match_id, team_id, player_id)`.
+ORDER BY содержит context, затем соответствующий grain.
+
+| Поля | ClickHouse type | Dataset |
+| --- | --- | --- |
+| competition_id, season_id, team_id | UInt32 | оба |
+| match_id | UInt64 | оба |
+| team_name | LowCardinality(String) | оба |
+| player_id / player_name | UInt32 / String | player |
+| event_count, pass_attempts, shot_count, shot_goals | UInt64 | оба |
+| under_pressure_events, counterpress_events | UInt64 | оба |
+| players_with_events | UInt64 | team |
+| shot_xg | Float64 | оба |
+| gold_build_id | FixedString(64) | оба |
+| loaded_at | DateTime64(3, 'UTC') DEFAULT now64(3) | оба |
+
+`src/analytics/gold_specs.py` задаёт frozen contracts с явными колонками/casts.
+Spark Double xG сохраняется как Float64; numeric conversions используют `accurateCast`.
+Нет Float32 narrowing, `SELECT *` или credentials в SQL. Named collection `selectel_s3`
+и существующая virtual-hosted URL configuration переиспользуются без изменения IAM.
+
+### Resolver, проверки и восстановление
+
+`gold_input.py` разрешает только registered builds для statsbomb/43/106 и версий
+`team_match_stats_v1` / `player_match_stats_v1`. CLI принимает latest или точный
+`--build-id <64 lowercase hex>`, но не произвольный S3 prefix.
+До любого ClickHouse access проверяются catalog, manifest checksum/identity/inputs,
+`_SUCCESS` и точный part inventory/file_count. Python читает только metadata,
+Parquet bodies читает ClickHouse напрямую.
+
+Source и target DQ проверяют row_count из manifest, unique grain, match_count,
+context min/max, обязательные поля и metrics без NULL, неотрицательные metrics,
+finite xG и `shot_goals <= shot_count`. У team каждый матч содержит ровно две команды.
+Ожидания не захардкожены как 128/3244.
+
+Serving policy: один Gold build на dataset/competition/season.
+
+- Пустой target: один INSERT, DQ, затем registration.
+- Полный тот же build: `UNCHANGED / ALREADY_LOADED`, INSERT пропускается.
+- Полный build без load catalog после timeout/PG failure: DQ и только registration.
+- Partial/excess/missing registered rows: integrity error, без auto cleanup.
+- Другой или смешанный build: `GoldBuildConflictError`, без append/delete/replace.
+
+Полные loaders используют существующий общий PostgreSQL advisory writer lock.
+`insert_deduplication_token=gold_build_id`, deterministic ordering и MergeTree dedup window
+1000 — дополнительная защита, а не замена проверки состояния target. Не запускать
+некооперирующих writers. После INSERT timeout сначала дождаться окончания запроса на сервере,
+затем повторить тот же build. Check-only lock/INSERT/registration не выполняет:
+он читает реальный Gold через S3, проверяет схему/DQ/конфликт и печатает expected/source rows,
+files, existing target/build и `Would load`, затем `CHECK ONLY - nothing loaded`.
+Diagnostics содержат stage/operation/exception class, но не raw exception text/credentials.
+
+`scripts/check_clickhouse_gold_model.py` — read-only, без S3. Он берёт фактически
+загруженные Gold/Silver build IDs, проверяет их catalogs и соответствие Gold input fingerprint
+загруженному Silver. Проверяет grain keys в обе стороны относительно match_squads,
+team event/pass/shot sums, player sums только для Silver `player_id IS NOT NULL`,
+player row count против squad grain и team xG sum против Silver xG
+(`math.isclose`, relative/absolute tolerance `1e-9`). Все 12 проверок hard;
+context/build IDs ограничивают каждую сторону сравнения. Повторная проверка build state
+обнаруживает смену snapshot, но это не распределённая транзакция: запускать после writers.
+
+`scripts/clickhouse_gold_smoke_queries.sql` содержит 8 read-only запросов: team totals,
+team-match xG, player totals, top xG, top shots, average team xG, squad players без событий,
+pressure activity. Totals группируются по ID, `min(name)` — только deterministic display
+label при вариациях имени между матчами, не entity resolution.
+
+### Проверки Stage 3D
+
+```powershell
+docker compose config -q
+docker compose run --rm --no-deps football-python-tools python -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+docker compose run --rm --no-deps football-python-tools python tests/integration/test_clickhouse_local.py
+docker compose run --rm --no-deps football-python-tools python tests/integration/test_clickhouse_datasets.py
+docker compose run --rm --no-deps football-python-tools python tests/integration/test_clickhouse_gold.py
+git diff --check
+```
+
+Integration suites используют только session TEMPORARY tables и synthetic rows, без S3
+и без применения миграций к `football`. Таблицы исчезают при истечении тестовой сессии
+(session_timeout=60), DROP не выполняется. Offline cases покрывают оба datasets,
+resolver/manifest, schema/SQL, first/repeat/check-only, partial/conflict, timeout recovery,
+catalog failure, DQ и отсутствие секретов в diagnostics.
+Предыдущие пять Spark synthetic suites также остаются обязательной регрессией.
+
+### Ручная проверка Stage 3D
+
+Следующие команды изменяют локальные persistent databases и/или читают реальный Selectel.
+Codex их не выполняет. Из корня проекта сначала применить только новые миграции:
+
+```powershell
+@'
+exec psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /migrations/005_create_clickhouse_gold_loads.sql
+'@ | docker compose exec -T football-postgres sh
+if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL migration failed' }
+
+@'
+exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < /migrations/004_create_gold_match_stats.sql
+'@ | docker compose exec -T football-clickhouse sh
+if ($LASTEXITCODE -ne 0) { throw 'ClickHouse migration failed' }
+```
+
+Проверить каждый dataset отдельно (без загрузки):
+
+```powershell
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_gold.py --dataset team-match-stats --check-only
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_gold.py --dataset player-match-stats --check-only
+```
+
+После успешных check-only скопировать соответствующие `Gold build ID` в prompts ниже.
+Каждый dataset — отдельная команда и recovery boundary. После любой ошибки остановиться,
+не запускать следующий dataset до выяснения причины.
+
+```powershell
+$teamGoldBuild = Read-Host 'Gold build ID from team check-only'
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_gold.py --dataset team-match-stats --build-id $teamGoldBuild
+if ($LASTEXITCODE -ne 0) { throw 'Team load failed' }
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_gold.py --dataset team-match-stats --build-id $teamGoldBuild
+if ($LASTEXITCODE -ne 0) { throw 'Team repeat failed' }
+
+$playerGoldBuild = Read-Host 'Gold build ID from player check-only'
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_gold.py --dataset player-match-stats --build-id $playerGoldBuild
+if ($LASTEXITCODE -ne 0) { throw 'Player load failed' }
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_gold.py --dataset player-match-stats --build-id $playerGoldBuild
+if ($LASTEXITCODE -ne 0) { throw 'Player repeat failed' }
+
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py
+if ($LASTEXITCODE -ne 0) { throw 'Gold model check failed' }
+```
+
+Первый load ожидает `LOADED / REGISTERED`, повтор —
+`UNCHANGED / ALREADY_LOADED` и `ALREADY_REGISTERED`. После успешной model check
+выполнить все восемь analytical queries (read-only, без S3):
+
+```powershell
+@'
+from contextlib import closing
+from pathlib import Path
+from src.common.clickhouse import create_clickhouse_client
+with closing(create_clickhouse_client()) as client:
+    queries = Path('scripts/clickhouse_gold_smoke_queries.sql').read_text().split(';')
+    for index, query in enumerate((q for q in queries if q.strip()), 1):
+        result = client.query(query, parameters={'competition_id': 43, 'season_id': 106})
+        print('Query', index, result.column_names)
+        for row in result.result_rows:
+            print(row)
+'@ | docker compose run --rm --no-deps -T football-python-tools python -
+```
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.
