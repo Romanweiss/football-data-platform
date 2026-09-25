@@ -68,7 +68,8 @@ def verify_silver_manifest(client, build: dict, *, spec=EVENT_CORE) -> dict:
         raise SilverIntegrityError("Silver manifest input fingerprint mismatch.")
     matches = manifest.get("match_count")
     if spec.has_match_count and (
-        type(matches) is not int or not 0 < matches <= build["row_count"] or matches != len(manifest["inputs"])
+        type(matches) is not int or not 0 < matches <= build["row_count"]
+        or matches != (build["row_count"] if spec.artifact_kind == "matches" else len(manifest["inputs"]))
     ):
         raise SilverIntegrityError("Silver manifest match_count is invalid.")
     files = inspect_silver_output(client, bucket=bucket, prefix=prefix)

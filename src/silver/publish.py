@@ -75,7 +75,8 @@ def publish_build(
         if existing_catalog is not None:
             raise SilverIntegrityError("Registered Silver output is missing; refusing to recreate it.")
         diagnostics.set("Silver output write", "write_new_silver", key=prefix)
-        options = {"partitions": LINEUP_OUTPUT_PARTITIONS[specification["dataset"]]} if specification["dataset"] in LINEUP_OUTPUT_PARTITIONS else {}
+        partitions = {**LINEUP_OUTPUT_PARTITIONS, "matches": 1}
+        options = {"partitions": partitions[specification["dataset"]]} if specification["dataset"] in partitions else {}
         write_new_silver(frame, output_uri, **options)
         diagnostics.set("Silver output validation", "inspect_silver_output", key=prefix)
         files = inspect_silver_output(client, bucket=bucket, prefix=prefix)

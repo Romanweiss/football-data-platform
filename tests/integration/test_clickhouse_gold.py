@@ -112,18 +112,20 @@ class LocalGoldTests(unittest.TestCase):
             silver_tests.LocalDatasetTests.insert(self, spec)
         return gold, silver
 
-    def test_model_queries_and_eight_smoke_queries(self):
+    def test_model_queries_and_smoke_queries(self):
         gold, silver = self.model_tables()
         with redirect_stdout(io.StringIO()):
             result = gold_model.validate_model_metrics(self.client, {name: "a" * 64 for name in gold},
                 {name: "a" * 64 for name in silver}, gold_specs=gold, silver_specs=silver)
         self.assertEqual(len(result), 12)
         sql = (ROOT / "scripts/clickhouse_gold_smoke_queries.sql").read_text()
-        for name, spec in {**gold, **silver}.items():
+        matches = silver_tests.LocalDatasetTests.table(self, silver_tests.SPECS["matches"])
+        silver_tests.LocalDatasetTests.insert(self, matches)
+        for name, spec in {**gold, **silver, "matches": matches}.items():
             sql = sql.replace("football." + name, spec.target)
         self.assertNotIn("football.", sql)
         queries = [q for q in sql.split(";") if q.strip()]
-        self.assertEqual(len(queries), 8)
+        self.assertEqual(len(queries), 9)
         for query in queries:
             self.client.query(query, parameters={"competition_id": 43, "season_id": 106})
 

@@ -118,13 +118,15 @@ class FindLatestIngestionObjectTests(unittest.TestCase):
 
     def test_latest_query_is_parameterized_and_returns_catalog_fields(self):
         seen_at = datetime(2026, 9, 22, tzinfo=timezone.utc)
-        self.cursor.fetchone.return_value = ("parent-bucket", "registered/key", "a" * 64, 123, seen_at)
+        self.cursor.fetchone.return_value = ("parent-bucket", "registered/key", "a" * 64, 123, seen_at,
+                                           "statsbomb", "world_cup_2022_matches", "source-url")
         result = find_latest_ingestion_object(
             self.connection, source="statsbomb", dataset="world_cup_2022_matches"
         )
         self.assertEqual(result, {
             "s3_bucket": "parent-bucket", "object_key": "registered/key",
             "sha256": "a" * 64, "size_bytes": 123, "first_seen_at": seen_at,
+            "source": "statsbomb", "dataset": "world_cup_2022_matches", "source_url": "source-url",
         })
         query, params = self.cursor.execute.call_args.args
         normalized = " ".join(query.split())

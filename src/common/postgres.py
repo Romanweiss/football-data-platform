@@ -85,7 +85,7 @@ def find_latest_ingestion_object(
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT s3_bucket, object_key, sha256, size_bytes, first_seen_at
+                SELECT s3_bucket, object_key, sha256, size_bytes, first_seen_at, source, dataset, source_url
                 FROM metadata.ingestion_objects
                 WHERE source = %s AND dataset = %s
                 ORDER BY first_seen_at DESC, id DESC
@@ -99,7 +99,7 @@ def find_latest_ingestion_object(
             f"No registered Bronze artifact for source={source}, dataset={dataset}. "
             "Ingest the parent dataset first."
         )
-    columns = ("s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at")
+    columns = ("s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at", "source", "dataset", "source_url")
     return dict(zip(columns, row, strict=True))
 
 

@@ -48,7 +48,7 @@ def current_builds(client, connection, *, competition_id=43, season_id=106, spec
         if distinct > 1:
             raise ClickHouseBuildConflictError("Model has multiple snapshots in one dataset/context.")
         if rows <= 0 or distinct != 1:
-            raise ClickHouseIntegrityError("All six datasets must be materialized before model validation.")
+            raise ClickHouseIntegrityError("All selected datasets must be materialized before model validation.")
         require_sha256(build_id)
         silver = find_silver_build(connection, dataset=dataset, competition_id=competition_id,
                                    season_id=season_id, build_id=build_id)

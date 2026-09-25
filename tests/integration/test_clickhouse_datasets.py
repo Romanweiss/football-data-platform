@@ -27,6 +27,7 @@ def source_sql(spec, overrides=None):
         "event_id": "concat('00000000-0000-0000-0000-00000000000', toString(number + 1))",
         "key_pass_id": "if(number = 0, CAST(NULL, 'Nullable(String)'), '00000000-0000-0000-0000-000000000001')",
         "statsbomb_xg": "toFloat64(0.1)",
+        "match_date": "toDate('2022-11-21')", "home_team_id": "toInt64(1)", "away_team_id": "toInt64(2)",
     }
     for name, kind in spec.columns:
         if name in values:
@@ -38,6 +39,8 @@ def source_sql(spec, overrides=None):
             expression = f"if(number = 0, CAST(NULL, 'Nullable({raw_kind})'), {expression})"
         values[name] = expression
     values.update(overrides or {})
+    if spec.dataset == "matches" and not (overrides or {}).get("match_id"):
+        values["match_id"] = "toInt64(7 + number)"
     return "(SELECT " + ", ".join(f"{values[name]} AS `{name}`" for name, _ in spec.columns) + " FROM numbers(4))"
 
 
@@ -58,6 +61,8 @@ class LocalDatasetTests(unittest.TestCase):
             ddl = (migrations / "001_create_event_core.sql").read_text()
             for column in ("location_x", "location_y", "duration"):
                 ddl = ddl.replace(f"{column} Nullable(Float32)", f"{column} Nullable(Float64)")
+        elif spec.dataset == "matches":
+            ddl = (migrations / "005_create_matches.sql").read_text()
         else:
             # Read the migration as a fixture; never execute it against football.
             statements = (migrations / "003_create_remaining_silver_tables.sql").read_text().split(";")
@@ -80,7 +85,7 @@ class LocalDatasetTests(unittest.TestCase):
                 local = self.table(spec)
                 validation.validate_table_schema(self.client, spec=local)
                 self.insert(local)
-                manifest = {"row_count": 4, "match_count": 2, "competition_id": 43, "season_id": 106}
+                manifest = {"row_count": 4, "match_count": 4 if spec.dataset == "matches" else 2, "competition_id": 43, "season_id": 106}
                 validation.validate_metrics(validation.target_metrics(self.client, "a" * 64, spec=local), manifest, spec=local)
                 validation.validate_extra(self.client, local.target, {}, spec=local)
                 for name, kind in local.columns:

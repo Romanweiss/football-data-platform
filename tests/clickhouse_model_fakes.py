@@ -12,6 +12,9 @@ from src.silver.manifest import inspect_silver_output, make_manifest
 
 def dataset_fixture(spec):
     inputs = [artifact(7), artifact(8)]
+    if spec.artifact_kind == "matches":
+        inputs = [{**artifact(7), "source": "statsbomb", "dataset": "world_cup_2022_matches",
+                   "source_url": "https://raw.githubusercontent.com/hudl/open-data/master/data/matches/43/106.json"}]
     if spec.artifact_kind == "lineups":
         for item in inputs:
             item["source_url"] = item["source_url"].replace("/events/", "/lineups/")
@@ -26,7 +29,7 @@ def dataset_fixture(spec):
     seed_output(s3, "test-bucket", prefix)
     files = inspect_silver_output(s3, bucket="test-bucket", prefix=prefix)
     manifest = make_manifest(specification, inputs,
-                             {"row_count": 6, "match_count" if spec.has_match_count else "input_match_count": 2}, files)
+                             {"row_count": 6, "match_count" if spec.has_match_count else "input_match_count": 6 if spec.dataset == "matches" else 2}, files)
     build = {**specification, "build_id": build_id, "s3_bucket": "test-bucket", "s3_prefix": prefix,
              "row_count": 6, "file_count": len(files)}
     seed_manifest(s3, build, manifest)

@@ -1,0 +1,19 @@
+[
+  {
+    "match_id": 7, "match_date": "2022-11-21", "kick_off": "13:00:00.000", "match_week": 1,
+    "competition": {"competition_id": 43, "competition_name": "Synthetic Cup"},
+    "season": {"season_id": 106}, "competition_stage": {"id": 10, "name": "Group Stage"},
+    "home_team": {"home_team_id": 10, "home_team_name": "Red FC"},
+    "away_team": {"away_team_id": 20, "away_team_name": "Blue FC"},
+    "home_score": 2, "away_score": 0,
+    "stadium": {"id": 100, "name": "Test Stadium"}, "referee": {"id": 200, "name": "Test Referee"}
+  },
+  {
+    "match_id": 8, "match_date": "2022-12-03", "kick_off": null, "match_week": null,
+    "competition": {"competition_id": 43}, "season": {"season_id": 106},
+    "competition_stage": {"id": 11, "name": "Round of 16"},
+    "home_team": {"home_team_id": 20, "home_team_name": "Blue FC"},
+    "away_team": {"away_team_id": 30, "away_team_name": "Green FC"},
+    "home_score": 1, "away_score": 3
+  }
+]

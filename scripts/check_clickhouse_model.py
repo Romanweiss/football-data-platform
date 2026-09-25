@@ -1,4 +1,4 @@
-"""Read-only Stage 3B reference checks for the current World Cup materializations."""
+"""Read-only Silver/Gold references including the Stage 3E match dimension."""
 
 import argparse
 import sys
@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.analytics.job import LoadDiagnostics
-from src.analytics.model import check_model
+from src.analytics.matches_model import check_model
 from src.common.clickhouse import create_clickhouse_client
 from src.common.postgres import create_postgres_connection
 

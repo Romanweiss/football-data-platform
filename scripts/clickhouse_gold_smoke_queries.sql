@@ -45,3 +45,13 @@ SELECT player_id, min(player_name) AS player_name, sum(under_pressure_events) AS
 FROM football.player_match_stats
 WHERE competition_id = {competition_id:UInt32} AND season_id = {season_id:UInt32}
 GROUP BY player_id ORDER BY under_pressure_events DESC, counterpress_events DESC, player_id LIMIT 20;
+
+-- Stage 3E, after check_clickhouse_model.py: human-readable match context.
+SELECT m.match_id, m.match_date, m.kick_off, m.competition_stage_name AS stage,
+       m.home_team_name AS home_team, m.away_team_name AS away_team,
+       m.home_score, m.away_score, t.team_name, t.pass_attempts, t.shot_count, t.shot_xg, t.shot_goals
+FROM football.team_match_stats AS t
+INNER JOIN football.matches AS m
+    ON t.competition_id = m.competition_id AND t.season_id = m.season_id AND t.match_id = m.match_id
+WHERE t.competition_id = {competition_id:UInt32} AND t.season_id = {season_id:UInt32}
+ORDER BY m.match_date, m.match_id, t.team_id;

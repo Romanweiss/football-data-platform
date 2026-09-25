@@ -11,7 +11,8 @@ from src.statsbomb.lineups import extract_match_id_from_lineups_url
 TRANSFORM_VERSION = "event_core_v1"
 LINEUP_DATASETS = ("teams", "players", "match_squads")
 DIMENSION_DATASETS = ("teams", "players")
-SILVER_DATASETS = ("event_core", "pass_events", "shot_events", *LINEUP_DATASETS)
+SILVER_DATASETS = ("event_core", "pass_events", "shot_events", *LINEUP_DATASETS, "matches")
+MATCH_INPUT_FIELDS = ("source", "dataset", "source_url", "s3_bucket", "object_key", "sha256")
 INPUT_FIELDS = ("match_id", "source_url", "s3_bucket", "object_key", "sha256")
 SPEC_FIELDS = (
     "source", "layer", "dataset", "competition_id", "season_id",
@@ -29,6 +30,16 @@ def require_sha256(value: str) -> None:
 
 
 def canonical_inputs(artifacts: list[dict], *, artifact_kind: str = "events") -> list[dict]:
+    if artifact_kind == "matches":
+        if len(artifacts) != 1:
+            raise ValueError("Matches requires one immutable Bronze parent.")
+        item = {name: artifacts[0][name] for name in MATCH_INPUT_FIELDS}
+        if (item["source"] != "statsbomb" or item["dataset"] != "world_cup_2022_matches"
+                or not re.fullmatch(r"https://raw\.githubusercontent\.com/(?:hudl|statsbomb)/open-data/master/data/matches/43/106\.json", item["source_url"])):
+            raise ValueError("Unexpected matches parent source/context.")
+        require_sha256(item["sha256"])
+        s3a_uri(item["s3_bucket"], item["object_key"])
+        return [item]
     extract_id = {"events": extract_match_id_from_events_url, "lineups": extract_match_id_from_lineups_url}[artifact_kind]
     inputs = [{name: artifact[name] for name in INPUT_FIELDS} for artifact in artifacts]
     seen = set()

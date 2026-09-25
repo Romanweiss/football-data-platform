@@ -54,7 +54,7 @@ class ModelTests(unittest.TestCase):
         find_silver.side_effect = lambda *a, **k: fixtures[k["dataset"]]
         find_load.side_effect = lambda *a, **k: load_record(fixtures[k["clickhouse_table"]], spec=SPECS[k["clickhouse_table"]])
         self.assertEqual(model.current_builds(client, None), {key: value["build_id"] for key, value in fixtures.items()})
-        self.assertEqual(schema.call_count, 6)
+        self.assertEqual(schema.call_count, len(SPECS))
         client.command.assert_not_called()
         for count, distinct, error in ((0, 0, ClickHouseIntegrityError), (6, 2, ClickHouseBuildConflictError)):
             client.query.side_effect = None

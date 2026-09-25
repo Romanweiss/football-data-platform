@@ -1886,6 +1886,170 @@ with closing(create_clickhouse_client()) as client:
 '@ | docker compose run --rm --no-deps -T football-python-tools python -
 ```
 
+## Stage 3E - Match dimension
+
+Silver `matches` (`matches_v1`) — source-aligned измерение матчей StatsBomb, одна строка
+на `match_id`. Дата, kickoff, стадия, участники, счёт, стадион и судья отделены от event
+facts: BI/API сможет показывать понятный матч вместо одного raw ID. Superset/API не добавлены.
+
+```text
+matches 1 → many event_core / pass_events / shot_events / match_squads
+matches 1 → 2 team_match_stats rows (именно home и away)
+matches 1 → many player_match_stats rows
+```
+
+### Источник, схема и DQ
+
+Parent разрешается через `metadata.ingestion_objects`: statsbomb/world_cup_2022_matches,
+latest по `first_seen_at DESC, id DESC`. Key и SHA не захардкожены. Existing Bronze reader
+проверяет metadata, SHA-256 скачанных bytes и размер. PostgreSQL helper теперь также
+возвращает source/dataset/source_url для lineage, прежние поля и selection semantics сохранены.
+
+Форма nested-полей сверена с [публичным StatsBomb matches source](https://raw.githubusercontent.com/statsbomb/open-data/master/data/matches/43/106.json).
+`competition.competition_id`, `season.season_id`, `home_team.home_team_id/home_team_name`,
+`away_team.away_team_id/away_team_name`, `competition_stage.id/name`, `stadium.id/name`,
+`referee.id/name` проецируются явно. Runtime читает только зарегистрированный immutable
+Bronze, а не новую версию GitHub. Synthetic fixture `tests/fixtures/statsbomb_matches.json`
+содержит два матча, три команды, разные даты/стадии и отсутствующие optional attributes.
+
+| Silver поле | Spark type | ClickHouse type |
+| --- | --- | --- |
+| competition_id, season_id | Long | UInt32 |
+| match_id | Long | UInt64 |
+| match_date | Date | Date |
+| kick_off | String, nullable | String |
+| match_week | Integer, nullable | Nullable(UInt16) |
+| competition_stage_id | Long | UInt16 |
+| competition_stage_name | String | LowCardinality(String) |
+| home_team_id, away_team_id | Long | UInt32 |
+| home_team_name, away_team_name | String | LowCardinality(String) |
+| home_score, away_score | Integer | UInt16 |
+| stadium_id, referee_id | Long, nullable | Nullable(UInt32) |
+| stadium_name, referee_name | String, nullable | Nullable(String) |
+
+Явные raw/output schemas находятся в `src/silver/statsbomb/matches.py`, без inferSchema.
+`kick_off` — строка исходного времени, timezone не назначается. Silver сохраняет NULL.
+На serving boundary NULL kickoff явно заменяется на `''`, поскольку запрошенный
+ClickHouse contract — non-null String; другие optional NULL остаются NULL.
+Дата преобразуется безопасно через проверку epoch days как UInt16: простой
+`accurateCast(Date32, Date)` может ограничивать значение диапазоном вместо ошибки.
+Для nullable integer fields ненулевые overflow также вызывают ошибку, не превращаются в NULL.
+
+Hard DQ: непустой output; unique/non-null match_id; required date/stage/team IDs/names/scores;
+правильный context; home != away; scores >= 0. Aggregate informational NULL counts печатаются
+для stadium/referee/kick_off/match_week. Никакого ожидания ровно 64 строк в коде.
+Team IDs остаются StatsBomb-native, без canonical platform IDs.
+
+Перед DQ разрешается один текущий registered Silver `teams` build: проверяются catalog,
+manifest/_SUCCESS/inventory, затем Spark читает exact Parquet parts и проверяет schema,
+row count, unique team IDs и context. Home/away references проверяются Spark `left_anti`
+joins по team ID в том же competition/season. На driver возвращаются только counts.
+Teams build — reference-validation prerequisite, не источник output attributes: его ID
+печатается в diagnostics, но не изменяет заданную Bronze-only identity `matches`.
+
+### Identity и публикация
+
+Fingerprint — SHA-256 canonical JSON с единственным Bronze input и полями:
+`source, dataset, source_url, s3_bucket, object_key, sha256`. Не включает timestamps,
+credentials или local paths. Проверяются source URL context 43/106 и SHA format.
+Build specification использует прежний Silver machinery:
+`layer=silver/source=statsbomb/dataset=matches/competition_id=43/season_id=106`,
+`transform_version=matches_v1`, input fingerprint и hash явной Spark schema.
+
+```text
+football/silver/statsbomb/matches/competition_id=43/season_id=106/build_id=<hash>/
+  part-*.snappy.parquet       (1 output partition, без partitionBy(match_id))
+  _SUCCESS
+  _manifest.json
+```
+
+Общий `publish_build` переиспользует errorifexists/Snappy writer, exact readback
+schema/counts, conditional manifest creation и `metadata.silver_builds` registration.
+У matches один input artifact содержит много матчей: manifest match_count == row_count,
+а не число input artifacts. Existing events/lineups manifest rules не меняются.
+Первый запуск — CREATED / REGISTERED, повтор — UNCHANGED / ALREADY_BUILT / ALREADY_REGISTERED.
+После metadata failure полный output не переписывается; partial/corrupt output hard-fails.
+Ни overwrite, ни DeleteObject, ни новая PostgreSQL migration не нужны.
+
+### ClickHouse serving и модель
+
+Новая migration `infrastructure/clickhouse/migrations/005_create_matches.sql` создаёт
+`football.matches`: plain MergeTree, partition `(competition_id, season_id)`, ORDER BY
+`(competition_id, season_id, match_date, match_id)`, `silver_build_id FixedString(64)` и
+`loaded_at DateTime64(3, 'UTC') DEFAULT now64(3)`. Старые миграции не меняются.
+
+Существующий `load_clickhouse_silver.py --dataset matches` использует новый DatasetSpec,
+но прежний loader/state machine, named collection, explicit projection, source/target DQ,
+dedup token и `metadata.clickhouse_loads`. One-build-per-context policy и recovery прежние:
+полный тот же build не INSERT-ится снова; partial или другой build не очищается/не заменяется.
+Check-only читает real S3 через ClickHouse, но не INSERT-ит и не регистрирует load.
+
+`check_clickhouse_model.py` теперь требует семь Silver и обе Gold serving tables.
+Прежние hard/informational checks сохранены; добавлены 11 hard aggregate SQL checks:
+match references от event_core/pass_events/shot_events/match_squads/обоих Gold datasets,
+home/away references к teams, Gold team pairs против home/away в обе стороны и ровно
+две уникальные team rows на матч. Каждая сторона ограничена context и фактически
+загруженным build ID. Проверка повторно читает serving snapshot; запускать без active writers.
+`check_clickhouse_gold_model.py` по-прежнему проверяет Gold metric/lineage consistency.
+
+Девятый запрос в `scripts/clickhouse_gold_smoke_queries.sql` соединяет team_match_stats
+с matches: дата, kickoff, stage, home/away, score, team metrics. Это обычный read-only join,
+не materialized view и не денормализация Gold. Старые восемь запросов сохранены.
+
+### Проверки и ручной запуск Stage 3E
+
+Разрешённые offline/local checks:
+
+```powershell
+docker compose config -q
+docker compose run --rm --no-deps football-python-tools python -X pycache_prefix=/tmp/football-pycache -m compileall -q src scripts tests
+docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" tests/spark/test_matches.py
+docker compose run --rm --no-deps football-python-tools python tests/integration/test_clickhouse_matches.py
+git diff --check
+```
+
+Также выполняются прежние пять Spark и три ClickHouse synthetic suites. Local ClickHouse
+tests используют только session TEMPORARY tables, без persistent migrations и real S3.
+
+Следующие команды выполняются **вручную**, не Codex. Уже должен существовать registered
+Silver teams build. Сначала read/transform/DQ check-only, затем publish и повтор:
+
+```powershell
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_matches.py --check-only
+if ($LASTEXITCODE -ne 0) { throw 'Matches check-only failed' }
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_matches.py
+if ($LASTEXITCODE -ne 0) { throw 'Matches publish failed' }
+docker compose run --rm --no-deps football-spark spark-submit --master "local[2]" scripts/publish_silver_matches.py
+if ($LASTEXITCODE -ne 0) { throw 'Matches repeat failed' }
+```
+
+Между повторами не изменять Bronze parent. `--limit` не поддерживается. Check-only
+печатает DQ/counts/fingerprints/build ID, ничего не публикует и не регистрирует.
+Затем применить только новую ClickHouse migration и проверить загрузку:
+
+```powershell
+@'
+exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < /migrations/005_create_matches.sql
+'@ | docker compose exec -T football-clickhouse sh
+if ($LASTEXITCODE -ne 0) { throw 'Matches migration failed' }
+
+$matchesBuild = Read-Host 'Build ID printed by matches publish'
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_silver.py --dataset matches --build-id $matchesBuild --check-only
+if ($LASTEXITCODE -ne 0) { throw 'Matches load check failed' }
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_silver.py --dataset matches --build-id $matchesBuild
+if ($LASTEXITCODE -ne 0) { throw 'Matches load failed' }
+docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_silver.py --dataset matches --build-id $matchesBuild
+if ($LASTEXITCODE -ne 0) { throw 'Matches load repeat failed' }
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py
+if ($LASTEXITCODE -ne 0) { throw 'Cross-model check failed' }
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py
+```
+
+Для smoke SQL используйте PowerShell/Python-команду из Stage 3D: она теперь выполнит
+девять запросов, включая join с matches. После INSERT timeout дождаться завершения
+серверного запроса, затем повторить тот же build. Automatic cleanup нет.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

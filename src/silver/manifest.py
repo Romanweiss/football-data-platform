@@ -57,12 +57,14 @@ def inspect_silver_output(client, *, bucket: str, prefix: str) -> list[dict] | N
 
 def make_manifest(specification: dict, inputs: list[dict], counts: dict, files: list[dict]) -> dict:
     """Whitelist fields; exclude timestamps, credentials and ambient environment."""
-    artifact_kind = "lineups" if specification["dataset"] in LINEUP_DATASETS else "events"
+    is_matches = specification["dataset"] == "matches"
+    artifact_kind = "matches" if is_matches else "lineups" if specification["dataset"] in LINEUP_DATASETS else "events"
     is_dimension = specification["dataset"] in DIMENSION_DATASETS
     if specification["input_fingerprint"] != input_fingerprint(inputs, artifact_kind=artifact_kind):
         raise SilverIntegrityError("Manifest inputs do not match the build specification fingerprint.")
     match_count = counts.get("input_match_count") if is_dimension else counts.get("match_count")
-    if counts["row_count"] <= 0 or match_count != len(inputs) or not files:
+    expected_matches = counts["row_count"] if is_matches else len(inputs)
+    if counts["row_count"] <= 0 or match_count != expected_matches or not files:
         raise SilverIntegrityError("Manifest requires nonempty, fully validated output.")
     inventory = [
         {name: item[name] for name in ("object_key", "size_bytes", "etag")}

@@ -21,7 +21,7 @@ from scripts import load_clickhouse_silver as cli
 
 class DatasetSpecsTests(unittest.TestCase):
     def test_known_immutable_specs_and_cli(self):
-        self.assertEqual(tuple(CLI_DATASETS), ("event-core", "passes", "shots", "teams", "players", "match-squads"))
+        self.assertEqual(tuple(CLI_DATASETS), ("event-core", "passes", "shots", "teams", "players", "match-squads", "matches"))
         for spec in SPECS.values():
             with self.subTest(dataset=spec.dataset):
                 self.assertEqual(spec.clickhouse_table, spec.dataset)
@@ -58,7 +58,7 @@ class DatasetSpecsTests(unittest.TestCase):
         ddl = path.read_text()
         statements = [s.strip() for s in ddl.split(";") if s.strip()]
         self.assertEqual(len(statements), 5)
-        for spec, statement in zip(list(SPECS.values())[1:], statements, strict=True):
+        for spec, statement in zip(list(SPECS.values())[1:6], statements, strict=True):
             self.assertTrue(statement.startswith(f"CREATE TABLE IF NOT EXISTS {spec.target}\n("))
             body = statement.split("\n(", 1)[1].split("\n)\nENGINE", 1)[0]
             actual = tuple(tuple(line.strip().rstrip(",").split(" ", 1)) for line in body.splitlines() if line.strip())

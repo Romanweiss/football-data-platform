@@ -1,6 +1,6 @@
 """Small immutable Silver -> ClickHouse contracts. No Spark or service IO."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 
@@ -116,8 +116,32 @@ MATCH_SQUADS = _spec("match_squads", (
     artifact_kind="lineups", required_columns=("match_id", "team_id", "player_id", "team_name", "player_name"),
     two_teams_per_match=True)
 
-SPECS = MappingProxyType({spec.dataset: spec for spec in (EVENT_CORE, PASSES, SHOTS, TEAMS, PLAYERS, MATCH_SQUADS)})
+MATCHES = _spec("matches", (
+    *CONTEXT_COLUMNS, ("match_id", "UInt64"), ("match_date", "Date"), ("kick_off", "String"),
+    ("match_week", "Nullable(UInt16)"), ("competition_stage_id", "UInt16"), ("competition_stage_name", "LowCardinality(String)"),
+    ("home_team_id", "UInt32"), ("home_team_name", "LowCardinality(String)"),
+    ("away_team_id", "UInt32"), ("away_team_name", "LowCardinality(String)"),
+    ("home_score", "UInt16"), ("away_score", "UInt16"), ("stadium_id", "Nullable(UInt32)"), ("stadium_name", "Nullable(String)"),
+    ("referee_id", "Nullable(UInt32)"), ("referee_name", "Nullable(String)"),
+), ("match_id",), ("competition_id", "season_id", "match_date", "match_id"), artifact_kind="matches",
+    required_columns=("competition_id", "season_id", "match_id", "match_date", "competition_stage_id", "competition_stage_name",
+                      "home_team_id", "home_team_name", "away_team_id", "away_team_name", "home_score", "away_score"),
+    invalid_predicates=("home_team_id = away_team_id", "home_score < 0", "away_score < 0"))
+# Silver preserves unknown kickoff as NULL. The specified serving String uses an
+# explicit empty-string sentinel, not implicit input_format_null_as_default.
+# Date32 -> Date can clamp even under accurateCast. Check epoch days as UInt16
+# first. Nullable integer targets similarly must reject non-null overflow rather
+# than turning it into NULL; genuine source NULLs remain NULL.
+MATCHES = replace(MATCHES, select_expressions=tuple(
+    ("accurateCast(ifNull(`kick_off`, ''), 'String') AS `kick_off`" if name == "kick_off" else
+     "accurateCast(accurateCast(toInt64(`match_date`), 'UInt16'), 'Date') AS `match_date`" if name == "match_date" else
+     f"if(isNull(`{name}`), NULL, accurateCast(assumeNotNull(`{name}`), '{kind[9:-1]}')) AS `{name}`"
+     if kind.startswith("Nullable(UInt") else expression)
+    for (name, kind), expression in zip(MATCHES.columns, MATCHES.select_expressions, strict=True)
+))
+
+SPECS = MappingProxyType({spec.dataset: spec for spec in (EVENT_CORE, PASSES, SHOTS, TEAMS, PLAYERS, MATCH_SQUADS, MATCHES)})
 CLI_DATASETS = MappingProxyType({
     "event-core": "event_core", "passes": "pass_events", "shots": "shot_events",
-    "teams": "teams", "players": "players", "match-squads": "match_squads",
+    "teams": "teams", "players": "players", "match-squads": "match_squads", "matches": "matches",
 })
