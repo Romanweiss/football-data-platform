@@ -264,7 +264,7 @@ class GoldCliTests(unittest.TestCase):
         self.publish = self.enterContext(patch.object(job, "publish_build", return_value=dict(output_status="CREATED", catalog="REGISTERED", output_uri="s3a://test/output", file_count=1)))
 
     def test_check_only_both_datasets_never_publishes(self):
-        for dataset in identity.DATASETS:
+        for dataset in ("team-match-stats", "player-match-stats"):
             self.assertEqual(job.main(["--dataset", dataset, "--check-only"]), 0)
         self.publish.assert_not_called()
         self.assertNotIn("put", [call[0] for call in self.client.calls])

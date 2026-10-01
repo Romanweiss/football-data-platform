@@ -5,18 +5,19 @@ from types import SimpleNamespace
 from gold_fakes import seed_output, silver_inputs, specification
 from test_clickhouse_silver_input import seed_manifest
 from src.analytics.validation import expected_metrics
-from src.gold.build_identity import OUTPUT_PARTITIONS, calculate_build_id, gold_prefix
+from src.gold.build_identity import OUTPUT_PARTITIONS, calculate_build_id, gold_prefix, required_inputs
 from src.gold.manifest import inspect_output, make_manifest
 
 
 def fixture(spec):
-    client, builds, _ = silver_inputs()
+    client, builds, _ = silver_inputs(required_inputs(spec.dataset))
     specification_ = specification(builds, dataset=spec.dataset)
     build_id = calculate_build_id(specification_)
     prefix = gold_prefix(specification_, build_id)
     seed_output(client, "test-bucket", prefix, OUTPUT_PARTITIONS[spec.dataset])
     files = inspect_output(client, bucket="test-bucket", prefix=prefix)
-    manifest = make_manifest(specification_, builds, {"row_count": 4, "match_count": 2}, files)
+    match_count = 4 if spec.dataset == "match_results" else 2
+    manifest = make_manifest(specification_, builds, {"row_count": 4, "match_count": match_count}, files)
     build = {**specification_, "build_id": build_id, "s3_bucket": "test-bucket", "s3_prefix": prefix,
              "row_count": 4, "file_count": len(files)}
     seed_manifest(client, build, manifest)

@@ -36,6 +36,7 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_REGION: ${S3_REGION}
+      SUPERSET_CLICKHOUSE_PASSWORD: ${SUPERSET_CLICKHOUSE_PASSWORD:?Set a separate SUPERSET_CLICKHOUSE_PASSWORD in .env}
     ports:
       - "${CLICKHOUSE_HTTP_HOST_PORT}:8123"
       - "${CLICKHOUSE_NATIVE_HOST_PORT}:9000"
@@ -45,6 +46,7 @@ services:
       - ./infrastructure/clickhouse/config.d:/etc/clickhouse-server/config.d:ro
       - ./infrastructure/clickhouse/migrations:/migrations:ro
       - ./infrastructure/clickhouse/users.d/10_named_collection_access.xml:/etc/clickhouse-server/users.d/10_named_collection_access.xml:ro
+      - ./infrastructure/clickhouse/users.d/20_superset_reader.xml:/etc/clickhouse-server/users.d/20_superset_reader.xml:ro
     networks:
       - football-network
     healthcheck:
@@ -53,6 +55,82 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  football-superset-db:
+    image: postgres:17.6-alpine3.22
+    container_name: football-superset-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SUPERSET_DB_NAME:-superset}
+      POSTGRES_USER: ${SUPERSET_DB_USER:-superset_user}
+      POSTGRES_PASSWORD: ${SUPERSET_DB_PASSWORD:-}
+    volumes:
+      - football_superset_db_data:/var/lib/postgresql/data
+    networks:
+      - football-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  football-superset-init:
+    image: football-superset:6.0.0
+    build:
+      context: .
+      dockerfile: docker/superset/Dockerfile
+    restart: "no"
+    command: ["python", "/app/pythonpath/init_superset.py"]
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-}
+      SUPERSET_DB_HOST: football-superset-db
+      SUPERSET_DB_NAME: ${SUPERSET_DB_NAME:-superset}
+      SUPERSET_DB_USER: ${SUPERSET_DB_USER:-superset_user}
+      SUPERSET_DB_PASSWORD: ${SUPERSET_DB_PASSWORD:-}
+      SUPERSET_ADMIN_USERNAME: ${SUPERSET_ADMIN_USERNAME:-}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-}
+      SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL:-}
+      SUPERSET_CLICKHOUSE_USER: ${SUPERSET_CLICKHOUSE_USER}
+      SUPERSET_CLICKHOUSE_PASSWORD: ${SUPERSET_CLICKHOUSE_PASSWORD}
+    depends_on:
+      football-superset-db:
+        condition: service_healthy
+    networks:
+      - football-network
+    healthcheck:
+      disable: true
+
+  football-superset:
+    image: football-superset:6.0.0
+    build:
+      context: .
+      dockerfile: docker/superset/Dockerfile
+    container_name: football-superset
+    restart: unless-stopped
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-}
+      SUPERSET_DB_HOST: football-superset-db
+      SUPERSET_DB_NAME: ${SUPERSET_DB_NAME:-superset}
+      SUPERSET_DB_USER: ${SUPERSET_DB_USER:-superset_user}
+      SUPERSET_DB_PASSWORD: ${SUPERSET_DB_PASSWORD:-}
+      SUPERSET_CLICKHOUSE_USER: ${SUPERSET_CLICKHOUSE_USER}
+      SUPERSET_CLICKHOUSE_PASSWORD: ${SUPERSET_CLICKHOUSE_PASSWORD}
+    ports:
+      - "127.0.0.1:${SUPERSET_HOST_PORT:-18088}:8088"
+    depends_on:
+      football-superset-db:
+        condition: service_healthy
+      football-superset-init:
+        condition: service_completed_successfully
+    networks:
+      - football-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; r = urllib.request.urlopen('http://localhost:8088/health', timeout=4); assert r.status == 200"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   football-python-tools:
     image: football-python-tools:3.12
@@ -114,6 +192,8 @@ networks:
     driver: bridge
 
 volumes:
+  football_superset_db_data:
+    name: football_superset_db_data
   football_postgres_data:
     name: football_postgres_data
   football_clickhouse_data:

@@ -36,9 +36,15 @@ def validate_output(frame, *, dataset, competition_id, season_id):
     return counts
 
 
-def build_match_stats(frames, *, dataset, competition_id, season_id):
+def build_match_stats(frames, *, dataset, competition_id, season_id, transform_version=None):
     if dataset not in ("team_match_stats", "player_match_stats"):
         raise ValueError("Unsupported Gold dataset.")
+    version = transform_version or dataset + "_v1"
+    if version == dataset + "_v2":
+        from src.gold.statsbomb.periods import performance_frames
+        frames = performance_frames(frames)
+    elif version != dataset + "_v1":
+        raise ValueError("Unsupported Gold transform version.")
     player = dataset == "player_match_stats"
     keys = ["match_id", "team_id", *(["player_id"] if player else [])]
     base_columns = ["competition_id", "season_id", "match_id", "team_id", "team_name",

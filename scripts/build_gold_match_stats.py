@@ -1,4 +1,4 @@
-"""Stage 3C Gold build/check-only CLI; no ClickHouse dependencies."""
+"""Immutable Gold stats/results build/check-only CLI; no ClickHouse dependencies."""
 
 import sys
 from pathlib import Path

@@ -1,0 +1,20 @@
+<clickhouse>
+    <profiles>
+        <superset_readonly>
+            <readonly>1</readonly>
+        </superset_readonly>
+    </profiles>
+    <users>
+        <superset_reader>
+            <password from_env="SUPERSET_CLICKHOUSE_PASSWORD"/>
+            <networks><ip>::/0</ip></networks>
+            <profile>superset_readonly</profile>
+            <default_database>football</default_database>
+            <!-- In 25.8 SELECT implies scoped SHOW COLUMNS/TABLES/DATABASES.
+                 grants is an explicit allowlist, not the legacy all-access default. -->
+            <grants>
+                <query>GRANT SELECT ON football.*</query>
+            </grants>
+        </superset_reader>
+    </users>
+</clickhouse>

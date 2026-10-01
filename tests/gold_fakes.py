@@ -6,9 +6,9 @@ from src.analytics.specs import SPECS
 from src.gold.build_identity import REQUIRED_INPUTS, build_specification, input_fingerprint
 
 
-def silver_inputs():
+def silver_inputs(required=REQUIRED_INPUTS):
     client, builds, manifests = FakeS3(), [], {}
-    for name in REQUIRED_INPUTS:
+    for name in required:
         s3, build, manifest = dataset_fixture(SPECS[name])
         client.objects.update(s3.objects)
         builds.append(build)

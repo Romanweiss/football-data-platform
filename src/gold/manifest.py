@@ -2,7 +2,7 @@
 
 from src.silver import manifest as storage
 from src.gold.build_identity import (
-    REQUIRED_INPUTS, SPEC_FIELDS, calculate_build_id, canonical_inputs, canonical_json, gold_prefix, input_fingerprint,
+    required_inputs, SPEC_FIELDS, calculate_build_id, canonical_inputs, canonical_json, gold_prefix, input_fingerprint,
 )
 
 
@@ -31,8 +31,8 @@ def ensure_manifest(client, *, bucket, prefix, manifest):
 
 def make_manifest(specification, inputs, counts, files):
     canonical = canonical_inputs(inputs)
-    if tuple(item["dataset"] for item in canonical) != REQUIRED_INPUTS:
-        raise GoldIntegrityError("Gold input dataset set differs from the v1 contract.")
+    if tuple(item["dataset"] for item in canonical) != required_inputs(specification["dataset"]):
+        raise GoldIntegrityError("Gold input dataset set differs from its contract.")
     if input_fingerprint(inputs) != specification["input_fingerprint"]:
         raise GoldIntegrityError("Gold input fingerprint differs from selected Silver builds.")
     if any(type(counts.get(name)) is not int or counts[name] <= 0 for name in ("row_count", "match_count")) or not files:

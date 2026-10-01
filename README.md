@@ -2050,6 +2050,322 @@ docker compose run --rm --no-deps football-python-tools python scripts/check_cli
 девять запросов, включая join с matches. После INSERT timeout дождаться завершения
 серверного запроса, затем повторить тот же build. Automatic cleanup нет.
 
+## Stage 4A - Superset BI foundation
+
+Это **local/dev Docker Compose deployment, не production deployment**. Приложение
+доступно только на loopback `http://localhost:${SUPERSET_HOST_PORT}`, по примеру
+`http://localhost:18088`. Для production нужны отдельный security review, TLS/reverse
+proxy, secret management, backups и эксплуатационные ограничения. Не открывайте
+существующие ClickHouse host ports в Интернет.
+
+```text
+Gold/Silver ClickHouse tables → ordinary BI views → superset_reader (read-only)
+    → Superset → World Cup 2022 Overview (создаётся вручную в UI)
+
+Superset → football-superset-db → football_superset_db_data
+           только users/charts/dashboards/datasource definitions
+```
+
+`football_metadata` остаётся platform catalog. Superset получает собственный PostgreSQL
+service/database/volume: внутренние миграции BI-инструмента не смешиваются с нашей
+ingestion/build metadata. Аналитические данные остаются в ClickHouse; воспроизводимые
+Gold artifacts остаются в S3. BI views лишь присоединяют match metadata, не переписывая
+Gold, не создавая новые S3 artifacts или materialized views.
+
+### Образ, конфигурация и init
+
+`docker/superset/Dockerfile` основан на official `apache/superset:6.0.0`, дополнительно
+закреплённом digest. Полный source repository не клонируется. Python packages ставятся
+в `/app/.venv` с constraints из release image и `uv pip check`:
+
+- `clickhouse-connect==0.15.0` — тот же pin, что в `requirements/tools.txt`;
+- `psycopg2-binary==2.9.6` — точный PostgreSQL extra Superset 6.0.0;
+- `lz4==4.4.5`, `zstandard==0.23.0` — compression dependencies (zstandard согласован с base constraints).
+
+Совместимость сверена с [Superset 6.0.0 dependency contract](https://github.com/apache/superset/blob/6.0.0/pyproject.toml)
+и [clickhouse-connect 0.15.0](https://github.com/ClickHouse/clickhouse-connect/blob/v0.15.0/setup.py).
+Legacy clickhouse-sqlalchemy не устанавливается. Runtime работает как non-root `superset`.
+
+`infrastructure/superset/superset_config.py` требует непустые env values. SECRET_KEY
+не имеет default и должен быть случайным, длиной минимум 32 символа. Metadata URI
+строится с URL-encoding username/password; database name — простой PostgreSQL identifier.
+Запрещены SQLite и `football_metadata`. Host задаётся Compose как `football-superset-db`.
+Talisman HTTPS enforcement выключен только для local loopback HTTP, CSRF сохранён.
+Нет Redis/Celery workers, alerts/reports, global async queries или загрузки examples.
+
+`football-superset-init` использует тот же образ и последовательно выполняет:
+`superset db upgrade` → проверку/создание admin через security manager → `superset init`.
+Повторный запуск не меняет пароль существующего active Admin. Если username принадлежит
+не-Admin/inactive user или создание не удалось, init завершается с ошибкой, а не `|| true`.
+Admin credentials не передаются в CLI arguments. Framework output перехватывается:
+в init logs попадают только stage/status/exception class, не raw exceptions/passwords.
+Не запускайте одновременно несколько init. Смена env password не сбрасывает пароль
+существующего admin или уже инициализированного PostgreSQL — это отдельная ручная операция.
+
+App ждёт healthy metadata DB и successful one-shot init. Healthcheck использует Python
+urllib и `http://localhost:8088/health`, без предположений о curl/wget.
+Metadata PostgreSQL не публикует host port. App не получает S3 credentials, platform
+PostgreSQL password, ClickHouse admin password или Superset admin password.
+
+### Секреты и ClickHouse reader
+
+Добавьте новые переменные из `.env.example` в свой gitignored `.env` **вручную**.
+SECRET_KEY, metadata DB password, admin password и reader password должны быть отдельными
+секретами, не значением `football_user` и не `admin/admin`. Сгенерируйте их в password
+manager; не сохраняйте в README/SQL/exports/скриншотах. Не заменяйте `.env` целиком.
+Не меняйте SECRET_KEY после создания datasources без процедуры Superset key rotation:
+он используется в том числе для шифрования сохранённых datasource credentials.
+
+`SUPERSET_CLICKHOUSE_USER=superset_reader` — фиксированное имя XML-пользователя, не
+переименование через Compose. Пароль берётся из `SUPERSET_CLICKHOUSE_PASSWORD` через
+ClickHouse `from_env`. Compose требует непустое значение **до запуска любого сервиса**,
+чтобы пустой placeholder не создавал reader без пароля. Поэтому до добавления новой
+переменной старые Compose-команды тоже будут fail-fast. `.env.example` содержит только
+пустые secret placeholders, а не работоспособные default credentials.
+
+`20_superset_reader.xml` монтируется отдельным файлом users.d. Существующий
+`10_named_collection_access.xml`, entrypoint-managed files и platform user не заменяются.
+Для reader задан профиль `readonly=1` и ровно один явный grant:
+
+```sql
+GRANT SELECT ON football.*
+```
+
+В ClickHouse 25.8 SELECT включает scoped SHOW COLUMNS → SHOW TABLES → SHOW DATABASES;
+дополнительный глобальный SHOW или SELECT ON *.* не нужен. Драйвер использует SHOW
+DATABASES/TABLES, DESCRIBE и metadata tables. Доступ к необходимым system metadata
+предусмотрен сервером; tables/columns/databases фильтруются по правам пользователя.
+Основание: [ClickHouse 25.8 ContextAccess](https://github.com/ClickHouse/ClickHouse/blob/v25.8.23.13-lts/src/Access/ContextAccess.cpp)
+и [driver introspection](https://github.com/ClickHouse/clickhouse-connect/blob/v0.15.0/clickhouse_connect/cc_sqlalchemy/inspector.py).
+XML `grants` — явный allowlist. Нет INSERT/ALTER/CREATE/DROP/TRUNCATE/SYSTEM/S3,
+NAMED COLLECTION, access management, grant/admin options. Views используют
+`SQL SECURITY INVOKER`, не права создавшего их администратора. Reader может SELECT
+любые football objects по заданному ТЗ, но обычные dashboard charts используют только
+три рекомендованных datasets ниже.
+
+### BI views и проверки
+
+Migration `006_create_bi_views.sql` добавляет две ordinary VIEW через IF NOT EXISTS:
+
+- `bi_team_match_stats`: Gold team grain + дата/kickoff/week/stage/home/away/score,
+  is_home/opponent, goals_for/goals_against, signed goal_difference и match_result W/D/L;
+- `bi_player_match_stats`: Gold player grain + match metadata/is_home/opponent.
+
+Join в обоих случаях по competition_id, season_id, match_id. Goals/result выводятся из
+официального match score, не shot_goals и не xG. Match result не означает tournament
+advancement; penalty shoot-out/правила турнира отдельно не моделируются. Per90 нет.
+Views не выбирают второй snapshot: прежняя one-build-per-context policy и успешные
+Stage 3D/3E model checks — prerequisite. IF NOT EXISTS не обновляет ранее созданную
+view при изменении её определения: дальнейшие изменения требуют новой migration.
+
+`scripts/check_clickhouse_bi_views.sql` содержит семь read-only checks с `throwIf`:
+непустые и равные source/view counts, unique team/player grain, opponent validity,
+signed difference/result, сверка goals/opponent/result с matches. Context задаётся
+query parameters. Любое нарушение завершает проверку с ошибкой.
+
+### Ручной запуск Stage 4A (PowerShell)
+
+Codex не выполняет эти команды с настоящими секретами. Сначала заполните `.env`,
+остановите запуск publishers/loaders на время пересоздания ClickHouse, затем:
+
+```powershell
+git check-ignore .env
+docker compose config -q
+if ($LASTEXITCODE -ne 0) { throw 'Compose config failed' }
+docker compose build football-superset
+if ($LASTEXITCODE -ne 0) { throw 'Superset build failed' }
+
+# Только этот ClickHouse service: подключить новый env и отдельный users.d mount.
+# Existing named volumes сохраняются, будет краткий перерыв доступности ClickHouse.
+docker compose up -d --no-deps --force-recreate --wait football-clickhouse
+if ($LASTEXITCODE -ne 0) { throw 'ClickHouse health failed' }
+
+@'
+exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < /migrations/006_create_bi_views.sql
+'@ | docker compose exec -T football-clickhouse sh
+if ($LASTEXITCODE -ne 0) { throw 'BI migration failed' }
+
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py
+if ($LASTEXITCODE -ne 0) { throw 'Cross-model check failed' }
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py
+if ($LASTEXITCODE -ne 0) { throw 'Gold model check failed' }
+```
+
+Выполнить семь BI assertions (read-only, без S3):
+
+```powershell
+@'
+from pathlib import Path
+from contextlib import closing
+from src.common.clickhouse import create_clickhouse_client
+with closing(create_clickhouse_client()) as client:
+    for sql in Path('scripts/check_clickhouse_bi_views.sql').read_text().split(';'):
+        if sql.strip():
+            print(client.query(sql, parameters={'competition_id': 43, 'season_id': 106}).result_rows)
+'@ | docker compose run --rm --no-deps -T football-python-tools python -
+if ($LASTEXITCODE -ne 0) { throw 'BI view validation failed' }
+```
+
+Проверить reader **до подключения Superset**, без пробных write-команд:
+
+```powershell
+@'
+exec clickhouse-client --user superset_reader --password "$SUPERSET_CLICKHOUSE_PASSWORD" --multiquery <<'SQL'
+SELECT currentUser(), getSetting('readonly');
+SHOW DATABASES;
+SHOW TABLES FROM football;
+DESCRIBE TABLE football.bi_team_match_stats;
+SELECT count() FROM football.bi_team_match_stats;
+CHECK GRANT SELECT ON football.*;
+CHECK GRANT INSERT ON football.*;
+CHECK GRANT ALTER ON football.*;
+CHECK GRANT CREATE TABLE ON football.*;
+CHECK GRANT DROP TABLE ON football.*;
+CHECK GRANT TRUNCATE ON football.*;
+CHECK GRANT SYSTEM ON *.*;
+CHECK GRANT S3 ON *.*;
+CHECK GRANT NAMED COLLECTION ON selectel_s3;
+CHECK GRANT ACCESS MANAGEMENT ON *.*;
+SQL
+'@ | docker compose exec -T football-clickhouse sh
+```
+
+Ожидания: user=superset_reader, readonly=1, metadata/SELECT успешны; CHECK GRANT SELECT
+возвращает 1, все остальные перечисленные CHECK GRANT — 0. Если не так, не подключайте BI.
+Затем metadata DB, one-shot init и app:
+
+```powershell
+docker compose up -d --wait football-superset-db
+if ($LASTEXITCODE -ne 0) { throw 'Superset DB health failed' }
+docker compose up --no-deps --abort-on-container-exit --exit-code-from football-superset-init football-superset-init
+if ($LASTEXITCODE -ne 0) { throw 'Superset initialization failed' }
+docker compose up -d --wait football-superset
+if ($LASTEXITCODE -ne 0) { throw 'Superset app health failed' }
+docker compose ps football-superset football-superset-db football-superset-init
+```
+
+Повторный init допустим: admin EXISTS, пароль не переписывается. App dependency может
+снова запустить init при Compose up; он идемпотентен. Не использовать down -v/prune.
+Откройте `http://localhost:18088` (или свой SUPERSET_HOST_PORT), войдите созданным admin.
+
+### Ручное подключение ClickHouse и datasets
+
+В Settings → Database Connections → + Database выберите **ClickHouse Connect (Superset)**.
+Используйте host `football-clickhouse`, port `8123`, database `football`, user
+`superset_reader`, отдельный reader password. Для текущего Docker HTTP выключите
+Encryption; `localhost:18124` внутри Superset — неверный адрес.
+Если выбран режим SQLAlchemy URI, формат:
+
+```text
+clickhousedb://superset_reader:<URL-encoded-reader-password>@football-clickhouse:8123/football
+```
+
+Предпочтительнее отдельное password field в connection form, чтобы не ошибиться с URL
+encoding специальных символов. Test Connection → Connect. Не включайте DML, CTAS/CVAS,
+file uploads или asynchronous execution. Настоящая защита — ClickHouse grants, а не UI.
+Не используйте football_user. Сохранённые datasource credentials зашифрованы SECRET_KEY
+в отдельной metadata DB; ни URI, ни export с секретами не коммитить.
+
+Datasets → + Dataset: выбрать connection, schema `football`, добавить:
+
+1. `matches`;
+2. `bi_team_match_stats`;
+3. `bi_player_match_stats`.
+
+В каждом dataset отметить `match_date` temporal и выбрать его default time column.
+Views могут показываться в общем списке tables драйвера, это нормально. Raw Silver
+event tables для обычных charts пока не добавлять. Если datasource содержит и другие
+contexts, установить на charts фильтры competition_id=43 и season_id=106.
+
+### Dashboard: World Cup 2022 Overview
+
+Создавайте каждый chart через Charts → + Chart, сохраняйте и добавляйте в новый dashboard
+**World Cup 2022 Overview**. Initial time range — No filter либо полный диапазон турнира.
+
+| Chart | Dataset | Настройка |
+| --- | --- | --- |
+| Matches, Big Number | matches | COUNT(DISTINCT match_id) |
+| Team total xG, Bar | bi_team_match_stats | team_name; SUM(shot_xg); descending |
+| Team shots, Bar | bi_team_match_stats | team_name; SUM(shot_count); descending |
+| Team passing volume, Bar | bi_team_match_stats | team_name; SUM(pass_attempts); descending |
+| Shots vs xG by team, Scatter | bi_team_match_stats | entity team_name; X SUM(shot_count); Y SUM(shot_xg) |
+| Top players by xG, Bar | bi_player_match_stats | player_name; SUM(shot_xg); descending; top 20 |
+| Top players by shots, Bar | bi_player_match_stats | player_name; SUM(shot_count); descending; top 20 |
+| Matches, Table (raw records) | matches | match_date, competition_stage_name, home_team_name, away_team_name, home_score, away_score; date ascending |
+
+В Superset 6.0.0 scatter-визуализация доступна как **Bubble Chart**: для обычного
+Shots vs xG scatter задайте Size metric `MAX(1)` (одинаковые точки), Entity `team_name`,
+X/Y как в таблице; Series при необходимости также `team_name`.
+
+Для каждого chart выберите `match_date` как time column. Не используйте COUNT(*) для
+числа матчей в team/player views: их grain шире. При совпадениях/вариациях player_name
+можно дополнительно группировать по player_id, не придумывая canonical identity.
+Per90/minutes и advanced dashboards в Stage 4A не входят.
+
+В dashboard Edit → native filters добавьте:
+
+- `competition_stage_name`: Select filter; источник bi_team_match_stats, scope явно
+  включает все подходящие team/player/matches charts с одноимённой колонкой;
+- `match_date`: Time range filter; scope всех charts, у каждого temporal column match_date;
+- `team_name`: Select filter из bi_team_match_stats; scope явно включает team и player
+  charts. Matches Big Number и Matches Table **исключены**: у matches нет team_name,
+  только home_team_name/away_team_name. Подпишите это поведение в dashboard description.
+
+Фильтр из team dataset не обязан автоматически влиять на player dataset. Проверьте
+native filter scope для каждого chart и совместимость колонок; после выбора команды
+откройте View query у team/player charts и убедитесь в наличии team_name predicate.
+Stage/date также проверить на всех datasets. Cross-filtering кликом по chart — отдельная
+настройка, не замена explicit native filter scope. Нельзя обещать общий filter state
+без этой проверки. Dashboard JSON и внутренние IDs автоматически не создаются.
+
+### Offline/local checks Stage 4A
+
+Проверки без live secrets используют process-only синтетический reader password,
+чтобы пройти fail-closed Compose interpolation. Значение не сохраняется в `.env`
+и не применяется к работающему ClickHouse. Не используйте его для запуска BI services.
+
+```powershell
+$previousReader = $env:SUPERSET_CLICKHOUSE_PASSWORD
+try {
+    $env:SUPERSET_CLICKHOUSE_PASSWORD = 'static-check-only-not-a-live-password'
+    docker compose config -q
+    docker compose run --rm --no-deps football-python-tools python -m unittest discover -s tests
+    docker compose run --rm --no-deps football-python-tools python tests/integration/test_clickhouse_bi.py
+} finally {
+    $env:SUPERSET_CLICKHOUSE_PASSWORD = $previousReader
+}
+git diff --check
+```
+
+Новые ClickHouse tests выполняют только SELECT с synthetic CTEs и readonly=1 — даже
+TEMPORARY tables не создаются. Они проверяют обе реальные view projections, signed
+goal difference, W/D/L, official scores, дубликаты и все семь validation statements.
+Offline tests проверяют config/URI, missing secrets, init idempotency/errors, XML grant
+allowlist, Compose isolation/healthchecks и SQL structure. Built-image tests в
+`tests/superset/test_image.py` запускаются с `--network none`, без Superset app/server
+и реальных credentials. Reader runtime permissions и dashboard остаются ручной проверкой.
+
+## Stage 4B - Match result semantics and penalty shootouts
+
+Подготовлены immutable Gold `match_results_v1`, ClickHouse migration `007`, BI migration
+`008` и явно выбираемые `team_match_stats_v2` / `player_match_stats_v2`.
+**Миграции, публикация и v1→v2 serving cutover автоматически не выполнялись.**
+
+Read-only аудит текущего WC2022 подтвердил: Gold v1 включает period=5 —
+41 лишний для обычной match-performance аналитики shot, 26 shot goals, 32.1235 xG.
+Затронуты 10 team-строк и 41 player-строка по shots; с учётом event_count — 53 player-строки.
+Extra time (period 3/4) остаётся в v2. Официальный счёт не суммируется с shootout score.
+
+- [Полный аудит: exact build IDs и все построчные различия](docs/stage4b_shot_audit.json).
+- [Контракт, DQ, schema, controlled cutover plan и точные ручные команды](docs/stage4b.md).
+
+Для Superset Match Table источник `football.match_results` даёт одну строку на матч,
+`display_score` вроде `3-3 (4-2 pens)` и `result_method=PENALTIES`.
+`match_date` остаётся Date; Table D3 format: **`%Y-%m-%d`**, без преобразования в String.
+После migration 008 team `match_result` учитывает shootout winner; проверка результата
+теперь `scripts/check_clickhouse_match_results.py --bi`, а не прежний Stage 4A W/D/L SQL.
+Match Analysis dashboard пока не создаётся.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

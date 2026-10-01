@@ -46,12 +46,17 @@ def current_gold_builds(client, connection, *, competition_id=43, season_id=106,
 
 def model_queries(*, gold_specs=SPECS, silver_specs=INPUT_SPECS):
     """All comparisons are scoped by context AND the currently loaded build IDs."""
+    versions = {spec.version for spec in gold_specs.values()}
+    if len(versions) != 1:
+        raise ClickHouseIntegrityError("Team/player serving transforms must use the same version.")
+    performance_only = versions == {"v2"}
     def scope(dataset):
         gold = dataset in gold_specs
         spec = (gold_specs if gold else silver_specs)[dataset]
         column = "gold_build_id" if gold else "silver_build_id"
         return (f"{spec.target} WHERE competition_id = %(competition_id)s AND season_id = %(season_id)s "
-                f"AND {column} = %({dataset}_build_id)s")
+                f"AND {column} = %({dataset}_build_id)s"
+                + (" AND period != 5" if performance_only and dataset in ("event_core", "pass_events", "shot_events") else ""))
 
     def scalar(dataset, expression, *, player=False):
         return f"(SELECT {expression} FROM {scope(dataset)}" + (" AND player_id IS NOT NULL" if player else "") + ")"

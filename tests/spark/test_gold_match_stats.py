@@ -34,7 +34,7 @@ class GoldSparkTests(unittest.TestCase):
         cls.spark.sparkContext.setLogLevel("OFF")
         cls.frames = {name: frame.cache() for name, frame in silver_frames(cls.spark).items()}
         cls.results = {}
-        for dataset in OUTPUT_PARTITIONS:
+        for dataset in ("team_match_stats", "player_match_stats"):
             cls.results[dataset] = build_match_stats(cls.frames, dataset=dataset, competition_id=43, season_id=106)
         cls.temp = TemporaryDirectory(prefix="football-gold-test-")
         cls.directory = Path(cls.temp.name)
@@ -90,7 +90,7 @@ class GoldSparkTests(unittest.TestCase):
         self.assertEqual(player.exceptAll(self.results["player_match_stats"][0]).count(), 0)
 
     def test_each_team_or_player_orphan_metric_key_fails(self):
-        for dataset in OUTPUT_PARTITIONS:
+        for dataset in ("team_match_stats", "player_match_stats"):
             for name in ("event_core", "pass_events", "shot_events"):
                 frames = dict(self.frames)
                 field = "player_id" if dataset == "player_match_stats" else "team_id"

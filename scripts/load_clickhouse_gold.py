@@ -1,4 +1,4 @@
-"""Stage 3D: load/check one immutable Gold build, independently of Silver loaders."""
+"""Load/check immutable Gold stats or match-results using the shared safe state machine."""
 
 import sys
 from pathlib import Path

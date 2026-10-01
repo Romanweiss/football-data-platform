@@ -4,10 +4,15 @@ from src.common.checksum import sha256_bytes
 from src.common.s3_paths import s3a_uri
 from src.silver.build_identity import SILVER_DATASETS, SPEC_FIELDS, canonical_json, require_sha256
 
-DATASETS = {"team-match-stats": "team_match_stats", "player-match-stats": "player_match_stats"}
-OUTPUT_PARTITIONS = {"team_match_stats": 1, "player_match_stats": 2}
+DATASETS = {"team-match-stats": "team_match_stats", "player-match-stats": "player_match_stats", "match-results": "match_results"}
+OUTPUT_PARTITIONS = {"team_match_stats": 1, "player_match_stats": 2, "match_results": 1}
 REQUIRED_INPUTS = ("event_core", "match_squads", "pass_events", "shot_events")
+RESULT_INPUTS = ("event_core", "matches", "shot_events")
 INPUT_FIELDS = ("dataset", "build_id", "transform_version", "schema_sha256", "s3_bucket", "s3_prefix")
+
+
+def required_inputs(dataset):
+    return RESULT_INPUTS if dataset == "match_results" else REQUIRED_INPUTS
 
 
 def canonical_inputs(builds: list[dict]) -> list[dict]:

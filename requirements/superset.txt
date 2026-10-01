@@ -1,0 +1,7 @@
+# Superset 6.0.0 accepts clickhouse-connect >=0.5.14,<1.0; same pin as tools.txt.
+clickhouse-connect==0.15.0
+# Exact PostgreSQL extra from the Superset 6.0.0 release contract.
+psycopg2-binary==2.9.6
+# Driver transitives; preserve the base image's zstandard constraint.
+lz4==4.4.5
+zstandard==0.23.0

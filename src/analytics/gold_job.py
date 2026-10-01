@@ -4,10 +4,11 @@ import argparse
 import sys
 from contextlib import ExitStack, closing, nullcontext
 from dataclasses import dataclass
+from dataclasses import replace
 
 from src.analytics.gold_input import parquet_url, resolve_gold_build, verify_gold_manifest
 from src.analytics.gold_loader import load_gold
-from src.analytics.gold_specs import CLI_DATASETS, SPECS
+from src.analytics.gold_specs import CLI_DATASETS, LOAD_SPECS
 from src.analytics.validation import ClickHouseIntegrityError, verify_named_collection
 from src.common.clickhouse import create_clickhouse_client
 from src.common.postgres import clickhouse_load_lock, create_postgres_connection
@@ -36,7 +37,10 @@ def parse_args(argv=None):
     parser.add_argument("--dataset", required=True, choices=CLI_DATASETS)
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--build-id")
+    parser.add_argument("--transform-version", choices=("v1", "v2"), default="v1")
     args = parser.parse_args(argv)
+    if args.dataset == "match-results" and args.transform_version != "v1":
+        parser.error("match-results only supports v1")
     if args.build_id is not None:
         try:
             require_sha256(args.build_id)
@@ -47,7 +51,7 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
-    spec = SPECS[CLI_DATASETS[args.dataset]]
+    spec = replace(LOAD_SPECS[CLI_DATASETS[args.dataset]], version=args.transform_version)
     diagnostics = GoldDiagnostics()
     try:
         with ExitStack() as stack:
