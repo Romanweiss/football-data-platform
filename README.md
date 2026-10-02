@@ -2413,6 +2413,27 @@ race, ограничения часовой оси/shot scatter, провере�
 SELECT-only preview до установки 013:
 `python scripts/check_clickhouse_match_visuals.py --candidate` внутри python-tools.
 
+## Stage 5A — read-only Django application API
+
+Добавлен минимальный Django API для будущего React-приложения; Superset остаётся
+BI-слоем. API читает существующие ClickHouse views без пересчёта метрик и без S3 /
+PostgreSQL в request handlers. Локальный адрес: `http://127.0.0.1:18000/api/v1/`.
+Сервис использует существующий read-only ClickHouse-профиль, не ingestion user.
+
+```powershell
+docker compose build football-api
+docker compose run --rm --no-deps football-api python manage.py check
+docker compose run --rm --no-deps football-api python scripts/check_application_api.py
+docker compose up -d --no-deps football-api
+Invoke-RestMethod http://127.0.0.1:18000/api/v1/matches/3869685/analysis
+```
+
+Маршруты: health, ClickHouse health, список 64 матчей, overview, teams, players
+с фильтром team_id, normal shots, xG race, shootout и composite analysis.
+Контракты, Docker/test-команды, query count, измерения latency и ограничения:
+[docs/stage5a.md](docs/stage5a.md). Это dev foundation, не production deployment;
+новых миграций и автоматических изменений Superset нет.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.
