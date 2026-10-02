@@ -32,3 +32,10 @@ data/samples/*
 tmp/
 .tmp/
 keys.txt
+
+# Frontend dependencies, generated output, local config and browser artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.env*
+frontend/test-results/
+frontend/playwright-report/

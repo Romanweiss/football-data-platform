@@ -2434,6 +2434,28 @@ Invoke-RestMethod http://127.0.0.1:18000/api/v1/matches/3869685/analysis
 [docs/stage5a.md](docs/stage5a.md). Это dev foundation, не production deployment;
 новых миграций и автоматических изменений Superset нет.
 
+## Stage 5B — React Match Analysis
+
+React + TypeScript + Vite приложение читает только Django `/api/v1` через
+same-origin dev proxy. Страница: выбор матча, официальный результат, команды,
+SVG xG race и карта ударов на поле, squad-таблица и серия пенальти при наличии.
+Superset остаётся BI-слоем; метрики в React не пересчитываются.
+
+```powershell
+docker compose build football-api football-web
+docker compose up -d --no-deps football-api football-web
+# http://127.0.0.1:15173/
+docker compose logs football-web
+docker compose logs football-api
+```
+
+Deep link: `http://127.0.0.1:15173/matches/3869685`. Root выбирает первый матч
+из хронологического списка API, а не фиксированный финал. SVG сохраняет исходные
+координаты; область x=55..120 включает удары немного левее центральной линии.
+Frontend не получает DB/S3 credentials. Архитектура, точная геометрия, тесты,
+smoke-проверки и ограничения: [docs/stage5b.md](docs/stage5b.md).
+Это local development foundation, не production deployment.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.
