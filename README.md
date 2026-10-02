@@ -2383,6 +2383,21 @@ Superset datasets не переименовываются и не дублиру
 DDL backup, maintenance window, smoke tests и rollback: [docs/stage4c.md](docs/stage4c.md).
 Два view заменяются неатомарно; нельзя открывать BI до проверки обоих.
 
+## Stage 4D - Match Analysis foundation
+
+Подготовлены четыре отдельные ordinary BI views для анализа одного матча:
+`bi_match_overview`, `bi_match_team_stats`, `bi_match_player_stats`, `bi_match_shots`.
+Они сохраняют существующие метрики и единый `match_label` из overview;
+`match_results` остаётся источником результата. Shot view сохраняет все удары,
+включая period=5: обычные performance charts обязаны фильтровать `is_shootout=0`.
+Period 3/4 остаётся в обычной статистике, координаты сохраняются как `start_x/start_y`.
+
+Существующие World Cup Overview datasets/views не изменены. Миграция 012 и
+Superset dashboard **не применены автоматически**. Архитектура, проверки,
+точные PowerShell-команды и ручной дизайн Match Analysis: [docs/stage4d.md](docs/stage4d.md).
+Для проверки SELECT-проекций до миграции:
+`python scripts/check_clickhouse_match_analysis.py --candidate` внутри python-tools.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.
