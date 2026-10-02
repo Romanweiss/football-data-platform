@@ -2398,6 +2398,21 @@ Superset dashboard **не применены автоматически**. Ар�
 Для проверки SELECT-проекций до миграции:
 `python scripts/check_clickhouse_match_analysis.py --candidate` внутри python-tools.
 
+## Stage 4E - Match Visual Analytics
+
+Подготовлена additive migration 013: `bi_match_xg_race`, `bi_match_shot_map`,
+`bi_match_shootout`. Первые два view содержат только обычные удары, включая extra
+time; третий — упорядоченные попытки серии пенальти с промежуточным счётом.
+Накопления xG проверяются по каждому событию и сверяются с team stats. Координаты
+и nullable-поля сохраняются без разворота/замены. Stage 4D и World Cup Overview
+не изменяются, новых Gold/S3 artifacts нет.
+
+**Миграция и Superset изменения не выполняются автоматически.** Представление xG
+race, ограничения часовой оси/shot scatter, проверенные Step/Bubble plugins,
+точные ручные команды и настройки charts: [docs/stage4e.md](docs/stage4e.md).
+SELECT-only preview до установки 013:
+`python scripts/check_clickhouse_match_visuals.py --candidate` внутри python-tools.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.
