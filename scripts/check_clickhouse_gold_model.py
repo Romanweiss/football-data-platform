@@ -3,13 +3,12 @@
 import argparse
 import sys
 from contextlib import closing
-from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.analytics.gold_job import GoldDiagnostics
 from src.analytics.gold_model import check_model
-from src.analytics.gold_specs import SPECS
+from src.analytics.gold_specs import V2_SPECS
 from src.common.clickhouse import create_clickhouse_client
 from src.common.postgres import create_postgres_connection
 
@@ -24,7 +23,7 @@ def main(argv=None):
             if args.transform_version == 'v1':
                 check_model(client, connection)
             else:
-                check_model(client, connection, gold_specs={name:replace(spec,version='v2') for name,spec in SPECS.items()})
+                check_model(client, connection, gold_specs=V2_SPECS)
         return 0
     except Exception as error:
         print(diagnostics.failure(error), file=sys.stderr)

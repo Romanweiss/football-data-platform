@@ -12,6 +12,7 @@ from src.gold.manifest import inspect_output, make_manifest
 def fixture(spec):
     client, builds, _ = silver_inputs(required_inputs(spec.dataset))
     specification_ = specification(builds, dataset=spec.dataset)
+    specification_["transform_version"] = spec.transform_version
     build_id = calculate_build_id(specification_)
     prefix = gold_prefix(specification_, build_id)
     seed_output(client, "test-bucket", prefix, OUTPUT_PARTITIONS[spec.dataset])

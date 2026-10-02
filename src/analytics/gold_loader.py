@@ -81,6 +81,7 @@ def load_gold(client, connection, build, manifest, url, *, spec, check_only, dia
         validate_gold_metrics(target, manifest, spec=spec)
         validate_extra(client, relation, {"build_id": build["build_id"]}, spec=spec)
     for label, value in (("Dataset", spec.dataset), ("Transform version", spec.transform_version), ("Gold build ID", build["build_id"]),
+                         ("Target table", spec.target),
                          ("Expected rows", manifest["row_count"]), ("Source rows", source[0]), ("Expected files", manifest["file_count"]),
                          ("Existing target rows", target[0]), ("Existing build ID", build["build_id"] if context_rows else "none"),
                          ("Would load", "no" if already_loaded else "yes")):

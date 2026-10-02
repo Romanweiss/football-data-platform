@@ -2366,6 +2366,23 @@ Extra time (period 3/4) остаётся в v2. Официальный счёт 
 теперь `scripts/check_clickhouse_match_results.py --bi`, а не прежний Stage 4A W/D/L SQL.
 Match Analysis dashboard пока не создаётся.
 
+## Stage 4C - Safe stats v2 shadow serving cutover
+
+Реализован безопасный путь загрузки stats v2 в отдельные
+`football.team_match_stats_v2` / `football.player_match_stats_v2`.
+v1-таблицы и история каталога сохраняются. Mapping закрытый, для v2 обязательны
+точный Gold build ID и четыре Silver build ID из аудита Stage 4B.
+
+Миграция 009 создаёт shadow-таблицы; 010 переключает только два публичных BI view,
+сохраняя все колонки и authoritative `match_results`; 011 предназначена **только
+для явного rollback**, не для последовательного применения после 010.
+Добавлены проверки всех grain/metric deltas по аудиту, lineage, схем и BI coverage.
+Superset datasets не переименовываются и не дублируются.
+
+**Live cutover не выполнен.** Точные ручные PowerShell-команды, STOP/check points,
+DDL backup, maintenance window, smoke tests и rollback: [docs/stage4c.md](docs/stage4c.md).
+Два view заменяются неатомарно; нельзя открывать BI до проверки обоих.
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

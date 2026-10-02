@@ -16,6 +16,7 @@ from src.gold.build_identity import DATASETS, build_specification, calculate_bui
 from src.gold.inputs import read_inputs, resolve_inputs
 from src.gold.manifest import GoldIntegrityError
 from src.gold.publish import publish_build
+from src.gold.stats_snapshot import PINNED_STATS_INPUTS
 from src.silver.manifest import SilverIntegrityError
 
 
@@ -78,6 +79,8 @@ def main(argv=None):
         pinned[name] = build_id
     if (dataset == "match_results" or version.endswith("_v2") or pinned) and set(pinned) != set(required_inputs(dataset)):
         parser.error("This build requires all exact --silver-build inputs: " + ", ".join(required_inputs(dataset)))
+    if version.endswith("_v2") and pinned != PINNED_STATS_INPUTS:
+        parser.error("Stats v2 requires the exact reviewed Stage 4B Silver build IDs")
     diagnostics = Diagnostics(dataset=dataset)
     spark = frame = None
     frames = {}

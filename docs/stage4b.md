@@ -187,13 +187,12 @@ Publishing v2 is **not** permission to replace v1 serving rows.
    validate and refresh caches. Original v1 tables/artifacts/catalog records remain
    intact. Retaining old data is intentional; retirement is a separate task.
 
-This is a design, **not an automatically executed cutover**. A separate review is
-required for the shadow-target loader entrypoint and cutover migrations. Normal
-`load_clickhouse_gold.py --transform-version v2` still targets the original table
-and rejects an occupied v1 context; do not retry it with destructive workarounds.
-The model-check library can use fixed overridden GoldSpecs; the CLI v2 check applies
-only where those original serving names actually contain v2. No live v2 serving
-success is claimed at this stage.
+This historical plan is now implemented by [Stage 4C](stage4c.md), **not applied
+automatically**. `load_clickhouse_gold.py --transform-version v2 --build-id ...`
+maps only to the fixed `_v2` shadow table and requires the audited Silver snapshot.
+The model-check CLI v2 mode checks these same shadow targets. Follow the Stage 4C
+PowerShell runbook for migrations 009/010 and explicit rollback 011; do not use
+ad-hoc INSERTs or destructive workarounds. No live v2 serving success is claimed.
 
 ## Manual commands (PowerShell)
 
@@ -255,9 +254,8 @@ without `--check-only`. This still does not perform a ClickHouse serving cutover
 ### Manual migration 007 and results load — not executed by Codex
 
 ```powershell
-@'
-exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < /migrations/007_create_match_results.sql
-'@ | docker compose exec -T football-clickhouse sh
+Get-Content -Raw .\infrastructure\clickhouse\migrations\007_create_match_results.sql |
+    docker compose exec -T football-clickhouse sh -c 'clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery'
 if ($LASTEXITCODE -ne 0) { throw 'Migration 007 failed' }
 
 $resultBuild = Read-Host 'Exact match_results Gold build ID printed by the successful publisher'
@@ -281,9 +279,8 @@ The existing stats v1 can remain served while result semantics are enriched; lab
 shot/xG charts as v1 including shootouts until the separately approved v2 cutover.
 
 ```powershell
-@'
-exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < /migrations/008_enrich_bi_match_results.sql
-'@ | docker compose exec -T football-clickhouse sh
+Get-Content -Raw .\infrastructure\clickhouse\migrations\008_enrich_bi_match_results.sql |
+    docker compose exec -T football-clickhouse sh -c 'clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery'
 if ($LASTEXITCODE -ne 0) { throw 'Migration 008 failed; keep BI paused and review both views' }
 docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_match_results.py --bi
 if ($LASTEXITCODE -ne 0) { throw 'Enriched BI validation failed' }

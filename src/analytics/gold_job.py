@@ -4,16 +4,16 @@ import argparse
 import sys
 from contextlib import ExitStack, closing, nullcontext
 from dataclasses import dataclass
-from dataclasses import replace
 
 from src.analytics.gold_input import parquet_url, resolve_gold_build, verify_gold_manifest
 from src.analytics.gold_loader import load_gold
-from src.analytics.gold_specs import CLI_DATASETS, LOAD_SPECS
+from src.analytics.gold_specs import CLI_DATASETS, serving_spec
 from src.analytics.validation import ClickHouseIntegrityError, verify_named_collection
 from src.common.clickhouse import create_clickhouse_client
 from src.common.postgres import clickhouse_load_lock, create_postgres_connection
 from src.common.s3 import create_s3_client
 from src.gold.manifest import GoldIntegrityError
+from src.gold.stats_snapshot import validate_stats_snapshot
 from src.silver.build_identity import require_sha256
 
 
@@ -41,6 +41,8 @@ def parse_args(argv=None):
     args = parser.parse_args(argv)
     if args.dataset == "match-results" and args.transform_version != "v1":
         parser.error("match-results only supports v1")
+    if args.transform_version == "v2" and args.build_id is None:
+        parser.error("Shadow v2 loading requires an explicit --build-id; latest is not allowed")
     if args.build_id is not None:
         try:
             require_sha256(args.build_id)
@@ -51,7 +53,7 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
-    spec = replace(LOAD_SPECS[CLI_DATASETS[args.dataset]], version=args.transform_version)
+    spec = serving_spec(CLI_DATASETS[args.dataset], args.transform_version)
     diagnostics = GoldDiagnostics()
     try:
         with ExitStack() as stack:
@@ -61,6 +63,8 @@ def main(argv=None):
             diagnostics.set("Gold manifest/completeness", "verify_gold_manifest")
             s3 = stack.enter_context(closing(create_s3_client()))
             manifest = verify_gold_manifest(s3, build)
+            if spec.version == "v2":
+                validate_stats_snapshot(manifest["inputs"])
             url = parquet_url(build)
             # No ClickHouse access before the registered Gold artifact is verified.
             diagnostics.set("ClickHouse configuration", "create_client/named_collection")

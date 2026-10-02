@@ -1,6 +1,6 @@
 """Explicit immutable Gold serving contracts. No Spark or business recomputation."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 
@@ -103,3 +103,20 @@ RESULTS = MatchResultsSpec("match_results", (
 # Keep the existing v1 cross-model stats contract separate from result semantics.
 LOAD_SPECS = MappingProxyType({**SPECS, RESULTS.dataset: RESULTS})
 CLI_DATASETS = MappingProxyType({"team-match-stats": TEAM.dataset, "player-match-stats": PLAYER.dataset, "match-results": RESULTS.dataset})
+
+# CLI selection is closed: version is not an arbitrary destination/table suffix.
+V2_SPECS = MappingProxyType({
+    TEAM.dataset: replace(TEAM, version="v2", table_override="team_match_stats_v2"),
+    PLAYER.dataset: replace(PLAYER, version="v2", table_override="player_match_stats_v2"),
+})
+SERVING_SPECS = MappingProxyType({
+    **{(name, "v1"): spec for name, spec in LOAD_SPECS.items()},
+    **{(name, "v2"): spec for name, spec in V2_SPECS.items()},
+})
+
+
+def serving_spec(dataset, version="v1"):
+    try:
+        return SERVING_SPECS[dataset, version]
+    except KeyError:
+        raise ValueError("Unsupported Gold dataset/serving version.") from None
