@@ -225,6 +225,22 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('shot-details')).toContainText('Selected shot');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const pitch = page.locator('.pitch-svg');
+    await expect(pitch.locator('.corner-arc')).toHaveCount(2);
+    await expect(page.getByTestId('shot-marker')).toHaveCount(30);
+    const bounds = (await pitch.boundingBox())!;
+    const center = (await pitch.locator('.center-circle').boundingBox())!;
+    expect(center.x).toBeGreaterThan(bounds.x);
+    expect(center.x + center.width).toBeLessThan(bounds.x + bounds.width);
+    expect(center.y).toBeGreaterThan(bounds.y);
+    expect(center.y + center.height).toBeLessThan(bounds.y + bounds.height);
+    expect(Math.abs(center.width - center.height)).toBeLessThan(1);
+    await expect(pitch.locator('.pitch-lines')).toHaveCSS('pointer-events', 'none');
+    const selectedId = await page.getByTestId('race-point').first().getAttribute('data-event-id');
+    const selectedMarker = pitch.locator(`[data-event-id="${selectedId}"]`);
+    await expect(selectedMarker).toHaveAttribute('data-state', 'selected');
+    await expect(selectedMarker.locator('.interaction-ring')).toHaveAttribute('visibility', 'visible');
+    await pitch.screenshot({ path: `test-results/polish-pitch-${width}.png` });
   });
 }
 

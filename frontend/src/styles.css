@@ -68,7 +68,7 @@ h1, h2, p { margin: 0; }
 .shot-legend span { display: flex; align-items: center; }
 .pitch-layout { display: grid; grid-template-columns: minmax(0, 1fr); }
 .pitch-svg { max-height: 350px; width: 100%; display: block; }
-.pitch-lines { fill: none; stroke: #6a8e83; stroke-width: .35; }
+.pitch-lines { fill: none; stroke: #6a8e83; stroke-width: .35; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .pitch-grass { fill: #1b3931; stroke: none; }
 .pitch-spot { fill: #6a8e83; stroke: none; }
 .shot-marker { cursor: pointer; outline: none; }

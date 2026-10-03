@@ -56,6 +56,14 @@ X axis still means shot order, not elapsed minutes. Extra time stays included;
 period-5 shootout stays excluded from normal shots/race. Source coordinates,
 marker-radius formula, SVG step paths and raw numeric precision are unchanged.
 
+Shot Map artwork extends to x=45 so the full midfield circle (center x=60, y=40,
+radius 10), halfway line and center mark are visible. The viewBox extends left
+without changing shotToSvg or the existing supported shot range x=55..120.
+Both visible right-hand corners have arcs; the cropped left edge is not a goal
+line and has no artificial corners. Penalty/six-yard boxes, goal, penalty spot
+and penalty arc retain their coordinates. Thin rounded linework does not capture
+pointer events; shot marker sizes, selection rings and interaction remain unchanged.
+
 ## I18n ownership and formatting
 
 `locales.ts` contains static typed EN/RU/ES dictionaries; missing keys are compile
@@ -146,7 +154,7 @@ Edge; WEB_BASE_URL / PLAYWRIGHT_CHANNEL can override the existing defaults.
 Only dev dependency added: pinned @axe-core/playwright (and its axe-core transitive
 dependency) for automated accessibility checks; bundled runtime is unchanged.
 
-Verified: 40 frontend tests, TypeScript/Vite build, 19 API tests and 416 previous
+Verified: 41 frontend tests, TypeScript/Vite build, 19 API tests and 416 previous
 Python tests pass. All 11 live browser tests pass, including mobile touch and
 browser-language fallback. There are 24 passing full-page axe scans (four
 viewports x three languages x open-search/selected-shot states), with zero

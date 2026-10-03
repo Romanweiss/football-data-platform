@@ -40,6 +40,23 @@ describe('accessible page components', () => {
     expect(screen.getByText(/1 shots not plotted/)).toBeTruthy();
     expect(screen.queryAllByTestId('shot-marker')).toHaveLength(0);
   });
+  it('draws a complete midfield circle and real corners without changing shot coordinates', () => {
+    const { container } = render(<Analysis data={analysis} />);
+    const pitch = container.querySelector('.pitch-svg')!;
+    expect(pitch.getAttribute('viewBox')).toBe('-50 0 420 432');
+    const circle = pitch.querySelector('.center-circle')!;
+    expect(['cx', 'cy', 'r'].map(attr => circle.getAttribute(attr))).toEqual(['60', '40', '10']);
+    expect(pitch.querySelector('.halfway-line')?.getAttribute('d')).toBe('M60 0V80');
+    expect(pitch.querySelector('.center-mark')?.getAttribute('cx')).toBe('60');
+    expect([...pitch.querySelectorAll('.corner-arc')].map(arc => arc.getAttribute('d'))).toEqual([
+      'M119 0 A1 1 0 0 0 120 1', 'M120 79 A1 1 0 0 0 119 80',
+    ]);
+    expect(pitch.querySelector('.penalty-arc')?.getAttribute('d')).toBe('M102 32 A10 10 0 0 0 102 48');
+    const marker = screen.getByTestId('shot-marker').querySelector('.event-dot')!;
+    expect(marker.getAttribute('cx')).toBe('281');
+    expect(marker.getAttribute('cy')).toBe('216');
+    expect(pitch.querySelectorAll('[tabindex]')).toHaveLength(analysis.shots.length);
+  });
   it('retains zero-activity players and filters locally', () => {
     render(<PlayerTable players={analysis.players} teams={analysis.teams} />);
     expect(screen.queryByText('Unused Player')).toBeNull();

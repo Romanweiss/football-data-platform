@@ -8,19 +8,27 @@ export function ShotMap({ shots, match, interaction }: { shots: Shot[]; match: M
   const { t, xg, count, outcome } = useI18n();
   const positioned = shots.map(shot => ({ shot, point: shotToSvg(shot.start_x, shot.start_y) }));
   const omitted = positioned.filter(p => p.point === null).length;
+  // Extend only the artwork window: shotToSvg and its plotted coordinate range stay unchanged.
+  const midfieldExtension = 10 * PITCH.scale;
   return <section className="panel shot-panel" aria-labelledby="shots-title"><div className="panel-heading">
     <div><span className="eyebrow">{t('locations')}</span><h2 id="shots-title">{t('pitch')}</h2></div>
     <span className="tag" data-testid="shot-count">{t('normalShots', { count: count(shots.length) })}</span></div>
     <div className="shot-legend"><span><i className="dot" style={{ background: teamColor(true) }} />{match.home_team_name}</span>
       <span><i className="dot" style={{ background: teamColor(false) }} />{match.away_team_name}</span><span>◎ {t('goal')}</span></div>
-    <div className="pitch-layout"><svg viewBox={`0 0 ${PITCH.width} ${PITCH.height}`} className="pitch-svg" role="group" aria-label={t('pitchAria')}>
+    <div className="pitch-layout"><svg viewBox={`${-midfieldExtension} 0 ${PITCH.width + midfieldExtension} ${PITCH.height}`} className="pitch-svg" role="group" aria-label={t('pitchAria')}>
       <title>{t('pitchTitle')}</title>
       <g transform={`translate(${PITCH.pad - PITCH.minX * PITCH.scale},${PITCH.pad}) scale(${PITCH.scale})`} className="pitch-lines">
-        <rect x="55" y="0" width="65" height="80" className="pitch-grass" />
-        <path d="M55 0H120V80H55 M60 0V80" />
+        <rect x="45" y="0" width="75" height="80" className="pitch-grass" />
+        {/* The left edge is a cropped field window, not a goal line or corner. */}
+        <path d="M45 0H120V80H45" />
+        <path d="M60 0V80" className="halfway-line" />
+        <circle cx="60" cy="40" r="10" className="center-circle" />
+        <circle cx="60" cy="40" r="0.45" className="pitch-spot center-mark" />
         <path d="M120 18H102V62H120 M120 30H114V50H120 M120 36H122V44H120" />
         <circle cx="108" cy="40" r="0.45" className="pitch-spot" />
-        <path d="M102 32 A10 10 0 0 0 102 48 M60 30 A10 10 0 0 1 60 50" />
+        <path d="M102 32 A10 10 0 0 0 102 48" className="penalty-arc" />
+        <path d="M119 0 A1 1 0 0 0 120 1" className="corner-arc" />
+        <path d="M120 79 A1 1 0 0 0 119 80" className="corner-arc" />
       </g>
       {positioned.map(({ shot, point }) => {
         if (!point) return null;
