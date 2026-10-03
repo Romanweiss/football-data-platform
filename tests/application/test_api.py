@@ -46,10 +46,10 @@ class RepositoryTests(unittest.TestCase):
         self.repo = FootballRepository(self.client)
 
     def test_only_parameterized_readonly_allowlisted_queries(self):
-        self.repo.matches()
-        self.repo.match(123)
-        for name in PROJECTIONS: self.repo.section(name, 123)
-        self.repo.section("players", 123, 779)
+        self.repo.matches({"competition_id": 7, "season_id": 9})
+        self.repo.match(123, {"competition_id": 7, "season_id": 9})
+        for name in PROJECTIONS: self.repo.section(name, 123, context={"competition_id": 7, "season_id": 9})
+        self.repo.section("players", 123, 779, context={"competition_id": 7, "season_id": 9})
         for call in self.client.query.call_args_list:
             sql = call.args[0]
             self.assertTrue(sql.startswith("SELECT "))
@@ -57,36 +57,36 @@ class RepositoryTests(unittest.TestCase):
             self.assertNotIn("779", sql)
             self.assertNotIn("SELECT *", sql)
             self.assertEqual(call.kwargs["settings"]["readonly"], 1)
-            self.assertEqual(call.kwargs["parameters"]["competition_id"], 43)
-            self.assertEqual(call.kwargs["parameters"]["season_id"], 106)
+            self.assertEqual(call.kwargs["parameters"]["competition_id"], 7)
+            self.assertEqual(call.kwargs["parameters"]["season_id"], 9)
             for forbidden in ("gold_build_id", "loaded_at", "INSERT", "ALTER", "CREATE", "DROP", "JOIN", "SUM("):
                 self.assertNotIn(forbidden, sql)
         self.assertIn("team_id = {team_id:UInt32}", self.client.query.call_args.args[0])
 
     def test_ordering_and_view_sources(self):
         for name, (table, fields, order) in PROJECTIONS.items():
-            self.repo.section(name, 123)
+            self.repo.section(name, 123, context={"competition_id": 7, "season_id": 9})
             sql = self.client.query.call_args.args[0]
             self.assertIn("FROM " + table, sql)
             self.assertIn("ORDER BY " + order, sql)
 
     def test_driver_failure_is_safe_503(self):
         self.client.query.side_effect = OperationalError("password=SECRET SELECT internal")
-        with self.assertRaises(ApiError) as caught: self.repo.matches()
+        with self.assertRaises(ApiError) as caught: self.repo.matches({"competition_id": 7, "season_id": 9})
         self.assertEqual(caught.exception.status, 503)
         self.assertNotIn("SECRET", str(caught.exception))
 
     def test_duplicate_match_and_result_overflow_fail_closed(self):
         self.client.query.return_value.result_rows = [(1,), (1,)]
-        with self.assertRaises(ServingIntegrityError): self.repo.match(1)
+        with self.assertRaises(ServingIntegrityError): self.repo.match(1, {"competition_id": 7, "season_id": 9})
         self.client.query.return_value.result_rows = [(1,)] * 10001
-        with self.assertRaises(ServingIntegrityError): self.repo.matches()
+        with self.assertRaises(ServingIntegrityError): self.repo.matches({"competition_id": 7, "season_id": 9})
 
     def test_client_lifecycle_and_failed_creation(self):
         with patch("application.repository.create_clickhouse_client", return_value=self.client) as create:
             with open_repository() as repo:
-                repo.matches()
-                repo.matches()
+                repo.matches({"competition_id": 7, "season_id": 9})
+                repo.matches({"competition_id": 7, "season_id": 9})
             create.assert_called_once()
             self.client.close.assert_called_once()
         with patch("application.repository.create_clickhouse_client", side_effect=ValueError("secret")):
@@ -97,8 +97,8 @@ class RepositoryTests(unittest.TestCase):
 class ServiceTests(unittest.TestCase):
     def setUp(self):
         self.repo = Mock()
-        self.repo.match.return_value = {"match_id": 1, "went_to_penalties": True}
-        self.repo.section.side_effect = lambda name, *args: [{"id": 1}, {"id": 2}] if name == "teams" else [{"shootout_order": 1}] if name == "shootout" else []
+        self.repo.match.return_value = {"competition_id": 7, "season_id": 9, "match_id": 1, "went_to_penalties": True}
+        self.repo.section.side_effect = lambda name, *args, **kwargs: [{"id": 1}, {"id": 2}] if name == "teams" else [{"shootout_order": 1}] if name == "shootout" else []
         self.service = FootballService(self.repo)
 
     def test_composite_exactly_six_data_queries(self):
@@ -110,7 +110,7 @@ class ServiceTests(unittest.TestCase):
 
     def test_no_shootout_and_missing_match(self):
         self.repo.match.return_value["went_to_penalties"] = False
-        self.repo.section.side_effect = lambda *args: []
+        self.repo.section.side_effect = lambda *args, **kwargs: []
         self.assertEqual(self.service.section("shootout", 1), {"match_id": 1, "went_to_penalties": False, "attempts": []})
         self.repo.match.return_value = None
         with self.assertRaises(ApiError) as caught: self.service.analysis(99)
@@ -118,7 +118,7 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(caught.exception.status, 404)
 
     def test_shootout_coverage_must_agree_with_overview(self):
-        self.repo.section.side_effect = lambda *args: []
+        self.repo.section.side_effect = lambda *args, **kwargs: []
         with self.assertRaises(ServingIntegrityError): self.service.section("shootout", 1)
 
     def test_non_two_teams_is_not_silently_accepted(self):
@@ -131,8 +131,8 @@ class TransportTests(unittest.TestCase):
     def setUp(self):
         self.http = Client(HTTP_HOST="localhost", raise_request_exception=False)
         self.repo = Mock()
-        self.repo.match.return_value = {"match_id": 1, "went_to_penalties": False}
-        self.repo.section.side_effect = lambda name, *args: [{"team_id": 1}, {"team_id": 2}] if name == "teams" else []
+        self.repo.match.return_value = {"competition_id": 7, "season_id": 9, "match_id": 1, "went_to_penalties": False}
+        self.repo.section.side_effect = lambda name, *args, **kwargs: [{"team_id": 1}, {"team_id": 2}] if name == "teams" else []
         self.repo.matches.return_value = [self.repo.match.return_value]
 
         @contextmanager
@@ -165,7 +165,7 @@ class TransportTests(unittest.TestCase):
         self.repo.section.return_value = [row]
         result = self.http.get("/api/v1/matches/1/players?team_id=779")
         self.assertEqual(result.json()["players"], [row])
-        self.repo.section.assert_called_once_with("players", 1, 779)
+        self.repo.section.assert_called_once_with("players", 1, 779, context={"competition_id": 7, "season_id": 9})
 
     def test_detail_lists_composite_and_shootout(self):
         self.assertEqual(self.http.get("/api/v1/matches/1").json(), self.repo.match.return_value)
@@ -197,7 +197,6 @@ class TransportTests(unittest.TestCase):
         result = self.http.post("/api/v1/matches/1")
         self.assertEqual(result.status_code, 405)
         self.assertEqual(result.headers["Allow"], "GET")
-        self.assertEqual(self.http.get("/api/v1/competitions/44/seasons/106/matches").status_code, 404)
         self.assertEqual(self.http.get("/api/v1/health", HTTP_HOST="attacker.invalid").status_code, 400)
         self.open.assert_not_called()
 

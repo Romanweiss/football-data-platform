@@ -1,8 +1,12 @@
 export const en = {
+  competition: 'Competition', season: 'Season', match: 'Match', selectCompetition: 'Select competition', selectSeason: 'Select season',
+  competitionId: 'Competition #{id}', seasonId: 'Season #{id}', noCompetitions: 'No competitions available.', noSeasons: 'No seasons available.',
+  loadingCatalog: 'Loading competitions…', matchCount: '{count} matches', platformContext: 'Competition · season · match',
+  competitionNotFound: 'Competition not found', seasonNotFound: 'Season not found', ambiguousMatch: 'Match ID is ambiguous. Select a competition and season.', invalidRequest: 'Invalid competition, season or match ID',
   language: 'Language', skip: 'Skip to match analysis', intelligence: 'FOOTBALL INTELLIGENCE',
-  tournament: 'WORLD CUP 2022', lab: 'Match Lab', eyebrow: 'THE GAME, IN DETAIL', title: 'Match analysis',
+  lab: 'Match Lab', eyebrow: 'THE GAME, IN DETAIL', title: 'Match analysis',
   subtitle: 'From the first chance to the final whistle.', source: 'StatsBomb Open Data',
-  tournamentNote: '64 matches · one tournament', footer: 'Read-only analytics · StatsBomb Open Data · Local development',
+  footer: 'Read-only analytics · StatsBomb Open Data · Local development',
   explore: 'Explore a match', searchMatches: 'Search teams, stage or date…', currentMatch: 'Current match',
   unknownMatch: 'Unknown match', selectMatch: 'Select a match', noMatches: 'No matches found',
   results: 'Matches: {count} · chronological', searchHelp: 'Type to search. Use arrow keys, Enter to select, Escape to close.',
@@ -38,10 +42,14 @@ export const en = {
 export type MessageKey = keyof typeof en;
 export type Messages = { [K in MessageKey]: string };
 export const ru: Messages = {
+  competition: 'Соревнование', season: 'Сезон', match: 'Матч', selectCompetition: 'Выберите соревнование', selectSeason: 'Выберите сезон',
+  competitionId: 'Соревнование №{id}', seasonId: 'Сезон №{id}', noCompetitions: 'Нет доступных соревнований.', noSeasons: 'Нет доступных сезонов.',
+  loadingCatalog: 'Загружаем соревнования…', matchCount: 'Матчей: {count}', platformContext: 'Соревнование · сезон · матч',
+  competitionNotFound: 'Соревнование не найдено', seasonNotFound: 'Сезон не найден', ambiguousMatch: 'Номер матча неоднозначен. Выберите соревнование и сезон.', invalidRequest: 'Некорректный номер соревнования, сезона или матча',
   language: 'Язык', skip: 'Перейти к анализу матча', intelligence: 'ФУТБОЛЬНАЯ АНАЛИТИКА',
-  tournament: 'ЧЕМПИОНАТ МИРА 2022', lab: 'Лаборатория матча', eyebrow: 'ИГРА В ДЕТАЛЯХ', title: 'Анализ матча',
+  lab: 'Лаборатория матча', eyebrow: 'ИГРА В ДЕТАЛЯХ', title: 'Анализ матча',
   subtitle: 'От первого момента до финального свистка.', source: 'Открытые данные StatsBomb',
-  tournamentNote: '64 матча · один турнир', footer: 'Аналитика без изменения данных · StatsBomb Open Data · Локальная разработка',
+  footer: 'Аналитика без изменения данных · StatsBomb Open Data · Локальная разработка',
   explore: 'Выбрать матч', searchMatches: 'Команда, стадия или дата…', currentMatch: 'Текущий матч',
   unknownMatch: 'Неизвестный матч', selectMatch: 'Выберите матч', noMatches: 'Матчи не найдены',
   results: 'Матчей: {count} · по дате', searchHelp: 'Введите запрос. Стрелки — навигация, Enter — выбор, Escape — закрыть.',
@@ -75,10 +83,14 @@ export const ru: Messages = {
   post: 'Каркас ворот', wayward: 'Неточный удар', savedPost: 'Сейв в каркас ворот', savedOffTarget: 'Отбит мимо ворот',
 };
 export const es: Messages = {
+  competition: 'Competición', season: 'Temporada', match: 'Partido', selectCompetition: 'Selecciona una competición', selectSeason: 'Selecciona una temporada',
+  competitionId: 'Competición n.º {id}', seasonId: 'Temporada n.º {id}', noCompetitions: 'No hay competiciones disponibles.', noSeasons: 'No hay temporadas disponibles.',
+  loadingCatalog: 'Cargando competiciones…', matchCount: '{count} partidos', platformContext: 'Competición · temporada · partido',
+  competitionNotFound: 'Competición no encontrada', seasonNotFound: 'Temporada no encontrada', ambiguousMatch: 'El ID del partido es ambiguo. Selecciona una competición y una temporada.', invalidRequest: 'ID de competición, temporada o partido no válido',
   language: 'Idioma', skip: 'Ir al análisis del partido', intelligence: 'ANÁLISIS DE FÚTBOL',
-  tournament: 'MUNDIAL 2022', lab: 'Laboratorio del partido', eyebrow: 'EL JUEGO, AL DETALLE', title: 'Análisis del partido',
+  lab: 'Laboratorio del partido', eyebrow: 'EL JUEGO, AL DETALLE', title: 'Análisis del partido',
   subtitle: 'De la primera ocasión al pitido final.', source: 'Datos abiertos de StatsBomb',
-  tournamentNote: '64 partidos · un torneo', footer: 'Análisis de solo lectura · StatsBomb Open Data · Desarrollo local',
+  footer: 'Análisis de solo lectura · StatsBomb Open Data · Desarrollo local',
   explore: 'Elegir un partido', searchMatches: 'Equipo, fase o fecha…', currentMatch: 'Partido actual',
   unknownMatch: 'Partido desconocido', selectMatch: 'Selecciona un partido', noMatches: 'No se encontraron partidos',
   results: 'Partidos: {count} · por fecha', searchHelp: 'Escribe para buscar. Flechas para navegar, Enter para elegir y Escape para cerrar.',

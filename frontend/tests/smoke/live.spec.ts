@@ -37,7 +37,7 @@ test('four live matches, same-origin requests, switching, refresh and responsive
     await expect(page.getByTestId('match-header')).toBeVisible();
   }
   expect(requests.every(url => new URL(url).origin === new URL(baseURL!).origin && new URL(url).pathname.startsWith('/api/v1/'))).toBe(true);
-  expect(requests.every(url => url.endsWith('/analysis') || url.endsWith('/matches'))).toBe(true);
+  expect(requests.every(url => /\/(?:competitions|seasons|matches|analysis|[0-9]+)$/.test(new URL(url).pathname))).toBe(true);
   expect(errors).toEqual([]);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId('match-header')).toBeVisible();
@@ -57,10 +57,10 @@ test('root initial choice, browser history and intentional error states', async 
   await expect(page.getByTestId('shot-count')).toHaveText('30 normal shots');
   await page.goto('/matches/999999999');
   await expect(page.getByRole('alert')).toContainText('Match not found');
-  await page.route('**/api/v1/matches/3869685/analysis', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'clickhouse_unavailable', message: 'not displayed' } }) }));
+  await page.route('**/api/v1/competitions/43/seasons/106/matches/3869685/analysis', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { code: 'clickhouse_unavailable', message: 'not displayed' } }) }));
   await page.goto('/matches/3869685');
   await expect(page.getByRole('alert')).toContainText('Data service temporarily unavailable');
-  await page.unroute('**/api/v1/matches/3869685/analysis');
+  await page.unroute('**/api/v1/competitions/43/seasons/106/matches/3869685/analysis');
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByTestId('shot-count')).toHaveText('30 normal shots');
 });
@@ -141,13 +141,13 @@ test('keyboard-only search and localized empty/loading/error states', async ({ p
   await expect(page.getByTestId('shot-details')).toContainText('Selected shot');
   await point.press('Escape');
   await expect(point).toHaveAttribute('aria-pressed', 'false');
-  await page.route('**/api/v1/matches/3869685/analysis', route => route.fulfill({ status: 503, body: '{}' }));
+  await page.route('**/api/v1/competitions/43/seasons/106/matches/3869685/analysis', route => route.fulfill({ status: 503, body: '{}' }));
   await page.reload();
   await expect(page.getByRole('alert')).toBeVisible();
   await page.getByTestId('language-selector').selectOption('ru');
   await expect(page.getByRole('alert')).toContainText('Сервис данных временно недоступен');
   await expect(page).toHaveURL(/\/matches\/3869685$/);
-  await page.unroute('**/api/v1/matches/3869685/analysis');
+  await page.unroute('**/api/v1/competitions/43/seasons/106/matches/3869685/analysis');
   await page.getByRole('button', { name: 'Повторить' }).click();
   await expect(page.getByTestId('shot-count')).toContainText('30');
 });

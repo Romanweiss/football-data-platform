@@ -1,4 +1,5 @@
 import type { ApiError, MatchAnalysisResponse, MatchOverview, Metrics, PlayerMatchStats, Shot, Shootout, ShootoutAttempt, TeamMatchStats, XgRacePoint } from './types';
+import type { Competition, Season, Context } from './types';
 
 type Guard<T> = (value: unknown) => value is T;
 type Schema<T> = { [K in keyof T]: Guard<T[K]> };
@@ -66,12 +67,38 @@ async function get(path: string, signal: AbortSignal): Promise<unknown> {
   }
   return response.json();
 }
-export async function fetchMatches(signal: AbortSignal) {
-  return parseMatches(await get('/competitions/43/seasons/106/matches', signal));
+const positive: Guard<number> = (v): v is number => integer(v) && v > 0;
+const competitionGuard = shape<Competition>({ competition_id: positive });
+const seasonGuard = shape<Season>({ season_id: positive });
+export function contextPath(context: Context) {
+  if (![context.competitionId, context.seasonId].every(v => Number.isSafeInteger(v) && v > 0 && v < 2 ** 32)) throw new ApiFailure(400, 'invalid_request');
+  return `/competitions/${context.competitionId}/seasons/${context.seasonId}`;
 }
-export async function fetchAnalysis(matchId: number, signal: AbortSignal) {
+export async function fetchCompetitions(signal: AbortSignal) {
+  const data = await get('/competitions', signal);
+  if (!shape({ competitions: array(competitionGuard) })(data)) throw new ApiFailure(500, 'invalid_response');
+  return data.competitions;
+}
+export async function fetchSeasons(competitionId: number, signal: AbortSignal) {
+  if (!Number.isSafeInteger(competitionId) || competitionId <= 0 || competitionId >= 2 ** 32) throw new ApiFailure(400, 'invalid_request');
+  const data = await get(`/competitions/${competitionId}/seasons`, signal);
+  if (!shape({ seasons: array(seasonGuard) })(data)) throw new ApiFailure(500, 'invalid_response');
+  return data.seasons;
+}
+export async function fetchMatches(context: Context, signal: AbortSignal) {
+  const rows = parseMatches(await get(contextPath(context) + '/matches', signal));
+  if (rows.some(row => row.competition_id !== context.competitionId || row.season_id !== context.seasonId)) throw new ApiFailure(500, 'invalid_response');
+  return rows;
+}
+export async function fetchLegacyMatch(matchId: number, signal: AbortSignal) {
   if (!Number.isSafeInteger(matchId) || matchId <= 0) throw new ApiFailure(404);
-  const data = parseAnalysis(await get(`/matches/${matchId}/analysis`, signal));
-  if (data.match.match_id !== matchId) throw new ApiFailure(500, 'invalid_response');
+  const data = await get(`/matches/${matchId}`, signal);
+  if (!matchGuard(data) || data.match_id !== matchId) throw new ApiFailure(500, 'invalid_response');
+  return data;
+}
+export async function fetchAnalysis(context: Context, matchId: number, signal: AbortSignal) {
+  if (!Number.isSafeInteger(matchId) || matchId <= 0) throw new ApiFailure(404);
+  const data = parseAnalysis(await get(`${contextPath(context)}/matches/${matchId}/analysis`, signal));
+  if (data.match.match_id !== matchId || data.match.competition_id !== context.competitionId || data.match.season_id !== context.seasonId) throw new ApiFailure(500, 'invalid_response');
   return data;
 }

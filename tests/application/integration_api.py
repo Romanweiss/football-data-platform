@@ -9,14 +9,14 @@ from application.services import FootballService
 
 class LiveApiTests(unittest.TestCase):
     def test_four_real_matches_and_all_http_contracts(self):
-        result = validate(make_request())
+        result = validate(make_request(), competition_id=43, season_id=106, wc2022=True)
         self.assertEqual(result["matches"], 64)
         self.assertEqual(len(result["checked_match_ids"]), 4)
 
     def test_all_64_matches_preserve_tournament_coverage(self):
         with open_repository() as repository:
             service = FootballService(repository)
-            rows = [service.analysis(match["match_id"]) for match in repository.matches()]
+            rows = [service.analysis(match["match_id"]) for match in repository.matches({"competition_id": 43, "season_id": 106})]
         self.assertEqual(len(rows), 64)
         players = [player for row in rows for player in row["players"]]
         shots = [shot for row in rows for shot in row["shots"]]
@@ -41,7 +41,7 @@ class LiveApiTests(unittest.TestCase):
         with patch.object(HttpClient, "_raw_request", measured):
             with open_repository() as repository:
                 bootstrap_count = count
-                FootballService(repository).analysis(3869685)
+                FootballService(repository).analysis(3869685, {"competition_id": 43, "season_id": 106})
         self.assertEqual(count - bootstrap_count, 6)
         print(f"Composite requests: BI=6 driver_bootstrap={bootstrap_count} total={count}")
 

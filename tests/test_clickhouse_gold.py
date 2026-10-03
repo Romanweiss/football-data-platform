@@ -292,7 +292,7 @@ class GoldServingCliTests(unittest.TestCase):
             self.assertNotIn("synthetic-access-key", output)
             self.assertNotIn("synthetic-private-secret", output)
         with patch.object(model_cli, "create_clickhouse_client", side_effect=RuntimeError("synthetic-private-secret")), redirect_stderr(io.StringIO()) as output:
-            self.assertEqual(model_cli.main([]), 1)
+            self.assertEqual(model_cli.main(["--competition-id", "43", "--season-id", "106"]), 1)
         self.assertNotIn("synthetic-private-secret", output.getvalue())
 
 

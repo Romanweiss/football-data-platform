@@ -1,5 +1,4 @@
 """Thin HTTP controllers; all database access lives in repository/services."""
-from application.errors import ApiError
 from application.repository import open_repository
 from application.services import FootballService
 from application.transport import endpoint, parameters, uint
@@ -19,22 +18,38 @@ def clickhouse_health(request):
 
 
 @endpoint
-def matches(request, competition_id, season_id):
+def competitions(request):
     parameters(request)
-    if (uint(competition_id, "competition_id", 32), uint(season_id, "season_id", 32)) != (43, 106):
-        raise ApiError("context_not_found", "Only WC2022 context 43/106 is available", 404)
     with open_repository() as repository:
-        return {"matches": repository.matches()}
+        return FootballService(repository).competitions()
 
 
 @endpoint
-def match(request, match_id, section=None):
+def seasons(request, competition_id):
+    parameters(request)
+    competition_id = uint(competition_id, "competition_id", 32)
+    with open_repository() as repository:
+        return FootballService(repository).seasons(competition_id)
+
+
+@endpoint
+def matches(request, competition_id, season_id):
+    parameters(request)
+    context = {"competition_id": uint(competition_id, "competition_id", 32), "season_id": uint(season_id, "season_id", 32)}
+    with open_repository() as repository:
+        return FootballService(repository).matches(context)
+
+
+@endpoint
+def match(request, match_id, section=None, competition_id=None, season_id=None):
     match_id = uint(match_id, "match_id")
     team_id = parameters(request, allow_team=section == "players")
+    context = None if competition_id is None else {
+        "competition_id": uint(competition_id, "competition_id", 32), "season_id": uint(season_id, "season_id", 32)}
     with open_repository() as repository:
         service = FootballService(repository)
         if section == "analysis":
-            return service.analysis(match_id)
+            return service.analysis(match_id, context)
         if section is not None:
-            return service.section(section, match_id, team_id)
-        return service.match(match_id)
+            return service.section(section, match_id, team_id, context)
+        return service.match(match_id, context)

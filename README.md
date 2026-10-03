@@ -1,5 +1,26 @@
 # Football Data Platform
 
+## Stage 6A — Multi-competition / multi-season foundation
+
+Application context is now explicit: competition → season → match. Catalogs come
+from available `football.bi_match_overview` rows, not a hardcoded WC2022 registry.
+The serving schema currently has IDs but no authoritative competition/season
+names, so the UI uses localized ID labels.
+
+Canonical frontend URL: `/competitions/43/seasons/106/matches/3869685`.
+The API adds `/api/v1` and supports all existing match sections, including
+`/analysis`. Legacy `/matches/<id>` links resolve only unambiguous IDs.
+The root selects the first catalog competition/season and chronologically first
+match; it does not assume 43/106. Search stays local to the selected context.
+
+Generic validators now require `--competition-id` and `--season-id`.
+WC2022 remains a named golden regression, not a universal count rule.
+Only the existing 43/106 dataset is live-verified; no second dataset was ingested.
+Bronze/Silver/Gold orchestration still has documented Stage 6B blockers.
+
+See [Stage 6A](docs/stage6a.md) for contracts, compatibility, context audit,
+verification results, manual commands and the Stage 6B onboarding checklist.
+
 Учебный production-like Data Engineering проект для поэтапного построения платформы футбольных данных. На первом этапе репозиторий содержит только локальную инфраструктуру и основу структуры исходного кода: PostgreSQL, ClickHouse и одноразовый Python-контейнер для безопасной проверки подключения к внешнему Selectel S3.
 
 ## Компоненты и их роли
@@ -1541,7 +1562,7 @@ foreach ($dataset in @('teams', 'players', 'match-squads', 'passes', 'shots')) {
 После всех загрузок:
 
 ```powershell
-docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py --competition-id 43 --season-id 106
 ```
 
 Только после успешного model check выполнить аналитические запросы:
@@ -1863,7 +1884,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Player load failed' }
 docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_gold.py --dataset player-match-stats --build-id $playerGoldBuild
 if ($LASTEXITCODE -ne 0) { throw 'Player repeat failed' }
 
-docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py --competition-id 43 --season-id 106
 if ($LASTEXITCODE -ne 0) { throw 'Gold model check failed' }
 ```
 
@@ -2041,9 +2062,9 @@ docker compose run --rm --no-deps football-python-tools python scripts/load_clic
 if ($LASTEXITCODE -ne 0) { throw 'Matches load failed' }
 docker compose run --rm --no-deps football-python-tools python scripts/load_clickhouse_silver.py --dataset matches --build-id $matchesBuild
 if ($LASTEXITCODE -ne 0) { throw 'Matches load repeat failed' }
-docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py --competition-id 43 --season-id 106
 if ($LASTEXITCODE -ne 0) { throw 'Cross-model check failed' }
-docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py --competition-id 43 --season-id 106
 ```
 
 Для smoke SQL используйте PowerShell/Python-команду из Stage 3D: она теперь выполнит
@@ -2185,9 +2206,9 @@ exec clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWOR
 '@ | docker compose exec -T football-clickhouse sh
 if ($LASTEXITCODE -ne 0) { throw 'BI migration failed' }
 
-docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_model.py --competition-id 43 --season-id 106
 if ($LASTEXITCODE -ne 0) { throw 'Cross-model check failed' }
-docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py
+docker compose run --rm --no-deps football-python-tools python scripts/check_clickhouse_gold_model.py --competition-id 43 --season-id 106
 if ($LASTEXITCODE -ne 0) { throw 'Gold model check failed' }
 ```
 
@@ -2423,7 +2444,7 @@ PostgreSQL в request handlers. Локальный адрес: `http://127.0.0.1
 ```powershell
 docker compose build football-api
 docker compose run --rm --no-deps football-api python manage.py check
-docker compose run --rm --no-deps football-api python scripts/check_application_api.py
+docker compose run --rm --no-deps football-api python scripts/check_application_api.py --competition-id 43 --season-id 106 --wc2022-regression
 docker compose up -d --no-deps football-api
 Invoke-RestMethod http://127.0.0.1:18000/api/v1/matches/3869685/analysis
 ```

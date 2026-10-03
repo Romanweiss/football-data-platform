@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiFailure, fetchAnalysis, fetchMatches, parseAnalysis, parseMatches } from '../src/api';
+import { ApiFailure, fetchAnalysis, fetchMatches, fetchCompetitions, fetchSeasons, parseAnalysis, parseMatches } from '../src/api';
 import { analysis, match } from './fixtures';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -24,19 +24,31 @@ describe('runtime API boundary', () => {
     const mock = vi.fn().mockResolvedValue({ ok: true, json: async () => analysis });
     vi.stubGlobal('fetch', mock);
     const controller = new AbortController();
-    expect(await fetchAnalysis(7, controller.signal)).toEqual(analysis);
+    expect(await fetchAnalysis({ competitionId: 11, seasonId: 22 }, 7, controller.signal)).toEqual(analysis);
     expect(mock).toHaveBeenCalledTimes(1);
-    expect(mock).toHaveBeenCalledWith('/api/v1/matches/7/analysis', expect.objectContaining({ signal: controller.signal }));
+    expect(mock).toHaveBeenCalledWith('/api/v1/competitions/11/seasons/22/matches/7/analysis', expect.objectContaining({ signal: controller.signal }));
     mock.mockResolvedValue({ ok: true, json: async () => ({ matches: [match] }) });
-    await fetchMatches(controller.signal);
-    expect(mock).toHaveBeenLastCalledWith('/api/v1/competitions/43/seasons/106/matches', expect.anything());
+    await fetchMatches({ competitionId: 11, seasonId: 22 }, controller.signal);
+    expect(mock).toHaveBeenLastCalledWith('/api/v1/competitions/11/seasons/22/matches', expect.anything());
   });
   it('retains status but never forwards raw server error messages', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ error: { code: 'clickhouse_unavailable', message: 'sensitive raw details' } }) }));
-    await expect(fetchAnalysis(7, new AbortController().signal)).rejects.toMatchObject({ status: 503, message: 'Unable to load football data' });
+    await expect(fetchAnalysis({ competitionId: 11, seasonId: 22 }, 7, new AbortController().signal)).rejects.toMatchObject({ status: 503, message: 'Unable to load football data' });
   });
   it('rejects mismatched match identity', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => analysis }));
-    await expect(fetchAnalysis(8, new AbortController().signal)).rejects.toMatchObject({ code: 'invalid_response' });
+    await expect(fetchAnalysis({ competitionId: 11, seasonId: 22 }, 8, new AbortController().signal)).rejects.toMatchObject({ code: 'invalid_response' });
+  });
+  it('validates catalogs and rejects cross-context responses without inventing names', async () => {
+    const mock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ competitions: [{ competition_id: 90 }] }) });
+    vi.stubGlobal('fetch', mock);
+    const signal = new AbortController().signal;
+    expect(await fetchCompetitions(signal)).toEqual([{ competition_id: 90 }]);
+    mock.mockResolvedValue({ ok: true, json: async () => ({ seasons: [{ season_id: 'wrong' }] }) });
+    await expect(fetchSeasons(90, signal)).rejects.toMatchObject({ code: 'invalid_response' });
+    mock.mockResolvedValue({ ok: true, json: async () => ({ matches: [match] }) });
+    await expect(fetchMatches({ competitionId: 90, seasonId: 22 }, signal)).rejects.toMatchObject({ code: 'invalid_response' });
+    mock.mockResolvedValue({ ok: true, json: async () => analysis });
+    await expect(fetchAnalysis({ competitionId: 90, seasonId: 22 }, 7, signal)).rejects.toMatchObject({ code: 'invalid_response' });
   });
 });

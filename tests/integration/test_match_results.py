@@ -85,7 +85,7 @@ class ResultSqlTests(unittest.TestCase):
             if not sql.strip(): continue
             for original,replacement in mapping.items(): sql=sql.replace(original,replacement)
             with self.subTest(sql=sql[:100]):
-                self.assertEqual(self.query(prefix+sql)[0][-1],0)
+                self.assertEqual(self.query(prefix + (sql % {"competition_id": 43, "season_id": 106}))[0][-1],0)
 
 
 if __name__=='__main__': unittest.main(verbosity=2)

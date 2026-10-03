@@ -2,7 +2,7 @@ import type { MatchAnalysisResponse, MatchOverview, Shot } from '../src/types';
 
 // Small synthetic fixture using the inspected Stage 5A shape, not a full match.
 export const match: MatchOverview = {
-  competition_id: 43, season_id: 106, match_id: 7, match_label: '2022-12-18 | Red FC - Blue FC',
+  competition_id: 11, season_id: 22, match_id: 7, match_label: '2022-12-18 | Red FC - Blue FC',
   match_date: '2022-12-18', kick_off: '17:00:00.000', competition_stage_id: 26, competition_stage_name: 'Final',
   home_team_id: 10, home_team_name: 'Red FC', away_team_id: 20, away_team_name: 'Blue FC',
   home_score: 1, away_score: 1, display_score: '1-1 (4-2 pens)', result_method: 'PENALTIES',

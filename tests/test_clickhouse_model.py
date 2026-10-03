@@ -72,7 +72,7 @@ class ModelTests(unittest.TestCase):
     def test_model_cli_errors_redacted(self):
         with patch.object(cli, "create_clickhouse_client", side_effect=RuntimeError("fake secret")):
             with redirect_stderr(io.StringIO()) as output:
-                self.assertEqual(cli.main([]), 1)
+                self.assertEqual(cli.main(["--competition-id", "43", "--season-id", "106"]), 1)
         self.assertNotIn("fake secret", output.getvalue())
         self.assertIn("exception=RuntimeError", output.getvalue())
 

@@ -1,4 +1,8 @@
-"""Read-only Stage 4E checks, including 014 xG series and 015 shot labels."""
+"""WC2022-only golden regression for Stage 4E, including 014/015.
+
+For generic serving validation use check_application_api.py with explicit context.
+This diagnostic intentionally retains audited WC2022 totals and coordinate bounds.
+"""
 
 import argparse
 import sys

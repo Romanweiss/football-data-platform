@@ -3,10 +3,9 @@ from contextlib import contextmanager
 
 from clickhouse_connect.driver.exceptions import Error as ClickHouseError
 from src.common.clickhouse import create_clickhouse_client
-from application.errors import ServingIntegrityError, unavailable
+from application.errors import ApiError, ServingIntegrityError, unavailable
 from application.serialization import serialize_row
 
-CONTEXT = {"competition_id": 43, "season_id": 106}
 CONTEXT_SQL = "competition_id = {competition_id:UInt32} AND season_id = {season_id:UInt32}"
 MATCH_FIELDS = tuple("competition_id season_id match_id match_label match_date kick_off competition_stage_id competition_stage_name home_team_id home_team_name away_team_id away_team_name home_score away_score display_score result_method went_to_extra_time went_to_penalties winner_team_id winner_team_name".split())
 METRICS = tuple("event_count pass_attempts shot_count shot_xg shot_goals under_pressure_events counterpress_events".split())
@@ -40,24 +39,46 @@ class FootballRepository:
             raise unavailable()
         return {"status": "ok"}
 
-    def matches(self):
+    def competitions(self):
+        return self._query("SELECT DISTINCT competition_id FROM football.bi_match_overview ORDER BY competition_id LIMIT 10001")
+
+    def seasons(self, competition_id):
+        return self._query(
+            "SELECT DISTINCT season_id FROM football.bi_match_overview WHERE competition_id = {competition_id:UInt32} "
+            "ORDER BY season_id LIMIT 10001", {"competition_id": competition_id})
+
+    def require_context(self, context):
+        seasons = self.seasons(context["competition_id"])
+        if not seasons:
+            raise ApiError("competition_not_found", "Competition was not found", 404)
+        if not any(row["season_id"] == context["season_id"] for row in seasons):
+            raise ApiError("season_not_found", "Season was not found for this competition", 404)
+
+    def matches(self, context):
         return self._query(
             f"SELECT {', '.join(MATCH_FIELDS)} FROM football.bi_match_overview WHERE {CONTEXT_SQL} "
-            "ORDER BY match_date, kick_off, match_id LIMIT 10001", CONTEXT)
+            "ORDER BY match_date, kick_off, match_id LIMIT 10001", context)
 
-    def match(self, match_id):
+    def match(self, match_id, context=None):
+        # Legacy lookup is unscoped only to resolve identity, never for child data.
+        predicate = f"{CONTEXT_SQL} AND " if context is not None else ""
         rows = self._query(
-            f"SELECT {', '.join(MATCH_FIELDS)} FROM football.bi_match_overview WHERE {CONTEXT_SQL} "
-            "AND match_id = {match_id:UInt64} LIMIT 2", {**CONTEXT, "match_id": match_id})
+            f"SELECT {', '.join(MATCH_FIELDS)} FROM football.bi_match_overview WHERE {predicate}"
+            "match_id = {match_id:UInt64} ORDER BY competition_id, season_id LIMIT 2",
+            {**(context or {}), "match_id": match_id})
         if len(rows) > 1:
+            if context is None and len({(r["competition_id"], r["season_id"]) for r in rows}) > 1:
+                raise ApiError("ambiguous_match", "Match ID is ambiguous; use a competition and season URL", 409)
             raise ServingIntegrityError("Duplicate match identity")
+        if not rows and context is not None:
+            self.require_context(context)
         return rows[0] if rows else None
 
-    def section(self, name, match_id, team_id=None):
+    def section(self, name, match_id, team_id=None, *, context):
         # name is a controller-owned constant, never a request SQL identifier.
         table, fields, ordering = PROJECTIONS[name]
         sql = f"SELECT {', '.join(fields)} FROM {table} WHERE {CONTEXT_SQL} AND match_id = {{match_id:UInt64}}"
-        params = {**CONTEXT, "match_id": match_id}
+        params = {**context, "match_id": match_id}
         if team_id is not None:
             if name != "players":
                 raise ValueError("Team filter only applies to players")

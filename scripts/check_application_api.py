@@ -52,7 +52,7 @@ def make_request(base_url=None):
     return request
 
 
-def validate(request):
+def validate(request, *, competition_id, season_id, wc2022=False):
     timings = {}
 
     def get(path, status=200):
@@ -64,21 +64,31 @@ def validate(request):
 
     require(get("/health") == {"status": "ok"})
     require(get("/health/clickhouse") == {"status": "ok"})
-    matches = get("/competitions/43/seasons/106/matches")["matches"]
-    require(len(matches) == len({r["match_id"] for r in matches}) == 64)
+    context = f"/competitions/{competition_id}/seasons/{season_id}"
+    require({"competition_id": competition_id} in get("/competitions")["competitions"])
+    require({"season_id": season_id} in get(f"/competitions/{competition_id}/seasons")["seasons"])
+    matches = get(context + "/matches")["matches"]
+    require(len(matches) == len({r["match_id"] for r in matches}) and bool(matches))
+    if wc2022:
+        require((competition_id, season_id) == (43, 106) and len(matches) == 64)
     require(matches == sorted(matches, key=lambda r: (r["match_date"], r["kick_off"], r["match_id"])))
-    require(all(r["competition_id"] == 43 and r["season_id"] == 106 for r in matches))
-    missing = get("/matches/18446744073709551615", 404)
+    require(all(r["competition_id"] == competition_id and r["season_id"] == season_id for r in matches))
+    missing = get(context + "/matches/18446744073709551615", 404)
     require(missing["error"]["code"] == "match_not_found")
-    require(get("/matches/not-an-id", 400)["error"]["code"] == "invalid_request")
+    require(get(context + "/matches/not-an-id", 400)["error"]["code"] == "invalid_request")
     pairs = (("Argentina", "France"), ("Netherlands", "Argentina"), ("Mexico", "Poland"), ("Croatia", "Morocco"))
+    selected = matches[:4]
+    if wc2022:
+        selected = []
+        for home, away in pairs:
+            candidates = [r for r in matches if (r["home_team_name"], r["away_team_name"]) == (home, away)]
+            require(len(candidates) == 1)
+            selected.append(candidates[0])
     checked = []
-    for home, away in pairs:
-        candidates = [r for r in matches if (r["home_team_name"], r["away_team_name"]) == (home, away)]
-        require(len(candidates) == 1)
-        match = candidates[0]
+    for match in selected:
+        home = match["home_team_name"]
         match_id = match["match_id"]
-        prefix = f"/matches/{match_id}"
+        prefix = context + f"/matches/{match_id}"
         require(get(prefix) == match)
         composite = get(prefix + "/analysis")
         require(set(composite) == {"match", "teams", "players", "shots", "xg_race", "shootout"})
@@ -100,18 +110,20 @@ def validate(request):
         require(len(race) == 2 * len(shots))
         for team in teams:
             states = [r for r in race if r["team_id"] == team["team_id"]]
-            require(states and math.isclose(states[-1]["cumulative_xg"], team["shot_xg"], rel_tol=1e-9, abs_tol=1e-9))
+            require(math.isclose(states[-1]["cumulative_xg"] if states else 0, team["shot_xg"], rel_tol=1e-9, abs_tol=1e-9))
         shootout = composite["shootout"]
         require(shootout["went_to_penalties"] is match["went_to_penalties"])
         attempts = shootout["attempts"]
         require([r["shootout_order"] for r in attempts] == list(range(1, len(attempts) + 1)))
-        if home == "Argentina":
+        if wc2022 and home == "Argentina":
             require(len(shots) == 30 and len(attempts) == 8)
             require(attempts[-1]["home_shootout_goals_after"] == 4 and attempts[-1]["away_shootout_goals_after"] == 2)
             for name, expected in (("Argentina", 2.758305926), ("France", 2.2726179490000002)):
                 require(math.isclose(next(r["shot_xg"] for r in teams if r["team_name"] == name), expected, abs_tol=1e-9))
-        if home == "Mexico":
+        if wc2022 and home == "Mexico":
             require(shootout == {"match_id": match_id, "went_to_penalties": False, "attempts": []})
+        if wc2022:
+            require(get(f"/matches/{match_id}/analysis") == composite)
         checked.append(match_id)
     return {"matches": len(matches), "checked_match_ids": checked, "latency_ms_single_request": timings}
 
@@ -119,9 +131,16 @@ def validate(request):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", help="Optional local HTTP origin; default uses Django in-process, no server required")
+    parser.add_argument("--competition-id", required=True, type=int)
+    parser.add_argument("--season-id", required=True, type=int)
+    parser.add_argument("--wc2022-regression", action="store_true", help="Explicit golden-fixture counts and four WC2022 matches")
     args = parser.parse_args(argv)
+    if not all(0 < value < 2**32 for value in (args.competition_id, args.season_id)):
+        parser.error("Context IDs must be positive UInt32")
+    if args.wc2022_regression and (args.competition_id, args.season_id) != (43, 106):
+        parser.error("WC2022 regression requires context 43/106")
     try:
-        result = validate(make_request(args.base_url))
+        result = validate(make_request(args.base_url), competition_id=args.competition_id, season_id=args.season_id, wc2022=args.wc2022_regression)
         print("APPLICATION API CHECK PASSED: " + json.dumps(result))
         return 0
     except Exception as exc:

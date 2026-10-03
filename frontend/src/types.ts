@@ -1,3 +1,6 @@
+export interface Competition { competition_id: number }
+export interface Season { season_id: number }
+export interface Context { competitionId: number; seasonId: number }
 export interface MatchOverview {
   competition_id: number; season_id: number; match_id: number; match_label: string;
   match_date: string; kick_off: string; competition_stage_id: number; competition_stage_name: string;
