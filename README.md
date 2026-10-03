@@ -2456,6 +2456,29 @@ Frontend не получает DB/S3 credentials. Архитектура, точ
 smoke-проверки и ограничения: [docs/stage5b.md](docs/stage5b.md).
 Это local development foundation, не production deployment.
 
+## Stage 5C — интерактивность, поиск и EN/RU/ES
+
+Поиск матчей работает локально по командам, стадии и дате; стрелки/Enter/Escape
+управляют combobox, Back/Forward сохраняет навигацию. xG race и карта поля
+синхронизируют hover/выбор по event_id и показывают общий блок деталей удара.
+Язык EN/RU/ES сохраняется в localStorage; смена языка не перезагружает данные.
+Добавлены локальные фильтры игроков: по умолчанию игроки с событиями, полный состав
+доступен отдельной опцией.
+Метрики, API и ClickHouse не изменены.
+
+```powershell
+docker compose build football-web
+docker compose up -d --no-deps football-web
+# http://127.0.0.1:15173/
+Set-Location .\frontend
+npm.cmd test
+npm.cmd run build
+npm.cmd run test:smoke
+```
+
+Поведение поиска, клавиатуры, локализации, адаптивности, тесты и ограничения:
+[docs/stage5c.md](docs/stage5c.md).
+
 ## Инициализация баз
 
 Файлы из `infrastructure/*/init/` выполняются entrypoint-скриптами образов только при первом создании пустого volume. Изменение init SQL не переинициализирует уже существующую базу автоматически. Для повторной чистой инициализации пришлось бы удалить соответствующий локальный volume, что уничтожит его данные.

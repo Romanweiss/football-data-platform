@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MatchSelector } from '../src/components/MatchSelector';
 import { ShootoutPanel } from '../src/components/ShootoutPanel';
 import { LoadingState, ErrorState } from '../src/components/States';
-import { ShotMap } from '../src/components/ShotMap';
+import { Analysis } from '../src/App';
 import { PlayerTable } from '../src/components/PlayerTable';
 import { ApiFailure } from '../src/api';
 import { analysis, match, otherAnalysis, otherMatch } from './fixtures';
@@ -12,8 +12,10 @@ describe('accessible page components', () => {
   it('selects by ID and displays API match labels', () => {
     const select = vi.fn();
     render(<MatchSelector matches={[match, otherMatch]} selected={7} onSelect={select} />);
-    expect(screen.getByText(otherMatch.match_label)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Explore a match'), { target: { value: '8' } });
+    expect(screen.getByText(match.match_label)).toBeTruthy();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Explore a match' }), { target: { value: '2022-12-19' } });
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Explore a match' }), { key: 'ArrowDown' });
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Explore a match' }), { key: 'Enter' });
     expect(select).toHaveBeenCalledWith(8);
   });
   it('omits the entire shootout panel when not applicable', () => {
@@ -27,19 +29,22 @@ describe('accessible page components', () => {
     expect(screen.getByText('● Goal')).toBeTruthy();
   });
   it('supports focus tooltips without exposing UUID as a primary label', () => {
-    render(<ShotMap match={match} shots={analysis.shots} />);
+    render(<Analysis data={analysis} />);
     fireEvent.focus(screen.getByTestId('shot-marker'));
-    expect(screen.getByText('Player One')).toBeTruthy();
-    expect(screen.getByText('0.10 xG')).toBeTruthy();
+    expect(screen.getByTestId('shot-details').textContent).toContain('Player One');
+    expect(screen.getByTestId('shot-details').textContent).toContain('0.10');
     expect(screen.queryByText(analysis.shots[0].event_id)).toBeNull();
   });
   it('reports unplottable coordinates instead of silently dropping shots', () => {
-    render(<ShotMap match={match} shots={[{ ...analysis.shots[0], start_x: null }]} />);
+    render(<Analysis data={{ ...analysis, shots: [{ ...analysis.shots[0], start_x: null }] }} />);
     expect(screen.getByText(/1 shots not plotted/)).toBeTruthy();
     expect(screen.queryAllByTestId('shot-marker')).toHaveLength(0);
   });
   it('retains zero-activity players and filters locally', () => {
     render(<PlayerTable players={analysis.players} teams={analysis.teams} />);
+    expect(screen.queryByText('Unused Player')).toBeNull();
+    expect((screen.getByLabelText('Squad coverage') as HTMLSelectElement).value).toBe('active');
+    fireEvent.change(screen.getByLabelText('Squad coverage'), { target: { value: 'all' } });
     expect(screen.getByText('Unused Player')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Filter players by team'), { target: { value: '20' } });
     expect(screen.getByText('Unused Player')).toBeTruthy();

@@ -2,10 +2,10 @@ import type { PlayerMatchStats, XgRacePoint } from './types';
 
 export const COLORS = { home: '#64d9c0', away: '#ffb46b' } as const;
 export const teamColor = (isHome: boolean) => isHome ? COLORS.home : COLORS.away;
-export const formatXg = (value: number) => value.toFixed(2);
-export const formatCount = (value: number) => new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 }).format(value);
+export const formatXg = (value: number, locale = 'en-GB') => new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+export const formatCount = (value: number, locale = 'en-GB') => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
 export const formatClock = (minute: number, second: number) => `${minute}:${String(second).padStart(2, '0')}`;
-export const formatDate = (value: string) => new Intl.DateTimeFormat('en-GB', {
+export const formatDate = (value: string, locale = 'en-GB') => new Intl.DateTimeFormat(locale, {
   day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
 }).format(new Date(value + 'T00:00:00Z'));
 
