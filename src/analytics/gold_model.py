@@ -17,7 +17,7 @@ XG_ABS_TOL = 1e-9
 INPUT_SPECS = {name: SILVER_SPECS[name] for name in REQUIRED_INPUTS}
 
 
-def current_gold_builds(client, connection, *, competition_id=43, season_id=106, specs=SPECS):
+def current_gold_builds(client, connection, *, competition_id, season_id, specs=SPECS):
     records = {}
     for dataset, spec in specs.items():
         validate_table_schema(client, spec=spec)
@@ -82,7 +82,7 @@ def model_queries(*, gold_specs=SPECS, silver_specs=INPUT_SPECS):
     return queries
 
 
-def validate_model_metrics(client, gold_builds, silver_builds, *, competition_id=43, season_id=106,
+def validate_model_metrics(client, gold_builds, silver_builds, *, competition_id, season_id,
                            gold_specs=SPECS, silver_specs=INPUT_SPECS):
     parameters = {"competition_id": competition_id, "season_id": season_id,
                   **{name + "_build_id": value for name, value in {**gold_builds, **silver_builds}.items()}}
@@ -103,7 +103,7 @@ def validate_model_metrics(client, gold_builds, silver_builds, *, competition_id
     return results
 
 
-def check_model(client, connection, *, competition_id=43, season_id=106, gold_specs=SPECS, silver_specs=INPUT_SPECS):
+def check_model(client, connection, *, competition_id, season_id, gold_specs=SPECS, silver_specs=INPUT_SPECS):
     context = {"competition_id": competition_id, "season_id": season_id}
     gold = current_gold_builds(client, connection, specs=gold_specs, **context)
     silver = current_silver_builds(client, connection, specs=silver_specs, **context)

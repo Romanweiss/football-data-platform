@@ -10,18 +10,18 @@ from src.silver.build_identity import (
 from src.silver.manifest import SilverIntegrityError, inspect_silver_output, read_manifest
 from src.analytics.specs import EVENT_CORE
 
-CONTEXT = {"source": "statsbomb", "dataset": "event_core", "competition_id": 43, "season_id": 106}
+CONTEXT_FIELDS = ("source", "dataset", "competition_id", "season_id")
 
 
-def resolve_silver_build(connection, build_id: str | None = None, *, spec=EVENT_CORE) -> dict:
-    context = {**CONTEXT, "dataset": spec.dataset}
+def resolve_silver_build(connection, build_id: str | None = None, *, competition_id, season_id, spec=EVENT_CORE) -> dict:
+    context = dict(source="statsbomb", dataset=spec.dataset, competition_id=competition_id, season_id=season_id)
     if build_id is None:
         build = find_latest_silver_build(connection, **context)
     else:
         require_sha256(build_id)
         build = find_silver_build(
-            connection, dataset=spec.dataset, competition_id=CONTEXT["competition_id"],
-            season_id=CONTEXT["season_id"], build_id=build_id,
+            connection, dataset=spec.dataset, competition_id=competition_id,
+            season_id=season_id, build_id=build_id,
         )
     if build is None:
         raise SilverIntegrityError("No matching registered Silver build.")
@@ -53,7 +53,7 @@ def verify_silver_manifest(client, build: dict, *, spec=EVENT_CORE) -> dict:
     if manifest is None:
         raise SilverIntegrityError("Registered Silver build has no manifest.")
     fields = (
-        *CONTEXT, "transform_version", "input_fingerprint", "schema_sha256",
+        *CONTEXT_FIELDS, "transform_version", "input_fingerprint", "schema_sha256",
         "build_id", "row_count", "file_count",
     )
     if any(manifest.get(name) != build[name] for name in fields):
@@ -72,6 +72,9 @@ def verify_silver_manifest(client, build: dict, *, spec=EVENT_CORE) -> dict:
         or matches != (build["row_count"] if spec.artifact_kind == "matches" else len(manifest["inputs"]))
     ):
         raise SilverIntegrityError("Silver manifest match_count is invalid.")
+    if spec.artifact_kind == "matches":
+        from src.statsbomb.context import validate_parent_url
+        validate_parent_url(manifest["inputs"][0], competition_id=build["competition_id"], season_id=build["season_id"])
     files = inspect_silver_output(client, bucket=bucket, prefix=prefix)
     if files is None or len(files) != build["file_count"] or files != manifest.get("files"):
         raise SilverIntegrityError("Silver file count/inventory differs from manifest.")

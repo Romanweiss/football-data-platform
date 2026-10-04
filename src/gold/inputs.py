@@ -52,6 +52,9 @@ def resolve_inputs(connection, client, *, competition_id, season_id, diagnostics
         if (type(manifest.get("match_count")) is not int or manifest["match_count"] <= 0
                 or manifest["match_count"] != (build["row_count"] if dataset == "matches" else len(manifest["inputs"]))):
             raise GoldIntegrityError("Silver match count mismatch.")
+        if dataset == "matches":
+            from src.statsbomb.context import validate_parent_url
+            validate_parent_url(manifest["inputs"][0], competition_id=competition_id, season_id=season_id)
         diagnostics.set("Silver completeness", "inventory/_SUCCESS", dataset=dataset)
         files = inspect_silver_output(client, bucket=build["s3_bucket"], prefix=build["s3_prefix"])
         if files is None or len(files) != build["file_count"] or files != manifest.get("files"):

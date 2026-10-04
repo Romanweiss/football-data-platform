@@ -6,6 +6,7 @@ from contextlib import ExitStack, closing, nullcontext
 from dataclasses import dataclass
 
 from src.common.clickhouse import create_clickhouse_client
+from src.statsbomb.context import add_context_arguments, context_from_args
 from src.common.postgres import clickhouse_load_lock, create_postgres_connection
 from src.common.s3 import create_s3_client
 from src.silver.build_identity import require_sha256
@@ -41,7 +42,8 @@ def parse_args(argv=None, *, generic=False):
     if generic:
         parser.add_argument("--dataset", required=True, choices=CLI_DATASETS)
     parser.add_argument("--check-only", action="store_true")
-    parser.add_argument("--build-id")
+    parser.add_argument("--build-id", required=True)
+    add_context_arguments(parser)
     args = parser.parse_args(argv)
     if args.build_id is not None:
         try:
@@ -51,14 +53,14 @@ def parse_args(argv=None, *, generic=False):
     return args
 
 
-def run_job(*, check_only=False, build_id=None, smoke=False, dataset="event_core") -> int:
+def run_job(*, competition_id, season_id, check_only=False, build_id=None, smoke=False, dataset="event_core") -> int:
     diagnostics = LoadDiagnostics()
     try:
         spec = SPECS[dataset]
         with ExitStack() as stack:
             connection = stack.enter_context(closing(create_postgres_connection()))
             diagnostics.set("Silver catalog", "resolve_silver_build")
-            build = resolve_silver_build(connection, build_id, spec=spec)
+            build = resolve_silver_build(connection, build_id, competition_id=competition_id, season_id=season_id, spec=spec)
             diagnostics.set("manifest", "verify_silver_manifest")
             s3 = stack.enter_context(closing(create_s3_client()))
             manifest = verify_silver_manifest(s3, build, spec=spec)

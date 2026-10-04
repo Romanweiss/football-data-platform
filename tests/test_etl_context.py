@@ -2,6 +2,7 @@
 import argparse
 import io
 import json
+import os
 import unittest
 from contextlib import ExitStack, redirect_stdout
 from types import SimpleNamespace
@@ -93,6 +94,44 @@ class SourceContextTests(unittest.TestCase):
         for wrong in (inputs[:-1], inputs + inputs[:1], [{**inputs[0], "build_id": "f" * 64}, *inputs[1:]]):
             with self.assertRaises(GoldIntegrityError): validate_context_snapshot(wrong, pins, **context)
         with self.assertRaises(GoldIntegrityError): validate_context_snapshot(inputs, pins, **CONTEXTS[1])
+
+
+class ExactResolverContextTests(unittest.TestCase):
+    def test_every_loader_target_resolves_exact_pins_and_rejects_other_contexts(self):
+        from src.analytics import silver_input, gold_input
+        from src.silver.manifest import SilverIntegrityError
+
+        # Synthetic endpoint is only validated as a string; no service IO is used.
+        environment = {"S3_ENDPOINT": "https://s3.ru-3.storage.selcloud.ru", "S3_BUCKET": "test-bucket"}
+        with patch.dict(os.environ, environment, clear=True):
+            for layer, module, specs, error_type in (
+                ("silver", silver_input, SPECS.values(), SilverIntegrityError),
+                ("gold", gold_input, [*V2_SPECS.values(), RESULTS], GoldIntegrityError),
+            ):
+                resolve = getattr(module, f"resolve_{layer}_build")
+                prefix = silver_prefix if layer == "silver" else gold_identity.gold_prefix
+                for spec in specs:
+                    for context in CONTEXTS:
+                        with self.subTest(layer=layer, dataset=spec.dataset, context=context):
+                            identity = dict(source="statsbomb", layer=layer, dataset=spec.dataset, **context,
+                                            transform_version=spec.transform_version, input_fingerprint="a" * 64,
+                                            schema_sha256="b" * 64)
+                            build_id = calculate_build_id(identity)
+                            build = dict(identity, build_id=build_id, s3_bucket="test-bucket",
+                                         s3_prefix=prefix(identity, build_id), row_count=4, file_count=1)
+                            with patch.object(module, f"find_{layer}_build", return_value=build) as exact, \
+                                 patch.object(module, f"find_latest_{layer}_build") as latest:
+                                self.assertEqual(resolve(None, build_id, **context, spec=spec), build)
+                                exact.assert_called_once_with(None, dataset=spec.dataset, **context, build_id=build_id)
+                                for field, value in (("competition_id", 999), ("season_id", 999),
+                                                     ("build_id", "f" * 64), ("transform_version", "wrong")):
+                                    exact.return_value = dict(build, **{field: value})
+                                    with self.assertRaises(error_type):
+                                        resolve(None, build_id, **context, spec=spec)
+                                exact.return_value = None
+                                with self.assertRaises(error_type):
+                                    resolve(None, build_id, **context, spec=spec)
+                                latest.assert_not_called()
 
 
 class ContextTarget:

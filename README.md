@@ -9,6 +9,8 @@ No second context has been published or loaded: real coexistence is Stage 6B-2.
 Recommended next context: StatsBomb 1. Bundesliga 2023/2024 (`9/281`), the 34
 available Bayer Leverkusen matches, **not** the complete league season.
 Public source preflight found all 34 events and 34 lineups files.
+Container connectivity has been intermittent; the runbook requires a successful
+fresh source preflight before any Stage 6B-2 write.
 
 See [Stage 6B-1 audit, evidence and exact Stage 6B-2 runbook](docs/stage6b1.md).
 That runbook supersedes historical ETL/load commands below: new invocations need

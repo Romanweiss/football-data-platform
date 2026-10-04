@@ -39,7 +39,7 @@ def match_queries(*, specs=SPECS, gold_specs=GOLD_SPECS):
     return queries
 
 
-def validate_match_references(client, builds, *, competition_id=43, season_id=106, specs=SPECS, gold_specs=GOLD_SPECS):
+def validate_match_references(client, builds, *, competition_id, season_id, specs=SPECS, gold_specs=GOLD_SPECS):
     parameters = {"competition_id": competition_id, "season_id": season_id,
                   **{name + "_build_id": build_id for name, build_id in builds.items()}}
     counts = {}
@@ -51,7 +51,7 @@ def validate_match_references(client, builds, *, competition_id=43, season_id=10
     return counts
 
 
-def check_model(client, connection, *, competition_id=43, season_id=106, specs=SPECS, gold_specs=GOLD_SPECS):
+def check_model(client, connection, *, competition_id, season_id, specs=SPECS, gold_specs=GOLD_SPECS):
     context = {"competition_id": competition_id, "season_id": season_id}
     silver = current_builds(client, connection, specs=specs, **context)
     gold = current_gold_builds(client, connection, specs=gold_specs, **context)

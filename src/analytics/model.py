@@ -35,7 +35,7 @@ REFERENCE_CHECKS = (
 )
 
 
-def current_builds(client, connection, *, competition_id=43, season_id=106, specs=SPECS):
+def current_builds(client, connection, *, competition_id, season_id, specs=SPECS):
     """Resolve from serving rows, not latest Silver; require matching registrations."""
     builds = {}
     for dataset, spec in specs.items():
@@ -81,7 +81,7 @@ def reference_sql(check, *, specs=SPECS):
     )
 
 
-def validate_references(client, builds, *, competition_id=43, season_id=106, specs=SPECS):
+def validate_references(client, builds, *, competition_id, season_id, specs=SPECS):
     parameters = {"competition_id": competition_id, "season_id": season_id,
                   **{dataset + "_build_id": build_id for dataset, build_id in builds.items()}}
     failed = False
@@ -96,7 +96,7 @@ def validate_references(client, builds, *, competition_id=43, season_id=106, spe
     return counts
 
 
-def check_model(client, connection, *, competition_id=43, season_id=106, specs=SPECS):
+def check_model(client, connection, *, competition_id, season_id, specs=SPECS):
     builds = current_builds(client, connection, competition_id=competition_id, season_id=season_id, specs=specs)
     counts = validate_references(client, builds, competition_id=competition_id, season_id=season_id, specs=specs)
     # Detect a changed materialization/catalog during the series of read-only queries.

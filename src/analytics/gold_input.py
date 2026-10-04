@@ -7,16 +7,15 @@ from src.common.s3_paths import selectel_virtual_url
 from src.gold.build_identity import SPEC_FIELDS, gold_prefix, require_sha256
 from src.gold.manifest import GoldIntegrityError, inspect_output, make_manifest, read_manifest, validate_manifest
 
-CONTEXT = {"source": "statsbomb", "competition_id": 43, "season_id": 106}
 
 
-def resolve_gold_build(connection, build_id=None, *, spec):
-    context = {**CONTEXT, "dataset": spec.dataset}
+def resolve_gold_build(connection, build_id=None, *, competition_id, season_id, spec):
+    context = dict(source="statsbomb", dataset=spec.dataset, competition_id=competition_id, season_id=season_id)
     if build_id is None:
         build = find_latest_gold_build(connection, **context)
     else:
         require_sha256(build_id)
-        build = find_gold_build(connection, dataset=spec.dataset, competition_id=43, season_id=106, build_id=build_id)
+        build = find_gold_build(connection, dataset=spec.dataset, competition_id=competition_id, season_id=season_id, build_id=build_id)
     if build is None or any(build.get(field) != value for field, value in context.items()):
         raise GoldIntegrityError("No matching registered Gold build.")
     if build_id is not None and build["build_id"] != build_id:

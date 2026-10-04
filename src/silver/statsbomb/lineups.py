@@ -27,7 +27,7 @@ class LineupQualityError(ValueError):
 
 def lineup_match_id(path_column):
     return F.regexp_extract(
-        path_column, r"/lineups/match_id=([1-9][0-9]*)/sha256=[0-9a-f]{64}/lineups\.json$", 1,
+        path_column, r"/lineups/(?:competition_id=[1-9][0-9]*/season_id=[1-9][0-9]*/)?match_id=([1-9][0-9]*)/sha256=[0-9a-f]{64}/lineups\.json$", 1,
     ).try_cast("long")
 
 

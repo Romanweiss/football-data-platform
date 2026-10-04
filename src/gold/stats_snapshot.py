@@ -15,3 +15,29 @@ def validate_stats_snapshot(inputs):
     selected = {item["dataset"]: item["build_id"] for item in inputs}
     if len(inputs) != len(selected) or selected != PINNED_STATS_INPUTS:
         raise GoldIntegrityError("Stats v2 must use the exact reviewed Stage 4B Silver snapshot.")
+
+
+def validate_requested_snapshot(pinned, *, competition_id, season_id):
+    """Generic exact pins; keep the WC2022 golden contract intact."""
+    from src.gold.build_identity import REQUIRED_INPUTS, require_sha256
+    from src.gold.manifest import GoldIntegrityError
+    if set(pinned) != set(REQUIRED_INPUTS):
+        raise GoldIntegrityError("Stats v2 requires every explicit upstream Silver build.")
+    for build_id in pinned.values():
+        require_sha256(build_id)
+    if (competition_id, season_id) == (43, 106):
+        validate_stats_snapshot([{"dataset": name, "build_id": value} for name, value in pinned.items()])
+
+
+def validate_context_snapshot(inputs, expected, *, competition_id, season_id):
+    from src.gold.manifest import GoldIntegrityError
+    validate_requested_snapshot(expected, competition_id=competition_id, season_id=season_id)
+    selected = {item["dataset"]: item["build_id"] for item in inputs}
+    if len(inputs) != len(selected) or selected != expected:
+        raise GoldIntegrityError("Stats v2 manifest differs from the explicitly requested Silver snapshot.")
+    # Manifest canonical inputs omit context columns; their exact prefixes carry it.
+    for item in inputs:
+        prefix = (f"football/silver/statsbomb/{item['dataset']}/competition_id={competition_id}/"
+                  f"season_id={season_id}/build_id={item['build_id']}/")
+        if item.get("s3_prefix") != prefix:
+            raise GoldIntegrityError("Stats v2 upstream prefix belongs to another context/build.")

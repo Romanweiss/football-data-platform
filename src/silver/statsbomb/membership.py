@@ -1,4 +1,4 @@
-"""Choose exact World Cup parent membership independently of Spark."""
+"""Choose exact selected-parent membership independently of Spark."""
 
 import re
 
@@ -53,7 +53,7 @@ def lineup_artifact_s3a_path(artifact: dict) -> str:
     """Cross-check lineup URL identity, immutable path and catalog SHA-256."""
     match_id = extract_match_id_from_lineups_url(artifact["source_url"])
     match = re.search(
-        r"/lineups/match_id=([1-9][0-9]*)/sha256=([0-9a-f]{64})/lineups\.json$",
+        r"/lineups/(?:competition_id=[1-9][0-9]*/season_id=[1-9][0-9]*/)?match_id=([1-9][0-9]*)/sha256=([0-9a-f]{64})/lineups\.json$",
         artifact["object_key"],
     )
     if match is None or int(match[1]) != match_id or match[2] != artifact["sha256"]:

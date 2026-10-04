@@ -1,4 +1,4 @@
-"""Shared World Cup input resolution and immutable Silver job orchestration."""
+"""Shared context-bound input resolution and immutable Silver job orchestration."""
 
 import argparse
 import os
@@ -9,7 +9,7 @@ from src.common.bronze import BronzeIntegrityError
 from src.common.bronze_reader import read_bronze_object, verify_bronze_object_metadata
 from src.common.checksum import sha256_bytes
 from src.common.postgres import (
-    create_postgres_connection, find_latest_ingestion_object, find_latest_ingestion_objects,
+    create_postgres_connection, find_matches_parent, find_latest_ingestion_objects,
 )
 from src.common.s3 import create_s3_client
 from src.common.s3_paths import s3a_uri
@@ -24,10 +24,7 @@ from src.silver.statsbomb.membership import (
     event_artifact_s3a_path, select_parent_event_artifacts,
     lineup_artifact_s3a_path, select_parent_lineup_artifacts,
 )
-from src.statsbomb.matches import extract_match_ids
-
-COMPETITION_ID = 43
-SEASON_ID = 106
+from src.statsbomb.context import add_bronze_arguments, matches_context
 
 
 def positive_int(value: str) -> int:
@@ -56,14 +53,17 @@ def create_spark_session(dataset: str = "event_core"):
 def parse_publish_args(parser: argparse.ArgumentParser, argv: list[str] | None):
     parser.add_argument("--check-only", action="store_true", help="read/transform/DQ only; no publication")
     parser.add_argument("--limit", type=positive_int, metavar="N", help="only permitted with --check-only")
+    add_bronze_arguments(parser, children=True)
     args = parser.parse_args(argv)
     if args.limit is not None and not args.check_only:
         parser.error("--limit is allowed only with --check-only; partial publication is forbidden")
     return args
 
 
-def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_only: bool, limit: int | None) -> int:
+def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_only: bool, limit: int | None,
+                    competition_id: int, season_id: int, parent_sha256: str, bronze_max_id: int) -> int:
     """A dataset supplies only its read/transform/DQ function, not another publisher."""
+    context = {"competition_id": competition_id, "season_id": season_id}
     spark = frame = None
     diagnostics = PublishDiagnostics()
     exit_code = 0
@@ -76,10 +76,8 @@ def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_
         if not check_only:
             s3a_uri(bucket, "football/silver/")  # Validate destination before any remote IO.
         with create_postgres_connection() as connection, closing(create_s3_client()) as client:
-            diagnostics.set("parent catalog", "find_latest_ingestion_object")
-            parent = find_latest_ingestion_object(
-                connection, source="statsbomb", dataset="world_cup_2022_matches",
-            )
+            diagnostics.set("parent catalog", "find_matches_parent")
+            parent = find_matches_parent(connection, **context, sha256=parent_sha256)
             print("Parent catalog artifact found", flush=True)
             diagnostics.set("parent GET/integrity", "GetObject/verify_sha256", key=parent["object_key"])
             parent_raw = read_bronze_object(
@@ -87,10 +85,10 @@ def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_
             )
             print("Parent Bronze verified", flush=True)
             diagnostics.set("membership", "extract_match_ids", key=parent["object_key"])
-            parent_ids = extract_match_ids(parent_raw)
+            parent_ids = matches_context(parent_raw, **context)
             print(f"Parent matches discovered: {len(parent_ids)}", flush=True)
             diagnostics.set("membership", "find_latest_ingestion_objects")
-            artifacts = find_latest_ingestion_objects(connection, source="statsbomb", dataset=f"match_{artifact_kind}")
+            artifacts = find_latest_ingestion_objects(connection, source="statsbomb", dataset=f"match_{artifact_kind}", max_id=bronze_max_id, **context)
             diagnostics.set("membership", "select_parent_lineup_artifacts" if is_lineup else "select_parent_event_artifacts")
             selected = selector(parent_ids, artifacts)
             selected = selected[:limit]
@@ -115,12 +113,12 @@ def run_publish_job(*, dataset: str, transform_version: str, build_frame, check_
             diagnostics.set("Spark S3A read", "read_transform_dq",
                             match_id=selected[0]["match_id"] if len(selected) == 1 else None,
                             key=selected[0]["object_key"] if len(selected) == 1 else None)
-            frame, counts = build_frame(spark, paths, [artifact["match_id"] for artifact in selected])
+            frame, counts = build_frame(spark, paths, [artifact["match_id"] for artifact in selected], **context)
             diagnostics.set("build identity", "build_specification")
             specification = build_specification(
                 input_fingerprint=input_fingerprint(selected, artifact_kind=artifact_kind),
                 schema_sha256=sha256_bytes(frame.schema.json().encode("utf-8")),
-                transform_version=transform_version, competition_id=COMPETITION_ID, season_id=SEASON_ID,
+                transform_version=transform_version, **context,
                 dataset=dataset,
             )
             print(f"Dataset: {dataset}")

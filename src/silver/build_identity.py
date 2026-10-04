@@ -34,8 +34,8 @@ def canonical_inputs(artifacts: list[dict], *, artifact_kind: str = "events") ->
         if len(artifacts) != 1:
             raise ValueError("Matches requires one immutable Bronze parent.")
         item = {name: artifacts[0][name] for name in MATCH_INPUT_FIELDS}
-        if (item["source"] != "statsbomb" or item["dataset"] != "world_cup_2022_matches"
-                or not re.fullmatch(r"https://raw\.githubusercontent\.com/(?:hudl|statsbomb)/open-data/master/data/matches/43/106\.json", item["source_url"])):
+        if (item["source"] != "statsbomb" or item["dataset"] not in ("matches", "world_cup_2022_matches")
+                or not re.fullmatch(r"https://raw\.githubusercontent\.com/(?:hudl|statsbomb)/open-data/master/data/matches/[1-9][0-9]*/[1-9][0-9]*\.json", item["source_url"])):
             raise ValueError("Unexpected matches parent source/context.")
         require_sha256(item["sha256"])
         s3a_uri(item["s3_bucket"], item["object_key"])

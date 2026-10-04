@@ -63,7 +63,7 @@ def transform_matches(raw):
     )
 
 
-def validate_matches(frame, teams, *, competition_id=43, season_id=106):
+def validate_matches(frame, teams, *, competition_id, season_id):
     counts = frame.agg(F.count("*").alias("row_count"), F.countDistinct("match_id").alias("match_count"),
         *[F.count(F.when(F.col(name).isNull(), 1)).alias("null_" + name) for name in OUTPUT_SCHEMA.fieldNames()],
         F.count(F.when((F.col("competition_id") != competition_id) | (F.col("season_id") != season_id)
@@ -80,12 +80,12 @@ def validate_matches(frame, teams, *, competition_id=43, season_id=106):
     return counts
 
 
-def build_matches(spark, raw, teams):
+def build_matches(spark, raw, teams, *, competition_id, season_id):
     frame = transform_matches(read_matches(spark, raw)).cache()
     try:
         if frame.schema != OUTPUT_SCHEMA:
             raise MatchQualityError("Matches output schema mismatch.")
-        return frame, validate_matches(frame, teams)
+        return frame, validate_matches(frame, teams, competition_id=competition_id, season_id=season_id)
     except Exception:
         frame.unpersist()
         raise

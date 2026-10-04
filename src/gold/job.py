@@ -16,7 +16,8 @@ from src.gold.build_identity import DATASETS, build_specification, calculate_bui
 from src.gold.inputs import read_inputs, resolve_inputs
 from src.gold.manifest import GoldIntegrityError
 from src.gold.publish import publish_build
-from src.gold.stats_snapshot import PINNED_STATS_INPUTS
+from src.gold.stats_snapshot import validate_requested_snapshot
+from src.statsbomb.context import add_context_arguments, context_from_args
 from src.silver.manifest import SilverIntegrityError
 
 
@@ -55,13 +56,15 @@ def build_frame(frames, **context):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Build immutable Gold from registered Silver inputs; explicit pins required for results/v2.")
+    parser = argparse.ArgumentParser(description="Build immutable Gold from registered Silver inputs; explicit context and pins required.")
     parser.add_argument("--dataset", required=True, choices=DATASETS)
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--transform-version", help="Explicit dataset_v1 or dataset_v2 (stats only). Default preserves v1.")
     parser.add_argument("--silver-build", action="append", default=[], metavar="DATASET=SHA256",
                         help="Pin each required immutable registered Silver input.")
+    add_context_arguments(parser)
     args = parser.parse_args(argv)
+    context = context_from_args(args)
     dataset = DATASETS[args.dataset]
     version = args.transform_version or dataset + "_v1"
     allowed = (dataset + "_v1",) if dataset == "match_results" else (dataset + "_v1", dataset + "_v2")
@@ -77,10 +80,13 @@ def main(argv=None):
         except ValueError:
             parser.error("Each Silver build ID must be 64 lowercase hexadecimal characters")
         pinned[name] = build_id
-    if (dataset == "match_results" or version.endswith("_v2") or pinned) and set(pinned) != set(required_inputs(dataset)):
+    if set(pinned) != set(required_inputs(dataset)):
         parser.error("This build requires all exact --silver-build inputs: " + ", ".join(required_inputs(dataset)))
-    if version.endswith("_v2") and pinned != PINNED_STATS_INPUTS:
-        parser.error("Stats v2 requires the exact reviewed Stage 4B Silver build IDs")
+    if version.endswith("_v2"):
+        try:
+            validate_requested_snapshot(pinned, **context)
+        except (ValueError, GoldIntegrityError):
+            parser.error("Stats v2 requires exact pins; WC2022 must retain its reviewed snapshot")
     diagnostics = Diagnostics(dataset=dataset)
     spark = frame = None
     frames = {}
@@ -90,7 +96,7 @@ def main(argv=None):
         s3a_uri(bucket, "football/gold/")
         with create_postgres_connection() as connection, closing(create_s3_client()) as client:
             options = {"required": required_inputs(dataset), "build_ids": pinned} if pinned else {}
-            builds, manifests = resolve_inputs(connection, client, competition_id=43, season_id=106, diagnostics=diagnostics, **options)
+            builds, manifests = resolve_inputs(connection, client, **context, diagnostics=diagnostics, **options)
             print("Selected Silver inputs:")
             for build in builds:
                 print(f"  {build['dataset']}: {build['build_id']}")
@@ -99,8 +105,8 @@ def main(argv=None):
             configure_s3a(spark)
             frames = read_inputs(spark, builds, manifests, diagnostics=diagnostics)
             diagnostics.set("Gold transformation/DQ", "build_match_results" if dataset == "match_results" else "build_match_stats", dataset=dataset)
-            frame, counts = build_frame(frames, dataset=dataset, competition_id=43, season_id=106, transform_version=version)
-            specification = build_specification(dataset=dataset, competition_id=43, season_id=106,
+            frame, counts = build_frame(frames, dataset=dataset, **context, transform_version=version)
+            specification = build_specification(dataset=dataset, **context,
                 transform_version=version, input_fingerprint=input_fingerprint(builds),
                 schema_sha256=sha256_bytes(frame.schema.json().encode("utf-8")))
             for label, value in (("Dataset", dataset), ("Transform version", specification["transform_version"]),

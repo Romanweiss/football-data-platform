@@ -137,14 +137,14 @@ def performance_query(spec):
 
 def audited_state(client, connection, audit, *, shadow):
     silver_specs = {name: SILVER_SPECS[name] for name in (*PINNED_STATS_INPUTS, "matches", "teams", "players")}
-    silver = current_builds(client, connection, specs=silver_specs)
+    silver = current_builds(client, connection, **CONTEXT, specs=silver_specs)
     require(all(silver[name] == value for name, value in PINNED_STATS_INPUTS.items()), "Serving Silver differs from pinned audit snapshot.")
     require(silver["matches"] == audit["builds"]["matches"], "Matches snapshot changed since audit.")
     upstream = [find_silver_build(connection, dataset=name, build_id=silver[name], **CONTEXT) for name in PINNED_STATS_INPUTS]
     require(all(row is not None for row in upstream), "Pinned Silver catalog record missing.")
     fingerprint = input_fingerprint(upstream)
-    old = current_gold_builds(client, connection, specs=SPECS)
-    new = current_gold_builds(client, connection, specs=V2_SPECS) if shadow else {}
+    old = current_gold_builds(client, connection, **CONTEXT, specs=SPECS)
+    new = current_gold_builds(client, connection, **CONTEXT, specs=V2_SPECS) if shadow else {}
     require(all(record["build_id"] == audit["builds"][name] for name, record in old.items()), "Rollback Gold differs from audit snapshot.")
     require(all(record["input_fingerprint"] == fingerprint for record in (*old.values(), *new.values())), "Gold lineage differs from pinned Silver.")
     return silver, old, new
@@ -153,7 +153,7 @@ def audited_state(client, connection, audit, *, shadow):
 def validate_shadow(client, connection, audit):
     initial = audited_state(client, connection, audit, shadow=True)
     silver, old, new = initial
-    check_model(client, connection, gold_specs=V2_SPECS)
+    check_model(client, connection, **CONTEXT, gold_specs=V2_SPECS)
     parameters = {name + "_build_id": value for name, value in silver.items()}
     for name, spec in V2_SPECS.items():
         columns = [column for column, _ in spec.columns]

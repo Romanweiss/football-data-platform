@@ -13,7 +13,8 @@ from src.common.clickhouse import create_clickhouse_client
 from src.common.postgres import clickhouse_load_lock, create_postgres_connection
 from src.common.s3 import create_s3_client
 from src.gold.manifest import GoldIntegrityError
-from src.gold.stats_snapshot import validate_stats_snapshot
+from src.gold.stats_snapshot import validate_context_snapshot
+from src.statsbomb.context import add_context_arguments, context_from_args
 from src.silver.build_identity import require_sha256
 
 
@@ -36,7 +37,9 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Materialize one registered Gold build in ClickHouse.")
     parser.add_argument("--dataset", required=True, choices=CLI_DATASETS)
     parser.add_argument("--check-only", action="store_true")
-    parser.add_argument("--build-id")
+    parser.add_argument("--build-id", required=True)
+    add_context_arguments(parser)
+    parser.add_argument("--silver-build", action="append", default=[], metavar="DATASET=SHA256")
     parser.add_argument("--transform-version", choices=("v1", "v2"), default="v1")
     args = parser.parse_args(argv)
     if args.dataset == "match-results" and args.transform_version != "v1":
@@ -48,6 +51,19 @@ def parse_args(argv=None):
             require_sha256(args.build_id)
         except ValueError:
             parser.error("--build-id must be 64 lowercase hexadecimal characters")
+    from src.gold.build_identity import REQUIRED_INPUTS
+    args.expected_inputs = {}
+    for value in args.silver_build:
+        name, separator, build_id = value.partition("=")
+        if not separator or name in args.expected_inputs or name not in REQUIRED_INPUTS:
+            parser.error("Provide unique allowlisted DATASET=SHA256 Silver pins")
+        try:
+            require_sha256(build_id)
+        except ValueError:
+            parser.error("Invalid Silver build ID")
+        args.expected_inputs[name] = build_id
+    if args.transform_version == "v2" and set(args.expected_inputs) != set(REQUIRED_INPUTS):
+        parser.error("Stats v2 loading requires all four exact --silver-build inputs")
     return args
 
 
@@ -59,12 +75,12 @@ def main(argv=None):
         with ExitStack() as stack:
             connection = stack.enter_context(closing(create_postgres_connection()))
             diagnostics.set("Gold catalog", "resolve_gold_build")
-            build = resolve_gold_build(connection, args.build_id, spec=spec)
+            build = resolve_gold_build(connection, args.build_id, **context_from_args(args), spec=spec)
             diagnostics.set("Gold manifest/completeness", "verify_gold_manifest")
             s3 = stack.enter_context(closing(create_s3_client()))
             manifest = verify_gold_manifest(s3, build)
             if spec.version == "v2":
-                validate_stats_snapshot(manifest["inputs"])
+                validate_context_snapshot(manifest["inputs"], args.expected_inputs, **context_from_args(args))
             url = parquet_url(build)
             # No ClickHouse access before the registered Gold artifact is verified.
             diagnostics.set("ClickHouse configuration", "create_client/named_collection")

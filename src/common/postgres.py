@@ -104,7 +104,8 @@ def find_latest_ingestion_object(
 
 
 def find_latest_ingestion_objects(
-    connection: psycopg.Connection, *, source: str, dataset: str
+    connection: psycopg.Connection, *, source: str, dataset: str, max_id=None,
+    competition_id=None, season_id=None,
 ) -> list[dict]:
     """Return one latest version per logical source_url, in source_url order.
 
@@ -119,15 +120,38 @@ def find_latest_ingestion_objects(
                     id, source_url, s3_bucket, object_key, sha256, size_bytes, first_seen_at
                 FROM metadata.ingestion_objects
                 WHERE source = %s AND dataset = %s
+                  AND (%s::bigint IS NULL OR id <= %s)
+                  AND (%s::text IS NULL OR object_key LIKE %s OR object_key LIKE %s)
                 ORDER BY source_url ASC, first_seen_at DESC, id DESC
                 """,
-                (source, dataset),
+                (source, dataset, max_id, max_id,
+                 competition_id,
+                 f"football/bronze/statsbomb/%/competition_id={competition_id}/season_id={season_id}/match_id=%",
+                 "football/bronze/statsbomb/" + {"match_events": "events", "match_lineups": "lineups"}.get(dataset, "unsupported") + "/match_id=%"),
             )
             rows = cursor.fetchall()
     columns = (
         "id", "source_url", "s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at",
     )
     return [dict(zip(columns, row, strict=True)) for row in rows]
+
+
+def find_matches_parent(connection, *, competition_id, season_id, sha256):
+    """Exact immutable parent; preserve historical WC dataset labels and URLs."""
+    from src.statsbomb.context import matches_url
+    url = matches_url(competition_id=competition_id, season_id=season_id)
+    columns = ("s3_bucket", "object_key", "sha256", "size_bytes", "first_seen_at", "source", "dataset", "source_url")
+    with connection.transaction():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT {', '.join(columns)} FROM metadata.ingestion_objects "
+                "WHERE source = %s AND source_url IN (%s, %s) AND sha256 = %s ORDER BY id ASC LIMIT 2",
+                ("statsbomb", url, url.replace("/hudl/", "/statsbomb/"), sha256),
+            )
+            rows = cursor.fetchall()
+    if len(rows) != 1:
+        raise IngestionObjectNotFoundError("Exact context/SHA Bronze parent is missing or ambiguous.")
+    return dict(zip(columns, rows[0], strict=True))
 
 
 SILVER_BUILD_COLUMNS = (
