@@ -1,0 +1,4552 @@
+{
+  "dashboards": [
+    {
+      "id": 1,
+      "title": "World Cup 2022 Overview",
+      "metadata": {
+        "color_scheme_domain": [],
+        "shared_label_colors": [
+          "SUM(shot_count)",
+          "SUM(shot_xg)"
+        ],
+        "map_label_colors": {},
+        "label_colors": {},
+        "native_filter_configuration": [
+          {
+            "id": "NATIVE_FILTER-pl6dgu6rq79K1QHcfERwM",
+            "controlValues": {
+              "enableEmptyFilter": false,
+              "defaultToFirstItem": false,
+              "creatable": false,
+              "multiSelect": true,
+              "searchAllOptions": false,
+              "inverseSelection": false,
+              "sortAscending": true
+            },
+            "name": "Stage",
+            "filterType": "filter_select",
+            "targets": [
+              {
+                "datasetId": 2,
+                "column": {
+                  "name": "competition_stage_name"
+                }
+              }
+            ],
+            "defaultDataMask": {
+              "extraFormData": {},
+              "filterState": {},
+              "ownState": {}
+            },
+            "cascadeParentIds": [],
+            "scope": {
+              "rootPath": [
+                "ROOT_ID"
+              ],
+              "excluded": []
+            },
+            "type": "NATIVE_FILTER",
+            "description": ""
+          },
+          {
+            "id": "NATIVE_FILTER-Z1Cbt8XoYbm_gK0xOD_Qe",
+            "controlValues": {
+              "enableEmptyFilter": false
+            },
+            "name": "Match Date",
+            "filterType": "filter_time",
+            "targets": [
+              {}
+            ],
+            "defaultDataMask": {
+              "extraFormData": {},
+              "filterState": {},
+              "ownState": {}
+            },
+            "cascadeParentIds": [],
+            "scope": {
+              "rootPath": [
+                "ROOT_ID"
+              ],
+              "excluded": []
+            },
+            "type": "NATIVE_FILTER",
+            "description": ""
+          },
+          {
+            "id": "NATIVE_FILTER-SeCUCu6u_7DleE01dFMdo",
+            "controlValues": {
+              "sortAscending": true,
+              "enableEmptyFilter": false,
+              "defaultToFirstItem": false,
+              "creatable": false,
+              "multiSelect": true,
+              "searchAllOptions": false,
+              "inverseSelection": false
+            },
+            "name": "Team",
+            "filterType": "filter_select",
+            "targets": [
+              {
+                "datasetId": 2,
+                "column": {
+                  "name": "team_name"
+                }
+              }
+            ],
+            "defaultDataMask": {
+              "extraFormData": {},
+              "filterState": {},
+              "ownState": {}
+            },
+            "cascadeParentIds": [],
+            "scope": {
+              "rootPath": [
+                "ROOT_ID"
+              ],
+              "excluded": []
+            },
+            "type": "NATIVE_FILTER",
+            "description": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "Match Analysis",
+      "metadata": {
+        "chart_configuration": {
+          "9": {
+            "id": 9,
+            "crossFilters": {
+              "scope": "global",
+              "chartsInScope": [
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+              ]
+            }
+          },
+          "10": {
+            "id": 10,
+            "crossFilters": {
+              "scope": "global",
+              "chartsInScope": [
+                9,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+              ]
+            }
+          },
+          "11": {
+            "id": 11,
+            "crossFilters": {
+              "scope": "global",
+              "chartsInScope": [
+                9,
+                10,
+                12,
+                13,
+                14,
+                15,
+                16
+              ]
+            }
+          },
+          "12": {
+            "id": 12,
+            "crossFilters": {
+              "scope": "global",
+              "chartsInScope": [
+                9,
+                10,
+                11,
+                13,
+                14,
+                15,
+                16
+              ]
+            }
+          },
+          "13": {
+            "id": 13,
+            "crossFilters": {
+              "scope": "global",
+              "chartsInScope": [
+                9,
+                10,
+                11,
+                12,
+                14,
+                15,
+                16
+              ]
+            }
+          },
+          "14": {
+            "id": 14,
+            "crossFilters": {
+              "scope": "global",
+              "chartsInScope": [
+                9,
+                10,
+                11,
+                12,
+                13,
+                15,
+                16
+              ]
+            }
+          },
+          "15": {
+            "id": 15,
+            "crossFilters": {
+              "scope": "global",
+              "chartsInScope": [
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                16
+              ]
+            }
+          }
+        },
+        "global_chart_configuration": {
+          "scope": {
+            "rootPath": [
+              "ROOT_ID"
+            ],
+            "excluded": []
+          },
+          "chartsInScope": [
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16
+          ]
+        },
+        "map_label_colors": {
+          "Germany": "#1FA8C9",
+          "Brazil": "#454E7C",
+          "Argentina": "#5AC189",
+          "France": "#FF7F44",
+          "Canada": "#666666",
+          "Mexico": "#E04355",
+          "Switzerland": "#FCC700",
+          "Portugal": "#A868B7",
+          "Saudi Arabia": "#3CCCCB",
+          "Japan": "#A38F79",
+          "Croatia": "#8FD3E4",
+          "England": "#A1A6BD",
+          "Cameroon": "#ACE1C4",
+          "Spain": "#FEC0A1",
+          "Uruguay": "#B2B2B2",
+          "Ghana": "#EFA1AA",
+          "United States": "#FDE380",
+          "Serbia": "#D3B3DA",
+          "Netherlands": "#9EE5E5",
+          "Senegal": "#D1C6BC",
+          "Ecuador": "#454E7C",
+          "Iran": "#5AC189",
+          "Poland": "#FF7F44",
+          "South Korea": "#666666",
+          "Belgium": "#E04355",
+          "Costa Rica": "#FCC700",
+          "Denmark": "#A868B7",
+          "Morocco": "#3CCCCB",
+          "Tunisia": "#A38F79",
+          "Wales": "#8FD3E4",
+          "Qatar": "#A1A6BD",
+          "Australia": "#ACE1C4"
+        },
+        "color_scheme": "",
+        "refresh_frequency": 0,
+        "color_scheme_domain": [],
+        "expanded_slices": {},
+        "label_colors": {},
+        "shared_label_colors": [
+          "Argentina",
+          "Australia",
+          "Belgium",
+          "Brazil",
+          "Cameroon",
+          "Canada",
+          "Costa Rica",
+          "Croatia",
+          "Denmark",
+          "Ecuador",
+          "England",
+          "France",
+          "Germany",
+          "Ghana",
+          "Iran",
+          "Japan",
+          "Mexico",
+          "Morocco",
+          "Netherlands",
+          "Poland",
+          "Portugal",
+          "Qatar",
+          "Saudi Arabia",
+          "Senegal",
+          "Serbia",
+          "South Korea",
+          "Spain",
+          "Switzerland",
+          "Tunisia",
+          "United States",
+          "Uruguay",
+          "Wales"
+        ],
+        "timed_refresh_immune_slices": [],
+        "cross_filters_enabled": true,
+        "default_filters": "{}",
+        "native_filter_configuration": [
+          {
+            "id": "NATIVE_FILTER-IzCnfz-fDs7d6nN-XjX3s",
+            "controlValues": {
+              "enableEmptyFilter": false,
+              "defaultToFirstItem": false,
+              "creatable": true,
+              "multiSelect": false,
+              "searchAllOptions": false,
+              "inverseSelection": false
+            },
+            "name": "Match",
+            "filterType": "filter_select",
+            "targets": [
+              {
+                "datasetId": 5,
+                "column": {
+                  "name": "match_label"
+                }
+              }
+            ],
+            "defaultDataMask": {
+              "extraFormData": {},
+              "filterState": {},
+              "ownState": {}
+            },
+            "cascadeParentIds": [],
+            "scope": {
+              "rootPath": [
+                "ROOT_ID"
+              ],
+              "excluded": []
+            },
+            "type": "NATIVE_FILTER",
+            "description": "",
+            "chartsInScope": [
+              9
+            ],
+            "tabsInScope": []
+          }
+        ]
+      }
+    }
+  ],
+  "charts": [
+    {
+      "dashboard": 1,
+      "id": 1,
+      "name": "Total Matches",
+      "dataset": 2,
+      "params": {
+        "datasource": "2__table",
+        "viz_type": "big_number_total",
+        "slice_id": 1,
+        "metric": {
+          "aggregate": "COUNT_DISTINCT",
+          "column": {
+            "advanced_data_type": null,
+            "certification_details": null,
+            "certified_by": null,
+            "column_name": "match_id",
+            "description": null,
+            "expression": null,
+            "filterable": true,
+            "groupby": true,
+            "id": 3,
+            "is_certified": false,
+            "is_dttm": false,
+            "python_date_format": null,
+            "type": "UINT64",
+            "type_generic": 0,
+            "uuid": "bc73f5f9-1573-40ab-aed7-087abf3d40a8",
+            "verbose_name": null,
+            "warning_markdown": null
+          },
+          "datasourceWarning": false,
+          "expressionType": "SIMPLE",
+          "hasCustomLabel": false,
+          "label": "COUNT_DISTINCT(match_id)",
+          "optionName": "metric_g74nr9eg3q_1qjhs8ecm4g",
+          "sqlExpression": null
+        },
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "header_font_size": 0.4,
+        "subtitle": "Total Matches",
+        "subtitle_font_size": 0.15,
+        "metric_name_font_size": 0.15,
+        "y_axis_format": "SMART_NUMBER",
+        "time_format": "smart_date",
+        "conditional_formatting": [],
+        "extra_form_data": {},
+        "dashboards": [
+          1
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 2,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [],
+            "metrics": [
+              {
+                "aggregate": "COUNT_DISTINCT",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "match_id",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 3,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "UINT64",
+                  "type_generic": 0,
+                  "uuid": "bc73f5f9-1573-40ab-aed7-087abf3d40a8",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "COUNT_DISTINCT(match_id)",
+                "optionName": "metric_g74nr9eg3q_1qjhs8ecm4g",
+                "sqlExpression": null
+              }
+            ],
+            "annotation_layers": [],
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {}
+          }
+        ],
+        "form_data": {
+          "datasource": "2__table",
+          "viz_type": "big_number_total",
+          "slice_id": 1,
+          "metric": {
+            "aggregate": "COUNT_DISTINCT",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "match_id",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 3,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "UINT64",
+              "type_generic": 0,
+              "uuid": "bc73f5f9-1573-40ab-aed7-087abf3d40a8",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "COUNT_DISTINCT(match_id)",
+            "optionName": "metric_g74nr9eg3q_1qjhs8ecm4g",
+            "sqlExpression": null
+          },
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "header_font_size": 0.4,
+          "subtitle": "Total Matches",
+          "subtitle_font_size": 0.15,
+          "metric_name_font_size": 0.15,
+          "y_axis_format": "SMART_NUMBER",
+          "time_format": "smart_date",
+          "conditional_formatting": [],
+          "extra_form_data": {},
+          "dashboards": [
+            1
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 1,
+      "id": 2,
+      "name": "Team Total xG",
+      "dataset": 2,
+      "params": {
+        "datasource": "2__table",
+        "viz_type": "echarts_timeseries_bar",
+        "slice_id": 2,
+        "x_axis": "team_name",
+        "x_axis_sort": "SUM(shot_xg)",
+        "x_axis_sort_asc": true,
+        "metrics": [
+          {
+            "aggregate": "SUM",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "shot_xg",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 47,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "FLOAT64",
+              "type_generic": 0,
+              "uuid": "f68413ac-ac8b-46fc-b408-eafada6d256d",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "SUM(shot_xg)",
+            "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+            "sqlExpression": null
+          }
+        ],
+        "groupby": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "row_limit": 100,
+        "truncate_metric": true,
+        "show_empty_columns": true,
+        "comparison_type": "values",
+        "annotation_layers": [],
+        "forecastPeriods": 10,
+        "forecastInterval": 0.8,
+        "orientation": "horizontal",
+        "x_axis_title": "",
+        "x_axis_title_margin": 15,
+        "y_axis_title": "Total xG",
+        "y_axis_title_margin": 30,
+        "y_axis_title_position": "Left",
+        "sort_series_type": "sum",
+        "sort_series_ascending": false,
+        "color_scheme": "colorsOfRainbow",
+        "time_shift_color": true,
+        "show_value": true,
+        "only_total": true,
+        "minorTicks": false,
+        "zoomable": false,
+        "show_legend": false,
+        "legendType": "scroll",
+        "legendOrientation": "top",
+        "x_axis_time_format": "smart_date",
+        "xAxisLabelInterval": "auto",
+        "y_axis_format": "SMART_NUMBER",
+        "truncateYAxis": false,
+        "y_axis_bounds": [
+          null,
+          null
+        ],
+        "truncateXAxis": true,
+        "rich_tooltip": true,
+        "showTooltipTotal": false,
+        "showTooltipPercentage": false,
+        "tooltipTimeFormat": "smart_date",
+        "extra_form_data": {},
+        "dashboards": [
+          1
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 2,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              {
+                "columnType": "BASE_AXIS",
+                "sqlExpression": "team_name",
+                "label": "team_name",
+                "expressionType": "SQL",
+                "isColumnReference": true
+              }
+            ],
+            "metrics": [
+              {
+                "aggregate": "SUM",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "shot_xg",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 47,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "FLOAT64",
+                  "type_generic": 0,
+                  "uuid": "f68413ac-ac8b-46fc-b408-eafada6d256d",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "SUM(shot_xg)",
+                "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+                "sqlExpression": null
+              }
+            ],
+            "orderby": [
+              [
+                {
+                  "aggregate": "SUM",
+                  "column": {
+                    "advanced_data_type": null,
+                    "certification_details": null,
+                    "certified_by": null,
+                    "column_name": "shot_xg",
+                    "description": null,
+                    "expression": null,
+                    "filterable": true,
+                    "groupby": true,
+                    "id": 47,
+                    "is_certified": false,
+                    "is_dttm": false,
+                    "python_date_format": null,
+                    "type": "FLOAT64",
+                    "type_generic": 0,
+                    "uuid": "f68413ac-ac8b-46fc-b408-eafada6d256d",
+                    "verbose_name": null,
+                    "warning_markdown": null
+                  },
+                  "datasourceWarning": false,
+                  "expressionType": "SIMPLE",
+                  "hasCustomLabel": false,
+                  "label": "SUM(shot_xg)",
+                  "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+                  "sqlExpression": null
+                },
+                false
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 100,
+            "series_columns": [],
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "time_offsets": [],
+            "post_processing": [
+              {
+                "operation": "pivot",
+                "options": {
+                  "index": [
+                    "team_name"
+                  ],
+                  "columns": [],
+                  "aggregates": {
+                    "SUM(shot_xg)": {
+                      "operator": "mean"
+                    }
+                  },
+                  "drop_missing_columns": false
+                }
+              },
+              {
+                "operation": "sort",
+                "options": {
+                  "by": "SUM(shot_xg)",
+                  "ascending": true
+                }
+              },
+              {
+                "operation": "flatten"
+              }
+            ]
+          }
+        ],
+        "form_data": {
+          "datasource": "2__table",
+          "viz_type": "echarts_timeseries_bar",
+          "slice_id": 2,
+          "x_axis": "team_name",
+          "x_axis_sort": "SUM(shot_xg)",
+          "x_axis_sort_asc": true,
+          "metrics": [
+            {
+              "aggregate": "SUM",
+              "column": {
+                "advanced_data_type": null,
+                "certification_details": null,
+                "certified_by": null,
+                "column_name": "shot_xg",
+                "description": null,
+                "expression": null,
+                "filterable": true,
+                "groupby": true,
+                "id": 47,
+                "is_certified": false,
+                "is_dttm": false,
+                "python_date_format": null,
+                "type": "FLOAT64",
+                "type_generic": 0,
+                "uuid": "f68413ac-ac8b-46fc-b408-eafada6d256d",
+                "verbose_name": null,
+                "warning_markdown": null
+              },
+              "datasourceWarning": false,
+              "expressionType": "SIMPLE",
+              "hasCustomLabel": false,
+              "label": "SUM(shot_xg)",
+              "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+              "sqlExpression": null
+            }
+          ],
+          "groupby": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "row_limit": 100,
+          "truncate_metric": true,
+          "show_empty_columns": true,
+          "comparison_type": "values",
+          "annotation_layers": [],
+          "forecastPeriods": 10,
+          "forecastInterval": 0.8,
+          "orientation": "horizontal",
+          "x_axis_title": "",
+          "x_axis_title_margin": 15,
+          "y_axis_title": "Total xG",
+          "y_axis_title_margin": 30,
+          "y_axis_title_position": "Left",
+          "sort_series_type": "sum",
+          "sort_series_ascending": false,
+          "color_scheme": "colorsOfRainbow",
+          "time_shift_color": true,
+          "show_value": true,
+          "only_total": true,
+          "minorTicks": false,
+          "zoomable": false,
+          "show_legend": false,
+          "legendType": "scroll",
+          "legendOrientation": "top",
+          "x_axis_time_format": "smart_date",
+          "xAxisLabelInterval": "auto",
+          "y_axis_format": "SMART_NUMBER",
+          "truncateYAxis": false,
+          "y_axis_bounds": [
+            null,
+            null
+          ],
+          "truncateXAxis": true,
+          "rich_tooltip": true,
+          "showTooltipTotal": false,
+          "showTooltipPercentage": false,
+          "tooltipTimeFormat": "smart_date",
+          "extra_form_data": {},
+          "dashboards": [
+            1
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 1,
+      "id": 3,
+      "name": "Team Total Shots",
+      "dataset": 2,
+      "params": {
+        "datasource": "2__table",
+        "viz_type": "echarts_timeseries_bar",
+        "slice_id": 3,
+        "x_axis": "team_name",
+        "xAxisForceCategorical": true,
+        "x_axis_sort": "SUM(shot_count)",
+        "x_axis_sort_asc": true,
+        "metrics": [
+          {
+            "aggregate": "SUM",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "shot_count",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 46,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "UINT64",
+              "type_generic": 0,
+              "uuid": "6ee7055f-bdfc-4bd4-b285-3c3c0ee85ac5",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "SUM(shot_count)",
+            "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+            "sqlExpression": null
+          }
+        ],
+        "groupby": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "order_desc": true,
+        "row_limit": 100,
+        "truncate_metric": true,
+        "show_empty_columns": true,
+        "comparison_type": "values",
+        "annotation_layers": [],
+        "forecastPeriods": 10,
+        "forecastInterval": 0.8,
+        "orientation": "horizontal",
+        "x_axis_title": "",
+        "x_axis_title_margin": 15,
+        "y_axis_title": "Total Shots",
+        "y_axis_title_margin": 30,
+        "y_axis_title_position": "Left",
+        "sort_series_type": "sum",
+        "sort_series_ascending": false,
+        "color_scheme": "colorsOfRainbow",
+        "time_shift_color": true,
+        "show_value": true,
+        "only_total": true,
+        "minorTicks": false,
+        "zoomable": false,
+        "show_legend": false,
+        "legendType": "scroll",
+        "legendOrientation": "top",
+        "x_axis_time_format": "smart_date",
+        "xAxisLabelInterval": "auto",
+        "y_axis_format": "SMART_NUMBER",
+        "truncateYAxis": false,
+        "y_axis_bounds": [
+          null,
+          null
+        ],
+        "truncateXAxis": true,
+        "rich_tooltip": true,
+        "showTooltipTotal": false,
+        "showTooltipPercentage": false,
+        "tooltipTimeFormat": "smart_date",
+        "extra_form_data": {},
+        "dashboards": [
+          1
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 2,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              {
+                "columnType": "BASE_AXIS",
+                "sqlExpression": "team_name",
+                "label": "team_name",
+                "expressionType": "SQL",
+                "isColumnReference": true
+              }
+            ],
+            "metrics": [
+              {
+                "aggregate": "SUM",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "shot_count",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 46,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "UINT64",
+                  "type_generic": 0,
+                  "uuid": "6ee7055f-bdfc-4bd4-b285-3c3c0ee85ac5",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "SUM(shot_count)",
+                "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+                "sqlExpression": null
+              }
+            ],
+            "orderby": [
+              [
+                {
+                  "aggregate": "SUM",
+                  "column": {
+                    "advanced_data_type": null,
+                    "certification_details": null,
+                    "certified_by": null,
+                    "column_name": "shot_count",
+                    "description": null,
+                    "expression": null,
+                    "filterable": true,
+                    "groupby": true,
+                    "id": 46,
+                    "is_certified": false,
+                    "is_dttm": false,
+                    "python_date_format": null,
+                    "type": "UINT64",
+                    "type_generic": 0,
+                    "uuid": "6ee7055f-bdfc-4bd4-b285-3c3c0ee85ac5",
+                    "verbose_name": null,
+                    "warning_markdown": null
+                  },
+                  "datasourceWarning": false,
+                  "expressionType": "SIMPLE",
+                  "hasCustomLabel": false,
+                  "label": "SUM(shot_count)",
+                  "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+                  "sqlExpression": null
+                },
+                false
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 100,
+            "series_columns": [],
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "time_offsets": [],
+            "post_processing": [
+              {
+                "operation": "pivot",
+                "options": {
+                  "index": [
+                    "team_name"
+                  ],
+                  "columns": [],
+                  "aggregates": {
+                    "SUM(shot_count)": {
+                      "operator": "mean"
+                    }
+                  },
+                  "drop_missing_columns": false
+                }
+              },
+              {
+                "operation": "sort",
+                "options": {
+                  "by": "SUM(shot_count)",
+                  "ascending": true
+                }
+              },
+              {
+                "operation": "flatten"
+              }
+            ]
+          }
+        ],
+        "form_data": {
+          "datasource": "2__table",
+          "viz_type": "echarts_timeseries_bar",
+          "slice_id": 3,
+          "x_axis": "team_name",
+          "xAxisForceCategorical": true,
+          "x_axis_sort": "SUM(shot_count)",
+          "x_axis_sort_asc": true,
+          "metrics": [
+            {
+              "aggregate": "SUM",
+              "column": {
+                "advanced_data_type": null,
+                "certification_details": null,
+                "certified_by": null,
+                "column_name": "shot_count",
+                "description": null,
+                "expression": null,
+                "filterable": true,
+                "groupby": true,
+                "id": 46,
+                "is_certified": false,
+                "is_dttm": false,
+                "python_date_format": null,
+                "type": "UINT64",
+                "type_generic": 0,
+                "uuid": "6ee7055f-bdfc-4bd4-b285-3c3c0ee85ac5",
+                "verbose_name": null,
+                "warning_markdown": null
+              },
+              "datasourceWarning": false,
+              "expressionType": "SIMPLE",
+              "hasCustomLabel": false,
+              "label": "SUM(shot_count)",
+              "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+              "sqlExpression": null
+            }
+          ],
+          "groupby": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "order_desc": true,
+          "row_limit": 100,
+          "truncate_metric": true,
+          "show_empty_columns": true,
+          "comparison_type": "values",
+          "annotation_layers": [],
+          "forecastPeriods": 10,
+          "forecastInterval": 0.8,
+          "orientation": "horizontal",
+          "x_axis_title": "",
+          "x_axis_title_margin": 15,
+          "y_axis_title": "Total Shots",
+          "y_axis_title_margin": 30,
+          "y_axis_title_position": "Left",
+          "sort_series_type": "sum",
+          "sort_series_ascending": false,
+          "color_scheme": "colorsOfRainbow",
+          "time_shift_color": true,
+          "show_value": true,
+          "only_total": true,
+          "minorTicks": false,
+          "zoomable": false,
+          "show_legend": false,
+          "legendType": "scroll",
+          "legendOrientation": "top",
+          "x_axis_time_format": "smart_date",
+          "xAxisLabelInterval": "auto",
+          "y_axis_format": "SMART_NUMBER",
+          "truncateYAxis": false,
+          "y_axis_bounds": [
+            null,
+            null
+          ],
+          "truncateXAxis": true,
+          "rich_tooltip": true,
+          "showTooltipTotal": false,
+          "showTooltipPercentage": false,
+          "tooltipTimeFormat": "smart_date",
+          "extra_form_data": {},
+          "dashboards": [
+            1
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 1,
+      "id": 4,
+      "name": "Team Pass Attempts",
+      "dataset": 2,
+      "params": {
+        "datasource": "2__table",
+        "viz_type": "echarts_timeseries_bar",
+        "slice_id": 4,
+        "x_axis": "team_name",
+        "xAxisForceCategorical": true,
+        "x_axis_sort": "SUM(pass_attempts)",
+        "x_axis_sort_asc": true,
+        "metrics": [
+          {
+            "aggregate": "SUM",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "pass_attempts",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 45,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "UINT64",
+              "type_generic": 0,
+              "uuid": "256e68cf-6153-4555-a95a-bc6f6cdc60d1",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "SUM(pass_attempts)",
+            "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+            "sqlExpression": null
+          }
+        ],
+        "groupby": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "order_desc": true,
+        "row_limit": 100,
+        "truncate_metric": true,
+        "show_empty_columns": true,
+        "comparison_type": "values",
+        "annotation_layers": [],
+        "forecastPeriods": 10,
+        "forecastInterval": 0.8,
+        "orientation": "horizontal",
+        "x_axis_title": "",
+        "x_axis_title_margin": 15,
+        "y_axis_title": "Pass Attempts",
+        "y_axis_title_margin": 30,
+        "y_axis_title_position": "Left",
+        "sort_series_type": "sum",
+        "sort_series_ascending": false,
+        "color_scheme": "colorsOfRainbow",
+        "time_shift_color": true,
+        "show_value": true,
+        "only_total": true,
+        "minorTicks": false,
+        "zoomable": false,
+        "show_legend": false,
+        "legendType": "scroll",
+        "legendOrientation": "top",
+        "x_axis_time_format": "smart_date",
+        "xAxisLabelInterval": "auto",
+        "y_axis_format": "SMART_NUMBER",
+        "truncateYAxis": false,
+        "y_axis_bounds": [
+          null,
+          null
+        ],
+        "truncateXAxis": true,
+        "rich_tooltip": true,
+        "showTooltipTotal": false,
+        "showTooltipPercentage": false,
+        "tooltipTimeFormat": "smart_date",
+        "extra_form_data": {},
+        "dashboards": [
+          1
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 2,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              {
+                "columnType": "BASE_AXIS",
+                "sqlExpression": "team_name",
+                "label": "team_name",
+                "expressionType": "SQL",
+                "isColumnReference": true
+              }
+            ],
+            "metrics": [
+              {
+                "aggregate": "SUM",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "pass_attempts",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 45,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "UINT64",
+                  "type_generic": 0,
+                  "uuid": "256e68cf-6153-4555-a95a-bc6f6cdc60d1",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "SUM(pass_attempts)",
+                "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+                "sqlExpression": null
+              }
+            ],
+            "orderby": [
+              [
+                {
+                  "aggregate": "SUM",
+                  "column": {
+                    "advanced_data_type": null,
+                    "certification_details": null,
+                    "certified_by": null,
+                    "column_name": "pass_attempts",
+                    "description": null,
+                    "expression": null,
+                    "filterable": true,
+                    "groupby": true,
+                    "id": 45,
+                    "is_certified": false,
+                    "is_dttm": false,
+                    "python_date_format": null,
+                    "type": "UINT64",
+                    "type_generic": 0,
+                    "uuid": "256e68cf-6153-4555-a95a-bc6f6cdc60d1",
+                    "verbose_name": null,
+                    "warning_markdown": null
+                  },
+                  "datasourceWarning": false,
+                  "expressionType": "SIMPLE",
+                  "hasCustomLabel": false,
+                  "label": "SUM(pass_attempts)",
+                  "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+                  "sqlExpression": null
+                },
+                false
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 100,
+            "series_columns": [],
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "time_offsets": [],
+            "post_processing": [
+              {
+                "operation": "pivot",
+                "options": {
+                  "index": [
+                    "team_name"
+                  ],
+                  "columns": [],
+                  "aggregates": {
+                    "SUM(pass_attempts)": {
+                      "operator": "mean"
+                    }
+                  },
+                  "drop_missing_columns": false
+                }
+              },
+              {
+                "operation": "sort",
+                "options": {
+                  "by": "SUM(pass_attempts)",
+                  "ascending": true
+                }
+              },
+              {
+                "operation": "flatten"
+              }
+            ]
+          }
+        ],
+        "form_data": {
+          "datasource": "2__table",
+          "viz_type": "echarts_timeseries_bar",
+          "slice_id": 4,
+          "x_axis": "team_name",
+          "xAxisForceCategorical": true,
+          "x_axis_sort": "SUM(pass_attempts)",
+          "x_axis_sort_asc": true,
+          "metrics": [
+            {
+              "aggregate": "SUM",
+              "column": {
+                "advanced_data_type": null,
+                "certification_details": null,
+                "certified_by": null,
+                "column_name": "pass_attempts",
+                "description": null,
+                "expression": null,
+                "filterable": true,
+                "groupby": true,
+                "id": 45,
+                "is_certified": false,
+                "is_dttm": false,
+                "python_date_format": null,
+                "type": "UINT64",
+                "type_generic": 0,
+                "uuid": "256e68cf-6153-4555-a95a-bc6f6cdc60d1",
+                "verbose_name": null,
+                "warning_markdown": null
+              },
+              "datasourceWarning": false,
+              "expressionType": "SIMPLE",
+              "hasCustomLabel": false,
+              "label": "SUM(pass_attempts)",
+              "optionName": "metric_k1naz8hxvmk_bn4swer6s",
+              "sqlExpression": null
+            }
+          ],
+          "groupby": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "order_desc": true,
+          "row_limit": 100,
+          "truncate_metric": true,
+          "show_empty_columns": true,
+          "comparison_type": "values",
+          "annotation_layers": [],
+          "forecastPeriods": 10,
+          "forecastInterval": 0.8,
+          "orientation": "horizontal",
+          "x_axis_title": "",
+          "x_axis_title_margin": 15,
+          "y_axis_title": "Pass Attempts",
+          "y_axis_title_margin": 30,
+          "y_axis_title_position": "Left",
+          "sort_series_type": "sum",
+          "sort_series_ascending": false,
+          "color_scheme": "colorsOfRainbow",
+          "time_shift_color": true,
+          "show_value": true,
+          "only_total": true,
+          "minorTicks": false,
+          "zoomable": false,
+          "show_legend": false,
+          "legendType": "scroll",
+          "legendOrientation": "top",
+          "x_axis_time_format": "smart_date",
+          "xAxisLabelInterval": "auto",
+          "y_axis_format": "SMART_NUMBER",
+          "truncateYAxis": false,
+          "y_axis_bounds": [
+            null,
+            null
+          ],
+          "truncateXAxis": true,
+          "rich_tooltip": true,
+          "showTooltipTotal": false,
+          "showTooltipPercentage": false,
+          "tooltipTimeFormat": "smart_date",
+          "extra_form_data": {},
+          "dashboards": [
+            1
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 1,
+      "id": 5,
+      "name": "Shots vs xG by Team",
+      "dataset": 2,
+      "params": {
+        "datasource": "2__table",
+        "viz_type": "bubble_v2",
+        "slice_id": 5,
+        "entity": "team_name",
+        "x": {
+          "aggregate": "SUM",
+          "column": {
+            "advanced_data_type": null,
+            "certification_details": null,
+            "certified_by": null,
+            "column_name": "shot_count",
+            "description": null,
+            "expression": null,
+            "filterable": true,
+            "groupby": true,
+            "id": 46,
+            "is_certified": false,
+            "is_dttm": false,
+            "python_date_format": null,
+            "type": "UINT64",
+            "type_generic": 0,
+            "uuid": "6ee7055f-bdfc-4bd4-b285-3c3c0ee85ac5",
+            "verbose_name": null,
+            "warning_markdown": null
+          },
+          "datasourceWarning": false,
+          "expressionType": "SIMPLE",
+          "hasCustomLabel": false,
+          "label": "SUM(shot_count)",
+          "optionName": "metric_67fez1os9xi_2q4s9cbawh2",
+          "sqlExpression": null
+        },
+        "y": {
+          "aggregate": "SUM",
+          "column": {
+            "advanced_data_type": null,
+            "certification_details": null,
+            "certified_by": null,
+            "column_name": "shot_xg",
+            "description": null,
+            "expression": null,
+            "filterable": true,
+            "groupby": true,
+            "id": 47,
+            "is_certified": false,
+            "is_dttm": false,
+            "python_date_format": null,
+            "type": "FLOAT64",
+            "type_generic": 0,
+            "uuid": "f68413ac-ac8b-46fc-b408-eafada6d256d",
+            "verbose_name": null,
+            "warning_markdown": null
+          },
+          "datasourceWarning": false,
+          "expressionType": "SIMPLE",
+          "hasCustomLabel": false,
+          "label": "SUM(shot_xg)",
+          "optionName": "metric_zkc3yyibe6_1pkjraoffiy",
+          "sqlExpression": null
+        },
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "size": {
+          "aggregate": "SUM",
+          "column": {
+            "advanced_data_type": null,
+            "certification_details": null,
+            "certified_by": null,
+            "column_name": "event_count",
+            "description": null,
+            "expression": null,
+            "filterable": true,
+            "groupby": true,
+            "id": 44,
+            "is_certified": false,
+            "is_dttm": false,
+            "python_date_format": null,
+            "type": "UINT64",
+            "type_generic": 0,
+            "uuid": "557a537b-3d8c-4d24-98f3-93e5ff10fc15",
+            "verbose_name": null,
+            "warning_markdown": null
+          },
+          "datasourceWarning": false,
+          "expressionType": "SIMPLE",
+          "hasCustomLabel": false,
+          "label": "SUM(event_count)",
+          "optionName": "metric_qlj55tm3gnc_l2tkrbeeca",
+          "sqlExpression": null
+        },
+        "order_desc": true,
+        "row_limit": 100,
+        "color_scheme": "supersetColors",
+        "show_legend": false,
+        "legendType": "scroll",
+        "legendOrientation": "top",
+        "max_bubble_size": "25",
+        "tooltipSizeFormat": "SMART_NUMBER",
+        "opacity": 0.7,
+        "x_axis_label": "Shots",
+        "xAxisLabelInterval": "auto",
+        "x_axis_title_margin": 30,
+        "xAxisFormat": "SMART_NUMBER",
+        "y_axis_label": "xG",
+        "y_axis_title_margin": 30,
+        "y_axis_format": "SMART_NUMBER",
+        "truncateXAxis": true,
+        "y_axis_bounds": [
+          null,
+          null
+        ],
+        "extra_form_data": {},
+        "dashboards": [
+          1
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 2,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "team_name"
+            ],
+            "metrics": [
+              {
+                "aggregate": "SUM",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "shot_count",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 46,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "UINT64",
+                  "type_generic": 0,
+                  "uuid": "6ee7055f-bdfc-4bd4-b285-3c3c0ee85ac5",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "SUM(shot_count)",
+                "optionName": "metric_67fez1os9xi_2q4s9cbawh2",
+                "sqlExpression": null
+              },
+              {
+                "aggregate": "SUM",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "shot_xg",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 47,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "FLOAT64",
+                  "type_generic": 0,
+                  "uuid": "f68413ac-ac8b-46fc-b408-eafada6d256d",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "SUM(shot_xg)",
+                "optionName": "metric_zkc3yyibe6_1pkjraoffiy",
+                "sqlExpression": null
+              },
+              {
+                "aggregate": "SUM",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "event_count",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 44,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "UINT64",
+                  "type_generic": 0,
+                  "uuid": "557a537b-3d8c-4d24-98f3-93e5ff10fc15",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "SUM(event_count)",
+                "optionName": "metric_qlj55tm3gnc_l2tkrbeeca",
+                "sqlExpression": null
+              }
+            ],
+            "annotation_layers": [],
+            "row_limit": 100,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {}
+          }
+        ],
+        "form_data": {
+          "datasource": "2__table",
+          "viz_type": "bubble_v2",
+          "slice_id": 5,
+          "entity": "team_name",
+          "x": {
+            "aggregate": "SUM",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "shot_count",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 46,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "UINT64",
+              "type_generic": 0,
+              "uuid": "6ee7055f-bdfc-4bd4-b285-3c3c0ee85ac5",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "SUM(shot_count)",
+            "optionName": "metric_67fez1os9xi_2q4s9cbawh2",
+            "sqlExpression": null
+          },
+          "y": {
+            "aggregate": "SUM",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "shot_xg",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 47,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "FLOAT64",
+              "type_generic": 0,
+              "uuid": "f68413ac-ac8b-46fc-b408-eafada6d256d",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "SUM(shot_xg)",
+            "optionName": "metric_zkc3yyibe6_1pkjraoffiy",
+            "sqlExpression": null
+          },
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "size": {
+            "aggregate": "SUM",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "event_count",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 44,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "UINT64",
+              "type_generic": 0,
+              "uuid": "557a537b-3d8c-4d24-98f3-93e5ff10fc15",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "SUM(event_count)",
+            "optionName": "metric_qlj55tm3gnc_l2tkrbeeca",
+            "sqlExpression": null
+          },
+          "order_desc": true,
+          "row_limit": 100,
+          "color_scheme": "supersetColors",
+          "show_legend": false,
+          "legendType": "scroll",
+          "legendOrientation": "top",
+          "max_bubble_size": "25",
+          "tooltipSizeFormat": "SMART_NUMBER",
+          "opacity": 0.7,
+          "x_axis_label": "Shots",
+          "xAxisLabelInterval": "auto",
+          "x_axis_title_margin": 30,
+          "xAxisFormat": "SMART_NUMBER",
+          "y_axis_label": "xG",
+          "y_axis_title_margin": 30,
+          "y_axis_format": "SMART_NUMBER",
+          "truncateXAxis": true,
+          "y_axis_bounds": [
+            null,
+            null
+          ],
+          "extra_form_data": {},
+          "dashboards": [
+            1
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 1,
+      "id": 6,
+      "name": "Top Players by xG",
+      "dataset": 3,
+      "params": {
+        "datasource": "3__table",
+        "viz_type": "echarts_timeseries_bar",
+        "slice_id": 6,
+        "x_axis": "player_name",
+        "xAxisForceCategorical": true,
+        "x_axis_sort": "SUM(shot_xg)",
+        "x_axis_sort_asc": true,
+        "metrics": [
+          {
+            "aggregate": "SUM",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "shot_xg",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 75,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "FLOAT64",
+              "type_generic": 0,
+              "uuid": "d250f9f5-b810-45d2-9262-9055aaba6206",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "SUM(shot_xg)",
+            "optionName": "metric_hva64yac94a_zidfuigejgb",
+            "sqlExpression": null
+          }
+        ],
+        "groupby": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "order_desc": true,
+        "row_limit": "20",
+        "truncate_metric": true,
+        "show_empty_columns": true,
+        "comparison_type": "values",
+        "annotation_layers": [],
+        "forecastPeriods": 10,
+        "forecastInterval": 0.8,
+        "orientation": "horizontal",
+        "x_axis_title_margin": 15,
+        "y_axis_title": "Top Players by xG",
+        "y_axis_title_margin": 30,
+        "y_axis_title_position": "Left",
+        "sort_series_type": "sum",
+        "sort_series_ascending": false,
+        "color_scheme": "supersetColors",
+        "show_legend": false,
+        "x_axis_time_format": "smart_date",
+        "xAxisLabelInterval": "auto",
+        "y_axis_format": "SMART_NUMBER",
+        "y_axis_bounds": [
+          null,
+          null
+        ],
+        "truncateXAxis": true,
+        "rich_tooltip": true,
+        "showTooltipTotal": true,
+        "tooltipTimeFormat": "smart_date",
+        "extra_form_data": {},
+        "dashboards": [
+          1
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 3,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              {
+                "columnType": "BASE_AXIS",
+                "sqlExpression": "player_name",
+                "label": "player_name",
+                "expressionType": "SQL",
+                "isColumnReference": true
+              }
+            ],
+            "metrics": [
+              {
+                "aggregate": "SUM",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "shot_xg",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 75,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "FLOAT64",
+                  "type_generic": 0,
+                  "uuid": "d250f9f5-b810-45d2-9262-9055aaba6206",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "SUM(shot_xg)",
+                "optionName": "metric_hva64yac94a_zidfuigejgb",
+                "sqlExpression": null
+              }
+            ],
+            "orderby": [
+              [
+                {
+                  "aggregate": "SUM",
+                  "column": {
+                    "advanced_data_type": null,
+                    "certification_details": null,
+                    "certified_by": null,
+                    "column_name": "shot_xg",
+                    "description": null,
+                    "expression": null,
+                    "filterable": true,
+                    "groupby": true,
+                    "id": 75,
+                    "is_certified": false,
+                    "is_dttm": false,
+                    "python_date_format": null,
+                    "type": "FLOAT64",
+                    "type_generic": 0,
+                    "uuid": "d250f9f5-b810-45d2-9262-9055aaba6206",
+                    "verbose_name": null,
+                    "warning_markdown": null
+                  },
+                  "datasourceWarning": false,
+                  "expressionType": "SIMPLE",
+                  "hasCustomLabel": false,
+                  "label": "SUM(shot_xg)",
+                  "optionName": "metric_hva64yac94a_zidfuigejgb",
+                  "sqlExpression": null
+                },
+                false
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 20,
+            "series_columns": [],
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "time_offsets": [],
+            "post_processing": [
+              {
+                "operation": "pivot",
+                "options": {
+                  "index": [
+                    "player_name"
+                  ],
+                  "columns": [],
+                  "aggregates": {
+                    "SUM(shot_xg)": {
+                      "operator": "mean"
+                    }
+                  },
+                  "drop_missing_columns": false
+                }
+              },
+              {
+                "operation": "sort",
+                "options": {
+                  "by": "SUM(shot_xg)",
+                  "ascending": true
+                }
+              },
+              {
+                "operation": "flatten"
+              }
+            ]
+          }
+        ],
+        "form_data": {
+          "datasource": "3__table",
+          "viz_type": "echarts_timeseries_bar",
+          "slice_id": 6,
+          "x_axis": "player_name",
+          "xAxisForceCategorical": true,
+          "x_axis_sort": "SUM(shot_xg)",
+          "x_axis_sort_asc": true,
+          "metrics": [
+            {
+              "aggregate": "SUM",
+              "column": {
+                "advanced_data_type": null,
+                "certification_details": null,
+                "certified_by": null,
+                "column_name": "shot_xg",
+                "description": null,
+                "expression": null,
+                "filterable": true,
+                "groupby": true,
+                "id": 75,
+                "is_certified": false,
+                "is_dttm": false,
+                "python_date_format": null,
+                "type": "FLOAT64",
+                "type_generic": 0,
+                "uuid": "d250f9f5-b810-45d2-9262-9055aaba6206",
+                "verbose_name": null,
+                "warning_markdown": null
+              },
+              "datasourceWarning": false,
+              "expressionType": "SIMPLE",
+              "hasCustomLabel": false,
+              "label": "SUM(shot_xg)",
+              "optionName": "metric_hva64yac94a_zidfuigejgb",
+              "sqlExpression": null
+            }
+          ],
+          "groupby": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "order_desc": true,
+          "row_limit": "20",
+          "truncate_metric": true,
+          "show_empty_columns": true,
+          "comparison_type": "values",
+          "annotation_layers": [],
+          "forecastPeriods": 10,
+          "forecastInterval": 0.8,
+          "orientation": "horizontal",
+          "x_axis_title_margin": 15,
+          "y_axis_title": "Top Players by xG",
+          "y_axis_title_margin": 30,
+          "y_axis_title_position": "Left",
+          "sort_series_type": "sum",
+          "sort_series_ascending": false,
+          "color_scheme": "supersetColors",
+          "show_legend": false,
+          "x_axis_time_format": "smart_date",
+          "xAxisLabelInterval": "auto",
+          "y_axis_format": "SMART_NUMBER",
+          "y_axis_bounds": [
+            null,
+            null
+          ],
+          "truncateXAxis": true,
+          "rich_tooltip": true,
+          "showTooltipTotal": true,
+          "tooltipTimeFormat": "smart_date",
+          "extra_form_data": {},
+          "dashboards": [
+            1
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 1,
+      "id": 7,
+      "name": "Top Players by Shots",
+      "dataset": 3,
+      "params": {
+        "datasource": "3__table",
+        "viz_type": "echarts_timeseries_bar",
+        "slice_id": 7,
+        "x_axis": "player_name",
+        "xAxisForceCategorical": true,
+        "x_axis_sort": "SUM(shot_count)",
+        "x_axis_sort_asc": true,
+        "metrics": [
+          {
+            "aggregate": "SUM",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "shot_count",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 74,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "UINT64",
+              "type_generic": 0,
+              "uuid": "84a59620-3300-40ed-a9f6-8f1931122068",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "SUM(shot_count)",
+            "optionName": "metric_hva64yac94a_zidfuigejgb",
+            "sqlExpression": null
+          }
+        ],
+        "groupby": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "order_desc": true,
+        "row_limit": "20",
+        "truncate_metric": true,
+        "show_empty_columns": true,
+        "comparison_type": "values",
+        "annotation_layers": [],
+        "forecastPeriods": 10,
+        "forecastInterval": 0.8,
+        "orientation": "horizontal",
+        "x_axis_title_margin": 15,
+        "y_axis_title": "Shots",
+        "y_axis_title_margin": 30,
+        "y_axis_title_position": "Left",
+        "sort_series_type": "sum",
+        "sort_series_ascending": false,
+        "color_scheme": "supersetColors",
+        "time_shift_color": true,
+        "only_total": true,
+        "show_legend": false,
+        "legendType": "scroll",
+        "legendOrientation": "top",
+        "x_axis_time_format": "smart_date",
+        "xAxisLabelInterval": "auto",
+        "y_axis_format": "SMART_NUMBER",
+        "y_axis_bounds": [
+          null,
+          null
+        ],
+        "truncateXAxis": true,
+        "rich_tooltip": true,
+        "showTooltipTotal": true,
+        "tooltipTimeFormat": "smart_date",
+        "extra_form_data": {},
+        "dashboards": [
+          1
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 3,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              {
+                "columnType": "BASE_AXIS",
+                "sqlExpression": "player_name",
+                "label": "player_name",
+                "expressionType": "SQL",
+                "isColumnReference": true
+              }
+            ],
+            "metrics": [
+              {
+                "aggregate": "SUM",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "shot_count",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 74,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "UINT64",
+                  "type_generic": 0,
+                  "uuid": "84a59620-3300-40ed-a9f6-8f1931122068",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "SUM(shot_count)",
+                "optionName": "metric_hva64yac94a_zidfuigejgb",
+                "sqlExpression": null
+              }
+            ],
+            "orderby": [
+              [
+                {
+                  "aggregate": "SUM",
+                  "column": {
+                    "advanced_data_type": null,
+                    "certification_details": null,
+                    "certified_by": null,
+                    "column_name": "shot_count",
+                    "description": null,
+                    "expression": null,
+                    "filterable": true,
+                    "groupby": true,
+                    "id": 74,
+                    "is_certified": false,
+                    "is_dttm": false,
+                    "python_date_format": null,
+                    "type": "UINT64",
+                    "type_generic": 0,
+                    "uuid": "84a59620-3300-40ed-a9f6-8f1931122068",
+                    "verbose_name": null,
+                    "warning_markdown": null
+                  },
+                  "datasourceWarning": false,
+                  "expressionType": "SIMPLE",
+                  "hasCustomLabel": false,
+                  "label": "SUM(shot_count)",
+                  "optionName": "metric_hva64yac94a_zidfuigejgb",
+                  "sqlExpression": null
+                },
+                false
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 20,
+            "series_columns": [],
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "time_offsets": [],
+            "post_processing": [
+              {
+                "operation": "pivot",
+                "options": {
+                  "index": [
+                    "player_name"
+                  ],
+                  "columns": [],
+                  "aggregates": {
+                    "SUM(shot_count)": {
+                      "operator": "mean"
+                    }
+                  },
+                  "drop_missing_columns": false
+                }
+              },
+              {
+                "operation": "sort",
+                "options": {
+                  "by": "SUM(shot_count)",
+                  "ascending": true
+                }
+              },
+              {
+                "operation": "flatten"
+              }
+            ]
+          }
+        ],
+        "form_data": {
+          "datasource": "3__table",
+          "viz_type": "echarts_timeseries_bar",
+          "slice_id": 7,
+          "x_axis": "player_name",
+          "xAxisForceCategorical": true,
+          "x_axis_sort": "SUM(shot_count)",
+          "x_axis_sort_asc": true,
+          "metrics": [
+            {
+              "aggregate": "SUM",
+              "column": {
+                "advanced_data_type": null,
+                "certification_details": null,
+                "certified_by": null,
+                "column_name": "shot_count",
+                "description": null,
+                "expression": null,
+                "filterable": true,
+                "groupby": true,
+                "id": 74,
+                "is_certified": false,
+                "is_dttm": false,
+                "python_date_format": null,
+                "type": "UINT64",
+                "type_generic": 0,
+                "uuid": "84a59620-3300-40ed-a9f6-8f1931122068",
+                "verbose_name": null,
+                "warning_markdown": null
+              },
+              "datasourceWarning": false,
+              "expressionType": "SIMPLE",
+              "hasCustomLabel": false,
+              "label": "SUM(shot_count)",
+              "optionName": "metric_hva64yac94a_zidfuigejgb",
+              "sqlExpression": null
+            }
+          ],
+          "groupby": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "order_desc": true,
+          "row_limit": "20",
+          "truncate_metric": true,
+          "show_empty_columns": true,
+          "comparison_type": "values",
+          "annotation_layers": [],
+          "forecastPeriods": 10,
+          "forecastInterval": 0.8,
+          "orientation": "horizontal",
+          "x_axis_title_margin": 15,
+          "y_axis_title": "Shots",
+          "y_axis_title_margin": 30,
+          "y_axis_title_position": "Left",
+          "sort_series_type": "sum",
+          "sort_series_ascending": false,
+          "color_scheme": "supersetColors",
+          "time_shift_color": true,
+          "only_total": true,
+          "show_legend": false,
+          "legendType": "scroll",
+          "legendOrientation": "top",
+          "x_axis_time_format": "smart_date",
+          "xAxisLabelInterval": "auto",
+          "y_axis_format": "SMART_NUMBER",
+          "y_axis_bounds": [
+            null,
+            null
+          ],
+          "truncateXAxis": true,
+          "rich_tooltip": true,
+          "showTooltipTotal": true,
+          "tooltipTimeFormat": "smart_date",
+          "extra_form_data": {},
+          "dashboards": [
+            1
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 1,
+      "id": 8,
+      "name": "Match Table",
+      "dataset": 2,
+      "params": {
+        "datasource": "2__table",
+        "viz_type": "table",
+        "slice_id": 8,
+        "query_mode": "aggregate",
+        "groupby": [
+          "match_date",
+          "competition_stage_name",
+          "home_team_name",
+          "away_team_name",
+          "display_score",
+          "result_method"
+        ],
+        "temporal_columns_lookup": {
+          "match_date": true
+        },
+        "all_columns": [],
+        "percent_metrics": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "order_by_cols": [
+          "[\"match_date\", true]"
+        ],
+        "row_limit": 10000,
+        "percent_metric_calculation": "row_limit",
+        "table_timestamp_format": "smart_date",
+        "allow_render_html": true,
+        "column_config": {
+          "match_date": {
+            "d3TimeFormat": "%d.%m.%Y"
+          }
+        },
+        "show_cell_bars": true,
+        "color_pn": true,
+        "comparison_color_scheme": "Green",
+        "conditional_formatting": [],
+        "comparison_type": "values",
+        "extra_form_data": {},
+        "dashboards": [
+          1
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 2,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "match_date",
+              "competition_stage_name",
+              "home_team_name",
+              "away_team_name",
+              "display_score",
+              "result_method"
+            ],
+            "metrics": [],
+            "orderby": [
+              [
+                "match_date",
+                true
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "post_processing": [],
+            "time_offsets": []
+          }
+        ],
+        "form_data": {
+          "datasource": "2__table",
+          "viz_type": "table",
+          "slice_id": 8,
+          "query_mode": "aggregate",
+          "groupby": [
+            "match_date",
+            "competition_stage_name",
+            "home_team_name",
+            "away_team_name",
+            "display_score",
+            "result_method"
+          ],
+          "temporal_columns_lookup": {
+            "match_date": true
+          },
+          "all_columns": [],
+          "percent_metrics": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "order_by_cols": [
+            "[\"match_date\", true]"
+          ],
+          "row_limit": 10000,
+          "percent_metric_calculation": "row_limit",
+          "table_timestamp_format": "smart_date",
+          "allow_render_html": true,
+          "column_config": {
+            "match_date": {
+              "d3TimeFormat": "%d.%m.%Y"
+            }
+          },
+          "show_cell_bars": true,
+          "color_pn": true,
+          "comparison_color_scheme": "Green",
+          "conditional_formatting": [],
+          "comparison_type": "values",
+          "extra_form_data": {},
+          "dashboards": [
+            1
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 2,
+      "id": 9,
+      "name": "Match Header",
+      "dataset": 5,
+      "params": {
+        "datasource": "5__table",
+        "viz_type": "table",
+        "query_mode": "raw",
+        "groupby": [],
+        "time_grain_sqla": "P1D",
+        "temporal_columns_lookup": {
+          "match_date": true
+        },
+        "all_columns": [
+          "match_date",
+          "competition_stage_name",
+          "home_team_name",
+          "away_team_name",
+          "display_score",
+          "result_method"
+        ],
+        "percent_metrics": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "subject": "match_date",
+            "operator": "TEMPORAL_RANGE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE"
+          }
+        ],
+        "order_by_cols": [],
+        "order_desc": true,
+        "server_page_length": 10,
+        "row_limit": 10000,
+        "percent_metric_calculation": "row_limit",
+        "table_timestamp_format": "%d.%m.%Y",
+        "allow_render_html": true,
+        "show_cell_bars": true,
+        "color_pn": true,
+        "comparison_color_scheme": "Green",
+        "conditional_formatting": [],
+        "comparison_type": "values",
+        "extra_form_data": {},
+        "dashboards": [
+          2
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 5,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "time_grain_sqla": "P1D",
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "match_date",
+              "competition_stage_name",
+              "home_team_name",
+              "away_team_name",
+              "display_score",
+              "result_method"
+            ],
+            "orderby": [],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "post_processing": [],
+            "time_offsets": []
+          }
+        ],
+        "form_data": {
+          "datasource": "5__table",
+          "viz_type": "table",
+          "query_mode": "raw",
+          "groupby": [],
+          "time_grain_sqla": "P1D",
+          "temporal_columns_lookup": {
+            "match_date": true
+          },
+          "all_columns": [
+            "match_date",
+            "competition_stage_name",
+            "home_team_name",
+            "away_team_name",
+            "display_score",
+            "result_method"
+          ],
+          "percent_metrics": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "subject": "match_date",
+              "operator": "TEMPORAL_RANGE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE"
+            }
+          ],
+          "order_by_cols": [],
+          "order_desc": true,
+          "server_page_length": 10,
+          "row_limit": 10000,
+          "percent_metric_calculation": "row_limit",
+          "table_timestamp_format": "%d.%m.%Y",
+          "allow_render_html": true,
+          "show_cell_bars": true,
+          "color_pn": true,
+          "comparison_color_scheme": "Green",
+          "conditional_formatting": [],
+          "comparison_type": "values",
+          "extra_form_data": {},
+          "dashboards": [
+            2
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full",
+          "include_time": false
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 2,
+      "id": 10,
+      "name": "Team Comparison",
+      "dataset": 6,
+      "params": {
+        "datasource": "6__table",
+        "viz_type": "table",
+        "slice_id": 10,
+        "query_mode": "raw",
+        "groupby": [],
+        "temporal_columns_lookup": {
+          "match_date": true
+        },
+        "all_columns": [
+          "team_name",
+          "goals_for",
+          "shot_count",
+          "shot_xg",
+          "pass_attempts",
+          "under_pressure_events"
+        ],
+        "percent_metrics": [],
+        "adhoc_filters": [],
+        "order_by_cols": [
+          "[\"is_home\", false]"
+        ],
+        "row_limit": 10000,
+        "table_timestamp_format": "smart_date",
+        "allow_render_html": true,
+        "column_config": {
+          "shot_xg": {
+            "d3NumberFormat": ",.2f"
+          }
+        },
+        "show_cell_bars": true,
+        "color_pn": true,
+        "conditional_formatting": [],
+        "comparison_type": "values",
+        "extra_form_data": {},
+        "dashboards": [
+          2
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 6,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "team_name",
+              "goals_for",
+              "shot_count",
+              "shot_xg",
+              "pass_attempts",
+              "under_pressure_events"
+            ],
+            "orderby": [
+              [
+                "is_home",
+                false
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "post_processing": [],
+            "time_offsets": []
+          }
+        ],
+        "form_data": {
+          "datasource": "6__table",
+          "viz_type": "table",
+          "slice_id": 10,
+          "query_mode": "raw",
+          "groupby": [],
+          "temporal_columns_lookup": {
+            "match_date": true
+          },
+          "all_columns": [
+            "team_name",
+            "goals_for",
+            "shot_count",
+            "shot_xg",
+            "pass_attempts",
+            "under_pressure_events"
+          ],
+          "percent_metrics": [],
+          "adhoc_filters": [],
+          "order_by_cols": [
+            "[\"is_home\", false]"
+          ],
+          "row_limit": 10000,
+          "table_timestamp_format": "smart_date",
+          "allow_render_html": true,
+          "column_config": {
+            "shot_xg": {
+              "d3NumberFormat": ",.2f"
+            }
+          },
+          "show_cell_bars": true,
+          "color_pn": true,
+          "conditional_formatting": [],
+          "comparison_type": "values",
+          "extra_form_data": {},
+          "dashboards": [
+            2
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full",
+          "include_time": false
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 2,
+      "id": 11,
+      "name": "Player Stats",
+      "dataset": 7,
+      "params": {
+        "datasource": "7__table",
+        "viz_type": "table",
+        "slice_id": 11,
+        "query_mode": "raw",
+        "groupby": [],
+        "temporal_columns_lookup": {
+          "match_date": true
+        },
+        "all_columns": [
+          "player_name",
+          "team_name",
+          "shot_count",
+          "shot_xg",
+          "pass_attempts",
+          "event_count"
+        ],
+        "percent_metrics": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE",
+            "operator": "TEMPORAL_RANGE",
+            "subject": "match_date"
+          }
+        ],
+        "order_by_cols": [
+          "[\"shot_xg\", false]"
+        ],
+        "row_limit": 10000,
+        "table_timestamp_format": "smart_date",
+        "allow_render_html": true,
+        "column_config": {
+          "shot_xg": {
+            "d3NumberFormat": ",.2f"
+          }
+        },
+        "show_cell_bars": true,
+        "color_pn": true,
+        "conditional_formatting": [],
+        "comparison_type": "values",
+        "extra_form_data": {},
+        "dashboards": [
+          2
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 7,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "player_name",
+              "team_name",
+              "shot_count",
+              "shot_xg",
+              "pass_attempts",
+              "event_count"
+            ],
+            "orderby": [
+              [
+                "shot_xg",
+                false
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "post_processing": [],
+            "time_offsets": []
+          }
+        ],
+        "form_data": {
+          "datasource": "7__table",
+          "viz_type": "table",
+          "slice_id": 11,
+          "query_mode": "raw",
+          "groupby": [],
+          "temporal_columns_lookup": {
+            "match_date": true
+          },
+          "all_columns": [
+            "player_name",
+            "team_name",
+            "shot_count",
+            "shot_xg",
+            "pass_attempts",
+            "event_count"
+          ],
+          "percent_metrics": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE",
+              "operator": "TEMPORAL_RANGE",
+              "subject": "match_date"
+            }
+          ],
+          "order_by_cols": [
+            "[\"shot_xg\", false]"
+          ],
+          "row_limit": 10000,
+          "table_timestamp_format": "smart_date",
+          "allow_render_html": true,
+          "column_config": {
+            "shot_xg": {
+              "d3NumberFormat": ",.2f"
+            }
+          },
+          "show_cell_bars": true,
+          "color_pn": true,
+          "conditional_formatting": [],
+          "comparison_type": "values",
+          "extra_form_data": {},
+          "dashboards": [
+            2
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full",
+          "include_time": false
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 2,
+      "id": 12,
+      "name": "Shots",
+      "dataset": 8,
+      "params": {
+        "datasource": "8__table",
+        "viz_type": "table",
+        "slice_id": 12,
+        "query_mode": "raw",
+        "groupby": [],
+        "temporal_columns_lookup": {
+          "match_date": true
+        },
+        "all_columns": [
+          "minute",
+          "second",
+          "team_name",
+          "player_name",
+          "statsbomb_xg",
+          "outcome_name",
+          "period"
+        ],
+        "percent_metrics": [],
+        "adhoc_filters": [
+          {
+            "clause": "WHERE",
+            "comparator": 0,
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "filterOptionName": "filter_4hawk20mcy2_cgw8s4lr74v",
+            "isExtra": false,
+            "isNew": false,
+            "operator": "==",
+            "operatorId": "EQUALS",
+            "sqlExpression": null,
+            "subject": "is_shootout"
+          },
+          {
+            "clause": "WHERE",
+            "subject": "match_date",
+            "operator": "TEMPORAL_RANGE",
+            "comparator": "No filter",
+            "expressionType": "SIMPLE"
+          }
+        ],
+        "order_by_cols": [
+          "[\"event_index\", true]"
+        ],
+        "order_desc": true,
+        "server_page_length": 10,
+        "row_limit": 10000,
+        "percent_metric_calculation": "row_limit",
+        "table_timestamp_format": "smart_date",
+        "allow_render_html": true,
+        "column_config": {
+          "statsbomb_xg": {
+            "d3NumberFormat": ",.2f"
+          }
+        },
+        "show_cell_bars": true,
+        "color_pn": true,
+        "conditional_formatting": [],
+        "comparison_type": "values",
+        "extra_form_data": {},
+        "dashboards": [
+          2
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 8,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "is_shootout",
+                "op": "==",
+                "val": 0
+              },
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "minute",
+              "second",
+              "team_name",
+              "player_name",
+              "statsbomb_xg",
+              "outcome_name",
+              "period"
+            ],
+            "orderby": [
+              [
+                "event_index",
+                true
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "post_processing": [],
+            "time_offsets": []
+          }
+        ],
+        "form_data": {
+          "datasource": "8__table",
+          "viz_type": "table",
+          "slice_id": 12,
+          "query_mode": "raw",
+          "groupby": [],
+          "temporal_columns_lookup": {
+            "match_date": true
+          },
+          "all_columns": [
+            "minute",
+            "second",
+            "team_name",
+            "player_name",
+            "statsbomb_xg",
+            "outcome_name",
+            "period"
+          ],
+          "percent_metrics": [],
+          "adhoc_filters": [
+            {
+              "clause": "WHERE",
+              "comparator": 0,
+              "datasourceWarning": false,
+              "expressionType": "SIMPLE",
+              "filterOptionName": "filter_4hawk20mcy2_cgw8s4lr74v",
+              "isExtra": false,
+              "isNew": false,
+              "operator": "==",
+              "operatorId": "EQUALS",
+              "sqlExpression": null,
+              "subject": "is_shootout"
+            },
+            {
+              "clause": "WHERE",
+              "subject": "match_date",
+              "operator": "TEMPORAL_RANGE",
+              "comparator": "No filter",
+              "expressionType": "SIMPLE"
+            }
+          ],
+          "order_by_cols": [
+            "[\"event_index\", true]"
+          ],
+          "order_desc": true,
+          "server_page_length": 10,
+          "row_limit": 10000,
+          "percent_metric_calculation": "row_limit",
+          "table_timestamp_format": "smart_date",
+          "allow_render_html": true,
+          "column_config": {
+            "statsbomb_xg": {
+              "d3NumberFormat": ",.2f"
+            }
+          },
+          "show_cell_bars": true,
+          "color_pn": true,
+          "conditional_formatting": [],
+          "comparison_type": "values",
+          "extra_form_data": {},
+          "dashboards": [
+            2
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full",
+          "include_time": false
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 2,
+      "id": 13,
+      "name": "Penalty Shootout",
+      "dataset": 11,
+      "params": {
+        "datasource": "11__table",
+        "viz_type": "table",
+        "slice_id": 13,
+        "query_mode": "raw",
+        "groupby": [],
+        "temporal_columns_lookup": {
+          "match_date": true
+        },
+        "all_columns": [
+          "shootout_order",
+          "team_name",
+          "player_name",
+          "outcome_name",
+          "team_attempt_number",
+          "home_shootout_goals_after",
+          "away_shootout_goals_after"
+        ],
+        "percent_metrics": [],
+        "adhoc_filters": [],
+        "order_by_cols": [
+          "[\"shootout_order\", true]"
+        ],
+        "row_limit": 10000,
+        "table_timestamp_format": "smart_date",
+        "allow_render_html": true,
+        "show_cell_bars": true,
+        "color_pn": true,
+        "comparison_color_scheme": "Green",
+        "conditional_formatting": [],
+        "comparison_type": "values",
+        "extra_form_data": {},
+        "dashboards": [
+          2
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 11,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "shootout_order",
+              "team_name",
+              "player_name",
+              "outcome_name",
+              "team_attempt_number",
+              "home_shootout_goals_after",
+              "away_shootout_goals_after"
+            ],
+            "orderby": [
+              [
+                "shootout_order",
+                true
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "post_processing": [],
+            "time_offsets": []
+          }
+        ],
+        "form_data": {
+          "datasource": "11__table",
+          "viz_type": "table",
+          "slice_id": 13,
+          "query_mode": "raw",
+          "groupby": [],
+          "temporal_columns_lookup": {
+            "match_date": true
+          },
+          "all_columns": [
+            "shootout_order",
+            "team_name",
+            "player_name",
+            "outcome_name",
+            "team_attempt_number",
+            "home_shootout_goals_after",
+            "away_shootout_goals_after"
+          ],
+          "percent_metrics": [],
+          "adhoc_filters": [],
+          "order_by_cols": [
+            "[\"shootout_order\", true]"
+          ],
+          "row_limit": 10000,
+          "table_timestamp_format": "smart_date",
+          "allow_render_html": true,
+          "show_cell_bars": true,
+          "color_pn": true,
+          "comparison_color_scheme": "Green",
+          "conditional_formatting": [],
+          "comparison_type": "values",
+          "extra_form_data": {},
+          "dashboards": [
+            2
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full",
+          "include_time": false
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 2,
+      "id": 14,
+      "name": "Shootout Summary",
+      "dataset": 5,
+      "params": {
+        "datasource": "5__table",
+        "viz_type": "table",
+        "slice_id": 14,
+        "query_mode": "raw",
+        "groupby": [],
+        "temporal_columns_lookup": {
+          "match_date": true
+        },
+        "all_columns": [
+          "home_team_name",
+          "home_shootout_goals",
+          "away_shootout_goals",
+          "away_team_name",
+          "winner_team_name"
+        ],
+        "percent_metrics": [],
+        "adhoc_filters": [
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "result_method = 'PENALTIES'",
+            "clause": "WHERE",
+            "subject": null,
+            "operator": null,
+            "comparator": null,
+            "isExtra": false,
+            "isNew": false,
+            "datasourceWarning": false,
+            "filterOptionName": "filter_v5n0bpn9noi_2ca6dc6cvnk"
+          }
+        ],
+        "order_by_cols": [],
+        "order_desc": true,
+        "server_page_length": 10,
+        "row_limit": 10000,
+        "percent_metric_calculation": "row_limit",
+        "table_timestamp_format": "smart_date",
+        "allow_render_html": true,
+        "show_cell_bars": true,
+        "color_pn": true,
+        "comparison_color_scheme": "Green",
+        "comparison_type": "values",
+        "extra_form_data": {},
+        "dashboards": [
+          2
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 5,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [],
+            "extras": {
+              "having": "",
+              "where": "(result_method = 'PENALTIES')"
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "home_team_name",
+              "home_shootout_goals",
+              "away_shootout_goals",
+              "away_team_name",
+              "winner_team_name"
+            ],
+            "orderby": [],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "post_processing": [],
+            "time_offsets": []
+          }
+        ],
+        "form_data": {
+          "datasource": "5__table",
+          "viz_type": "table",
+          "slice_id": 14,
+          "query_mode": "raw",
+          "groupby": [],
+          "temporal_columns_lookup": {
+            "match_date": true
+          },
+          "all_columns": [
+            "home_team_name",
+            "home_shootout_goals",
+            "away_shootout_goals",
+            "away_team_name",
+            "winner_team_name"
+          ],
+          "percent_metrics": [],
+          "adhoc_filters": [
+            {
+              "expressionType": "SQL",
+              "sqlExpression": "result_method = 'PENALTIES'",
+              "clause": "WHERE",
+              "subject": null,
+              "operator": null,
+              "comparator": null,
+              "isExtra": false,
+              "isNew": false,
+              "datasourceWarning": false,
+              "filterOptionName": "filter_v5n0bpn9noi_2ca6dc6cvnk"
+            }
+          ],
+          "order_by_cols": [],
+          "order_desc": true,
+          "server_page_length": 10,
+          "row_limit": 10000,
+          "percent_metric_calculation": "row_limit",
+          "table_timestamp_format": "smart_date",
+          "allow_render_html": true,
+          "show_cell_bars": true,
+          "color_pn": true,
+          "comparison_color_scheme": "Green",
+          "comparison_type": "values",
+          "extra_form_data": {},
+          "dashboards": [
+            2
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full",
+          "include_time": false
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 2,
+      "id": 15,
+      "name": "xG Race",
+      "dataset": 12,
+      "params": {
+        "datasource": "12__table",
+        "viz_type": "echarts_timeseries_step",
+        "slice_id": 15,
+        "x_axis": "event_order",
+        "xAxisForceCategorical": false,
+        "metrics": [
+          {
+            "aggregate": "MAX",
+            "column": {
+              "advanced_data_type": null,
+              "changed_on": "2026-10-02T13:16:49.894366",
+              "column_name": "cumulative_xg",
+              "created_on": "2026-10-02T13:16:49.894365",
+              "description": null,
+              "expression": null,
+              "extra": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 363,
+              "is_active": true,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "FLOAT64",
+              "type_generic": 0,
+              "uuid": "fd1dbd3e-8b58-4f69-acd5-65bf8b4581c2",
+              "verbose_name": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "MAX(cumulative_xg)",
+            "optionName": "metric_za6yrk3j2l_j3hqpfw5jl8",
+            "sqlExpression": null
+          }
+        ],
+        "groupby": [
+          "team_name"
+        ],
+        "adhoc_filters": [],
+        "row_limit": 10000,
+        "truncate_metric": true,
+        "show_empty_columns": true,
+        "comparison_type": "values",
+        "annotation_layers": [],
+        "forecastPeriods": 10,
+        "forecastInterval": 0.8,
+        "x_axis_title_margin": 15,
+        "y_axis_title": "xG",
+        "y_axis_title_margin": 30,
+        "y_axis_title_position": "Left",
+        "sort_series_type": "sum",
+        "color_scheme": "supersetColors",
+        "seriesType": "start",
+        "markerEnabled": true,
+        "markerSize": 6,
+        "show_legend": true,
+        "legendType": "scroll",
+        "legendOrientation": "top",
+        "x_axis_time_format": "smart_date",
+        "xAxisLabelInterval": "auto",
+        "rich_tooltip": true,
+        "showTooltipTotal": false,
+        "tooltipTimeFormat": "smart_date",
+        "y_axis_format": ",.2f",
+        "truncateXAxis": false,
+        "extra_form_data": {},
+        "dashboards": [
+          2
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 12,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              {
+                "columnType": "BASE_AXIS",
+                "sqlExpression": "event_order",
+                "label": "event_order",
+                "expressionType": "SQL",
+                "isColumnReference": true
+              },
+              "team_name"
+            ],
+            "metrics": [
+              {
+                "aggregate": "MAX",
+                "column": {
+                  "advanced_data_type": null,
+                  "changed_on": "2026-10-02T13:16:49.894366",
+                  "column_name": "cumulative_xg",
+                  "created_on": "2026-10-02T13:16:49.894365",
+                  "description": null,
+                  "expression": null,
+                  "extra": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 363,
+                  "is_active": true,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "FLOAT64",
+                  "type_generic": 0,
+                  "uuid": "fd1dbd3e-8b58-4f69-acd5-65bf8b4581c2",
+                  "verbose_name": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "MAX(cumulative_xg)",
+                "optionName": "metric_za6yrk3j2l_j3hqpfw5jl8",
+                "sqlExpression": null
+              }
+            ],
+            "orderby": [
+              [
+                {
+                  "aggregate": "MAX",
+                  "column": {
+                    "advanced_data_type": null,
+                    "changed_on": "2026-10-02T13:16:49.894366",
+                    "column_name": "cumulative_xg",
+                    "created_on": "2026-10-02T13:16:49.894365",
+                    "description": null,
+                    "expression": null,
+                    "extra": null,
+                    "filterable": true,
+                    "groupby": true,
+                    "id": 363,
+                    "is_active": true,
+                    "is_dttm": false,
+                    "python_date_format": null,
+                    "type": "FLOAT64",
+                    "type_generic": 0,
+                    "uuid": "fd1dbd3e-8b58-4f69-acd5-65bf8b4581c2",
+                    "verbose_name": null
+                  },
+                  "datasourceWarning": false,
+                  "expressionType": "SIMPLE",
+                  "hasCustomLabel": false,
+                  "label": "MAX(cumulative_xg)",
+                  "optionName": "metric_za6yrk3j2l_j3hqpfw5jl8",
+                  "sqlExpression": null
+                },
+                false
+              ]
+            ],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_columns": [
+              "team_name"
+            ],
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {},
+            "time_offsets": [],
+            "post_processing": [
+              {
+                "operation": "pivot",
+                "options": {
+                  "index": [
+                    "event_order"
+                  ],
+                  "columns": [
+                    "team_name"
+                  ],
+                  "aggregates": {
+                    "MAX(cumulative_xg)": {
+                      "operator": "mean"
+                    }
+                  },
+                  "drop_missing_columns": false
+                }
+              },
+              {
+                "operation": "rename",
+                "options": {
+                  "columns": {
+                    "MAX(cumulative_xg)": null
+                  },
+                  "level": 0,
+                  "inplace": true
+                }
+              },
+              {
+                "operation": "flatten"
+              }
+            ]
+          }
+        ],
+        "form_data": {
+          "datasource": "12__table",
+          "viz_type": "echarts_timeseries_step",
+          "slice_id": 15,
+          "x_axis": "event_order",
+          "xAxisForceCategorical": false,
+          "metrics": [
+            {
+              "aggregate": "MAX",
+              "column": {
+                "advanced_data_type": null,
+                "changed_on": "2026-10-02T13:16:49.894366",
+                "column_name": "cumulative_xg",
+                "created_on": "2026-10-02T13:16:49.894365",
+                "description": null,
+                "expression": null,
+                "extra": null,
+                "filterable": true,
+                "groupby": true,
+                "id": 363,
+                "is_active": true,
+                "is_dttm": false,
+                "python_date_format": null,
+                "type": "FLOAT64",
+                "type_generic": 0,
+                "uuid": "fd1dbd3e-8b58-4f69-acd5-65bf8b4581c2",
+                "verbose_name": null
+              },
+              "datasourceWarning": false,
+              "expressionType": "SIMPLE",
+              "hasCustomLabel": false,
+              "label": "MAX(cumulative_xg)",
+              "optionName": "metric_za6yrk3j2l_j3hqpfw5jl8",
+              "sqlExpression": null
+            }
+          ],
+          "groupby": [
+            "team_name"
+          ],
+          "adhoc_filters": [],
+          "row_limit": 10000,
+          "truncate_metric": true,
+          "show_empty_columns": true,
+          "comparison_type": "values",
+          "annotation_layers": [],
+          "forecastPeriods": 10,
+          "forecastInterval": 0.8,
+          "x_axis_title_margin": 15,
+          "y_axis_title": "xG",
+          "y_axis_title_margin": 30,
+          "y_axis_title_position": "Left",
+          "sort_series_type": "sum",
+          "color_scheme": "supersetColors",
+          "seriesType": "start",
+          "markerEnabled": true,
+          "markerSize": 6,
+          "show_legend": true,
+          "legendType": "scroll",
+          "legendOrientation": "top",
+          "x_axis_time_format": "smart_date",
+          "xAxisLabelInterval": "auto",
+          "rich_tooltip": true,
+          "showTooltipTotal": false,
+          "tooltipTimeFormat": "smart_date",
+          "y_axis_format": ",.2f",
+          "truncateXAxis": false,
+          "extra_form_data": {},
+          "dashboards": [
+            2
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    },
+    {
+      "dashboard": 2,
+      "id": 16,
+      "name": "Shot Map",
+      "dataset": 10,
+      "params": {
+        "datasource": "10__table",
+        "viz_type": "bubble_v2",
+        "slice_id": 16,
+        "series": "team_name",
+        "entity": "shot_label",
+        "x": {
+          "aggregate": "MAX",
+          "column": {
+            "advanced_data_type": null,
+            "certification_details": null,
+            "certified_by": null,
+            "column_name": "start_x",
+            "description": null,
+            "expression": null,
+            "filterable": true,
+            "groupby": true,
+            "id": 316,
+            "is_certified": false,
+            "is_dttm": false,
+            "python_date_format": null,
+            "type": "column",
+            "type_generic": null,
+            "uuid": "890e375a-a622-4147-9b8e-be697cc15fd6",
+            "verbose_name": null,
+            "warning_markdown": null
+          },
+          "datasourceWarning": false,
+          "expressionType": "SIMPLE",
+          "hasCustomLabel": false,
+          "label": "MAX(start_x)",
+          "optionName": "metric_sdrnbntmhk_kfzxltatbll",
+          "sqlExpression": null
+        },
+        "y": {
+          "aggregate": "MAX",
+          "column": {
+            "advanced_data_type": null,
+            "certification_details": null,
+            "certified_by": null,
+            "column_name": "start_y",
+            "description": null,
+            "expression": null,
+            "filterable": true,
+            "groupby": true,
+            "id": 317,
+            "is_certified": false,
+            "is_dttm": false,
+            "python_date_format": null,
+            "type": "column",
+            "type_generic": null,
+            "uuid": "b1ebf019-506c-450d-89fd-ef8702b7c0c5",
+            "verbose_name": null,
+            "warning_markdown": null
+          },
+          "datasourceWarning": false,
+          "expressionType": "SIMPLE",
+          "hasCustomLabel": false,
+          "label": "MAX(start_y)",
+          "optionName": "metric_ib3g0idl8r_f8qmh482ff",
+          "sqlExpression": null
+        },
+        "adhoc_filters": [
+          {
+            "expressionType": "SIMPLE",
+            "subject": "match_date",
+            "operator": "TEMPORAL_RANGE",
+            "comparator": "No filter",
+            "clause": "WHERE",
+            "sqlExpression": null,
+            "isExtra": false,
+            "isNew": false,
+            "datasourceWarning": false,
+            "filterOptionName": "filter_dmoqi1dtx04_ql3wrh40qk"
+          }
+        ],
+        "size": {
+          "aggregate": "MAX",
+          "column": {
+            "advanced_data_type": null,
+            "certification_details": null,
+            "certified_by": null,
+            "column_name": "statsbomb_xg",
+            "description": null,
+            "expression": null,
+            "filterable": true,
+            "groupby": true,
+            "id": 311,
+            "is_certified": false,
+            "is_dttm": false,
+            "python_date_format": null,
+            "type": "FLOAT64",
+            "type_generic": 0,
+            "uuid": "24d42403-1445-4bc4-ba8d-cb7aa2f7c1c8",
+            "verbose_name": null,
+            "warning_markdown": null
+          },
+          "datasourceWarning": false,
+          "expressionType": "SIMPLE",
+          "hasCustomLabel": false,
+          "label": "MAX(statsbomb_xg)",
+          "optionName": "metric_sesq6fh97mp_6z5g8oj9mww",
+          "sqlExpression": null
+        },
+        "row_limit": 10000,
+        "color_scheme": "googleCategory10c",
+        "show_legend": true,
+        "legendType": "scroll",
+        "legendOrientation": "top",
+        "max_bubble_size": "12",
+        "tooltipSizeFormat": ",.2f",
+        "opacity": 0.5,
+        "x_axis_label": "Pitch X",
+        "xAxisLabelInterval": "auto",
+        "x_axis_title_margin": 30,
+        "xAxisFormat": "SMART_NUMBER",
+        "logXAxis": false,
+        "y_axis_label": "Pitch Y",
+        "y_axis_title_margin": 30,
+        "y_axis_format": "SMART_NUMBER",
+        "logYAxis": false,
+        "truncateXAxis": true,
+        "xAxisBounds": [
+          40,
+          120
+        ],
+        "truncateYAxis": true,
+        "y_axis_bounds": [
+          0,
+          80
+        ],
+        "extra_form_data": {},
+        "dashboards": [
+          2
+        ]
+      },
+      "query_context": {
+        "datasource": {
+          "id": 10,
+          "type": "table"
+        },
+        "force": false,
+        "queries": [
+          {
+            "filters": [
+              {
+                "col": "match_date",
+                "op": "TEMPORAL_RANGE",
+                "val": "No filter"
+              }
+            ],
+            "extras": {
+              "having": "",
+              "where": ""
+            },
+            "applied_time_extras": {},
+            "columns": [
+              "shot_label",
+              "team_name"
+            ],
+            "metrics": [
+              {
+                "aggregate": "MAX",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "start_x",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 316,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "column",
+                  "type_generic": null,
+                  "uuid": "890e375a-a622-4147-9b8e-be697cc15fd6",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "MAX(start_x)",
+                "optionName": "metric_sdrnbntmhk_kfzxltatbll",
+                "sqlExpression": null
+              },
+              {
+                "aggregate": "MAX",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "start_y",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 317,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "column",
+                  "type_generic": null,
+                  "uuid": "b1ebf019-506c-450d-89fd-ef8702b7c0c5",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "MAX(start_y)",
+                "optionName": "metric_ib3g0idl8r_f8qmh482ff",
+                "sqlExpression": null
+              },
+              {
+                "aggregate": "MAX",
+                "column": {
+                  "advanced_data_type": null,
+                  "certification_details": null,
+                  "certified_by": null,
+                  "column_name": "statsbomb_xg",
+                  "description": null,
+                  "expression": null,
+                  "filterable": true,
+                  "groupby": true,
+                  "id": 311,
+                  "is_certified": false,
+                  "is_dttm": false,
+                  "python_date_format": null,
+                  "type": "FLOAT64",
+                  "type_generic": 0,
+                  "uuid": "24d42403-1445-4bc4-ba8d-cb7aa2f7c1c8",
+                  "verbose_name": null,
+                  "warning_markdown": null
+                },
+                "datasourceWarning": false,
+                "expressionType": "SIMPLE",
+                "hasCustomLabel": false,
+                "label": "MAX(statsbomb_xg)",
+                "optionName": "metric_sesq6fh97mp_6z5g8oj9mww",
+                "sqlExpression": null
+              }
+            ],
+            "annotation_layers": [],
+            "row_limit": 10000,
+            "series_limit": 0,
+            "group_others_when_limit_reached": false,
+            "order_desc": true,
+            "url_params": {},
+            "custom_params": {},
+            "custom_form_data": {}
+          }
+        ],
+        "form_data": {
+          "datasource": "10__table",
+          "viz_type": "bubble_v2",
+          "slice_id": 16,
+          "series": "team_name",
+          "entity": "shot_label",
+          "x": {
+            "aggregate": "MAX",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "start_x",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 316,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "column",
+              "type_generic": null,
+              "uuid": "890e375a-a622-4147-9b8e-be697cc15fd6",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "MAX(start_x)",
+            "optionName": "metric_sdrnbntmhk_kfzxltatbll",
+            "sqlExpression": null
+          },
+          "y": {
+            "aggregate": "MAX",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "start_y",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 317,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "column",
+              "type_generic": null,
+              "uuid": "b1ebf019-506c-450d-89fd-ef8702b7c0c5",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "MAX(start_y)",
+            "optionName": "metric_ib3g0idl8r_f8qmh482ff",
+            "sqlExpression": null
+          },
+          "adhoc_filters": [
+            {
+              "expressionType": "SIMPLE",
+              "subject": "match_date",
+              "operator": "TEMPORAL_RANGE",
+              "comparator": "No filter",
+              "clause": "WHERE",
+              "sqlExpression": null,
+              "isExtra": false,
+              "isNew": false,
+              "datasourceWarning": false,
+              "filterOptionName": "filter_dmoqi1dtx04_ql3wrh40qk"
+            }
+          ],
+          "size": {
+            "aggregate": "MAX",
+            "column": {
+              "advanced_data_type": null,
+              "certification_details": null,
+              "certified_by": null,
+              "column_name": "statsbomb_xg",
+              "description": null,
+              "expression": null,
+              "filterable": true,
+              "groupby": true,
+              "id": 311,
+              "is_certified": false,
+              "is_dttm": false,
+              "python_date_format": null,
+              "type": "FLOAT64",
+              "type_generic": 0,
+              "uuid": "24d42403-1445-4bc4-ba8d-cb7aa2f7c1c8",
+              "verbose_name": null,
+              "warning_markdown": null
+            },
+            "datasourceWarning": false,
+            "expressionType": "SIMPLE",
+            "hasCustomLabel": false,
+            "label": "MAX(statsbomb_xg)",
+            "optionName": "metric_sesq6fh97mp_6z5g8oj9mww",
+            "sqlExpression": null
+          },
+          "row_limit": 10000,
+          "color_scheme": "googleCategory10c",
+          "show_legend": true,
+          "legendType": "scroll",
+          "legendOrientation": "top",
+          "max_bubble_size": "12",
+          "tooltipSizeFormat": ",.2f",
+          "opacity": 0.5,
+          "x_axis_label": "Pitch X",
+          "xAxisLabelInterval": "auto",
+          "x_axis_title_margin": 30,
+          "xAxisFormat": "SMART_NUMBER",
+          "logXAxis": false,
+          "y_axis_label": "Pitch Y",
+          "y_axis_title_margin": 30,
+          "y_axis_format": "SMART_NUMBER",
+          "logYAxis": false,
+          "truncateXAxis": true,
+          "xAxisBounds": [
+            40,
+            120
+          ],
+          "truncateYAxis": true,
+          "y_axis_bounds": [
+            0,
+            80
+          ],
+          "extra_form_data": {},
+          "dashboards": [
+            2
+          ],
+          "force": false,
+          "result_format": "json",
+          "result_type": "full"
+        },
+        "result_format": "json",
+        "result_type": "full"
+      }
+    }
+  ],
+  "datasets": [
+    {
+      "id": 2,
+      "name": "bi_team_match_stats",
+      "schema": "football",
+      "sql": "",
+      "predicate": null
+    },
+    {
+      "id": 3,
+      "name": "bi_player_match_stats",
+      "schema": "football",
+      "sql": "",
+      "predicate": null
+    },
+    {
+      "id": 5,
+      "name": "bi_match_overview",
+      "schema": "football",
+      "sql": null,
+      "predicate": null
+    },
+    {
+      "id": 6,
+      "name": "bi_match_team_stats",
+      "schema": "football",
+      "sql": null,
+      "predicate": null
+    },
+    {
+      "id": 7,
+      "name": "bi_match_player_stats",
+      "schema": "football",
+      "sql": null,
+      "predicate": null
+    },
+    {
+      "id": 8,
+      "name": "bi_match_shots",
+      "schema": "football",
+      "sql": null,
+      "predicate": null
+    },
+    {
+      "id": 10,
+      "name": "bi_match_shot_map",
+      "schema": "football",
+      "sql": "",
+      "predicate": null
+    },
+    {
+      "id": 11,
+      "name": "bi_match_shootout",
+      "schema": "football",
+      "sql": null,
+      "predicate": null
+    },
+    {
+      "id": 12,
+      "name": "bi_match_xg_race_series",
+      "schema": "football",
+      "sql": null,
+      "predicate": null
+    }
+  ],
+  "columns": [
+    [
+      2,
+      "competition_id",
+      "UINT32",
+      "",
+      true
+    ],
+    [
+      2,
+      "match_id",
+      "UINT64",
+      "",
+      true
+    ],
+    [
+      2,
+      "season_id",
+      "UINT32",
+      "",
+      true
+    ],
+    [
+      3,
+      "competition_id",
+      "UINT32",
+      "",
+      true
+    ],
+    [
+      3,
+      "match_id",
+      "UINT64",
+      "",
+      true
+    ],
+    [
+      3,
+      "season_id",
+      "UINT32",
+      "",
+      true
+    ],
+    [
+      5,
+      "competition_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      5,
+      "match_id",
+      "UINT64",
+      null,
+      true
+    ],
+    [
+      5,
+      "match_label",
+      "STRING",
+      null,
+      true
+    ],
+    [
+      5,
+      "season_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      6,
+      "competition_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      6,
+      "match_id",
+      "UINT64",
+      null,
+      true
+    ],
+    [
+      6,
+      "match_label",
+      "STRING",
+      null,
+      true
+    ],
+    [
+      6,
+      "season_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      7,
+      "competition_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      7,
+      "match_id",
+      "UINT64",
+      null,
+      true
+    ],
+    [
+      7,
+      "match_label",
+      "STRING",
+      null,
+      true
+    ],
+    [
+      7,
+      "season_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      8,
+      "competition_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      8,
+      "match_id",
+      "UINT64",
+      null,
+      true
+    ],
+    [
+      8,
+      "match_label",
+      "STRING",
+      null,
+      true
+    ],
+    [
+      8,
+      "season_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      10,
+      "competition_id",
+      "UINT32",
+      "",
+      true
+    ],
+    [
+      10,
+      "match_id",
+      "UINT64",
+      "",
+      true
+    ],
+    [
+      10,
+      "match_label",
+      "STRING",
+      "",
+      true
+    ],
+    [
+      10,
+      "season_id",
+      "UINT32",
+      "",
+      true
+    ],
+    [
+      11,
+      "competition_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      11,
+      "match_id",
+      "UINT64",
+      null,
+      true
+    ],
+    [
+      11,
+      "match_label",
+      "STRING",
+      null,
+      true
+    ],
+    [
+      11,
+      "season_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      12,
+      "competition_id",
+      "UINT32",
+      null,
+      true
+    ],
+    [
+      12,
+      "match_id",
+      "UINT64",
+      null,
+      true
+    ],
+    [
+      12,
+      "match_label",
+      "STRING",
+      null,
+      true
+    ],
+    [
+      12,
+      "season_id",
+      "UINT32",
+      null,
+      true
+    ]
+  ]
+}

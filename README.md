@@ -19,10 +19,13 @@ resume verifies/reuses cataloged immutable children rather than downloading thei
 source again. Full evidence, exact build IDs and runbook pins:
 [Stage 6B-2](docs/stage6b2.md).
 
-**Immediate BI follow-up:** World Cup 2022 Overview's eight Superset charts lack
-fixed 43/106 filters and can now mix both contexts (98 unfiltered matches).
-Match Analysis also needs an enforced selected-match guard. Superset was audited
-read-only and not modified; its WC dashboard is not certified semantically safe.
+**Stage 6B-F — Superset safety fixed live:** all eight World Cup Overview charts
+permanently enforce 43/106 (64 matches, not 98). Stage/Date/Team filters operate
+inside that context. Match Analysis uses a full-key calculated selector and a
+fail-closed selected-match guard in all eight charts. Generic ClickHouse views
+still expose both contexts; no migration or analytical/data changes were needed.
+Audit, exact commands and read-only validation evidence:
+[Superset multi-context safety](docs/stage6b-superset-safety.md).
 
 ## Stage 6B-1 — Context-explicit ETL preparation
 

@@ -1,0 +1,671 @@
+{
+  "overview": [
+    {
+      "chart": 1,
+      "dataset": 2,
+      "context": [
+        43,
+        106
+      ],
+      "display_rows": 1
+    },
+    {
+      "chart": 2,
+      "dataset": 2,
+      "context": [
+        43,
+        106
+      ],
+      "display_rows": 32
+    },
+    {
+      "chart": 3,
+      "dataset": 2,
+      "context": [
+        43,
+        106
+      ],
+      "display_rows": 32
+    },
+    {
+      "chart": 4,
+      "dataset": 2,
+      "context": [
+        43,
+        106
+      ],
+      "display_rows": 32
+    },
+    {
+      "chart": 5,
+      "dataset": 2,
+      "context": [
+        43,
+        106
+      ],
+      "display_rows": 32
+    },
+    {
+      "chart": 6,
+      "dataset": 3,
+      "context": [
+        43,
+        106
+      ],
+      "display_rows": 20
+    },
+    {
+      "chart": 7,
+      "dataset": 3,
+      "context": [
+        43,
+        106
+      ],
+      "display_rows": 20
+    },
+    {
+      "chart": 8,
+      "dataset": 2,
+      "context": [
+        43,
+        106
+      ],
+      "display_rows": 64
+    }
+  ],
+  "overview_native_filters": [
+    {
+      "chart": 1,
+      "stage": "Final",
+      "team": "Argentina",
+      "date": "2022-12-18",
+      "rows": 1
+    },
+    {
+      "chart": 2,
+      "stage": "Final",
+      "team": "Argentina",
+      "date": "2022-12-18",
+      "rows": 1
+    },
+    {
+      "chart": 3,
+      "stage": "Final",
+      "team": "Argentina",
+      "date": "2022-12-18",
+      "rows": 1
+    },
+    {
+      "chart": 4,
+      "stage": "Final",
+      "team": "Argentina",
+      "date": "2022-12-18",
+      "rows": 1
+    },
+    {
+      "chart": 5,
+      "stage": "Final",
+      "team": "Argentina",
+      "date": "2022-12-18",
+      "rows": 1
+    },
+    {
+      "chart": 6,
+      "stage": "Final",
+      "team": "Argentina",
+      "date": "2022-12-18",
+      "rows": 26
+    },
+    {
+      "chart": 7,
+      "stage": "Final",
+      "team": "Argentina",
+      "date": "2022-12-18",
+      "rows": 26
+    },
+    {
+      "chart": 8,
+      "stage": "Final",
+      "team": "Argentina",
+      "date": "2022-12-18",
+      "rows": 1
+    }
+  ],
+  "match_analysis": [
+    {
+      "chart": 9,
+      "selection": [],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 9,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France"
+      ],
+      "resolved": [
+        [
+          43,
+          106,
+          3869685
+        ]
+      ],
+      "rows": 1
+    },
+    {
+      "chart": 9,
+      "selection": [
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [
+        [
+          9,
+          281,
+          3895052
+        ]
+      ],
+      "rows": 1
+    },
+    {
+      "chart": 9,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France",
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 9,
+      "selection": [
+        "43/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 10,
+      "selection": [],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 10,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France"
+      ],
+      "resolved": [
+        [
+          43,
+          106,
+          3869685
+        ]
+      ],
+      "rows": 2
+    },
+    {
+      "chart": 10,
+      "selection": [
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [
+        [
+          9,
+          281,
+          3895052
+        ]
+      ],
+      "rows": 2
+    },
+    {
+      "chart": 10,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France",
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 10,
+      "selection": [
+        "43/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 11,
+      "selection": [],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 11,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France"
+      ],
+      "resolved": [
+        [
+          43,
+          106,
+          3869685
+        ]
+      ],
+      "rows": 50
+    },
+    {
+      "chart": 11,
+      "selection": [
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [
+        [
+          9,
+          281,
+          3895052
+        ]
+      ],
+      "rows": 40
+    },
+    {
+      "chart": 11,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France",
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 11,
+      "selection": [
+        "43/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 12,
+      "selection": [],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 12,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France"
+      ],
+      "resolved": [
+        [
+          43,
+          106,
+          3869685
+        ]
+      ],
+      "rows": 38
+    },
+    {
+      "chart": 12,
+      "selection": [
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [
+        [
+          9,
+          281,
+          3895052
+        ]
+      ],
+      "rows": 25
+    },
+    {
+      "chart": 12,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France",
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 12,
+      "selection": [
+        "43/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 13,
+      "selection": [],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 13,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France"
+      ],
+      "resolved": [
+        [
+          43,
+          106,
+          3869685
+        ]
+      ],
+      "rows": 8
+    },
+    {
+      "chart": 13,
+      "selection": [
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 13,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France",
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 13,
+      "selection": [
+        "43/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 14,
+      "selection": [],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 14,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France"
+      ],
+      "resolved": [
+        [
+          43,
+          106,
+          3869685
+        ]
+      ],
+      "rows": 1
+    },
+    {
+      "chart": 14,
+      "selection": [
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [
+        [
+          9,
+          281,
+          3895052
+        ]
+      ],
+      "rows": 1
+    },
+    {
+      "chart": 14,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France",
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 14,
+      "selection": [
+        "43/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 15,
+      "selection": [],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 15,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France"
+      ],
+      "resolved": [
+        [
+          43,
+          106,
+          3869685
+        ]
+      ],
+      "rows": 60
+    },
+    {
+      "chart": 15,
+      "selection": [
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [
+        [
+          9,
+          281,
+          3895052
+        ]
+      ],
+      "rows": 50
+    },
+    {
+      "chart": 15,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France",
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 15,
+      "selection": [
+        "43/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 16,
+      "selection": [],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 16,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France"
+      ],
+      "resolved": [
+        [
+          43,
+          106,
+          3869685
+        ]
+      ],
+      "rows": 30
+    },
+    {
+      "chart": 16,
+      "selection": [
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [
+        [
+          9,
+          281,
+          3895052
+        ]
+      ],
+      "rows": 25
+    },
+    {
+      "chart": 16,
+      "selection": [
+        "43/106/3869685 | 2022-12-18 | Argentina - France",
+        "9/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    },
+    {
+      "chart": 16,
+      "selection": [
+        "43/281/3895052 | 2023-08-19 | Bayer Leverkusen - RB Leipzig"
+      ],
+      "resolved": [],
+      "rows": 0
+    }
+  ],
+  "native_options": [
+    {
+      "dataset": 2,
+      "teams": 32
+    },
+    {
+      "dataset": 3,
+      "teams": 32
+    }
+  ],
+  "generic_matches": [
+    {
+      "competition_id": 9,
+      "season_id": 281,
+      "matches": 34
+    },
+    {
+      "competition_id": 43,
+      "season_id": 106,
+      "matches": 64
+    }
+  ],
+  "generic_views": {
+    "bi_team_match_stats": [
+      {
+        "competition_id": 9,
+        "season_id": 281,
+        "rows": 68
+      },
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 128
+      }
+    ],
+    "bi_player_match_stats": [
+      {
+        "competition_id": 9,
+        "season_id": 281,
+        "rows": 1353
+      },
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 3244
+      }
+    ],
+    "bi_match_overview": [
+      {
+        "competition_id": 9,
+        "season_id": 281,
+        "rows": 34
+      },
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 64
+      }
+    ],
+    "bi_match_team_stats": [
+      {
+        "competition_id": 9,
+        "season_id": 281,
+        "rows": 68
+      },
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 128
+      }
+    ],
+    "bi_match_player_stats": [
+      {
+        "competition_id": 9,
+        "season_id": 281,
+        "rows": 1353
+      },
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 3244
+      }
+    ],
+    "bi_match_shots": [
+      {
+        "competition_id": 9,
+        "season_id": 281,
+        "rows": 916
+      },
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 1494
+      }
+    ],
+    "bi_match_shot_map": [
+      {
+        "competition_id": 9,
+        "season_id": 281,
+        "rows": 916
+      },
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 1453
+      }
+    ],
+    "bi_match_shootout": [
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 41
+      }
+    ],
+    "bi_match_xg_race_series": [
+      {
+        "competition_id": 9,
+        "season_id": 281,
+        "rows": 1832
+      },
+      {
+        "competition_id": 43,
+        "season_id": 106,
+        "rows": 2906
+      }
+    ]
+  },
+  "wc_totals": {
+    "matches": 64,
+    "shots": 1453,
+    "passes": 68515,
+    "xg": 155.8985419302
+  }
+}

@@ -36,6 +36,9 @@ WTF_CSRF_ENABLED = True
 TALISMAN_ENABLED = False
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-FEATURE_FLAGS = {"ALERT_REPORTS": False, "GLOBAL_ASYNC_QUERIES": False}
+# Required for the fail-closed selected-match chart guard. Only trusted admins
+# may edit SQL/chart templates; this local BI instance is not a public editor.
+FEATURE_FLAGS = {"ALERT_REPORTS": False, "GLOBAL_ASYNC_QUERIES": False,
+                 "ENABLE_TEMPLATE_PROCESSING": True}
 # No Redis/Celery service: requests and chart queries execute synchronously.
 THUMBNAILS = False
