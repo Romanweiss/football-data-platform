@@ -12,6 +12,7 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
+from context_fixtures import in_context
 from integration import test_clickhouse_datasets as silver_tests
 from src.analytics import gold_loader, gold_model, validation
 from src.analytics.gold_specs import SPECS, TEAM
@@ -115,7 +116,7 @@ class LocalGoldTests(unittest.TestCase):
     def test_model_queries_and_smoke_queries(self):
         gold, silver = self.model_tables()
         with redirect_stdout(io.StringIO()):
-            result = gold_model.validate_model_metrics(self.client, {name: "a" * 64 for name in gold},
+            result = in_context(gold_model.validate_model_metrics)(self.client, {name: "a" * 64 for name in gold},
                 {name: "a" * 64 for name in silver}, gold_specs=gold, silver_specs=silver)
         self.assertEqual(len(result), 12)
         sql = (ROOT / "scripts/clickhouse_gold_smoke_queries.sql").read_text()
@@ -135,7 +136,7 @@ class LocalGoldTests(unittest.TestCase):
             replacement = self.table(TEAM)
             self.insert(replacement, overrides)
             with redirect_stdout(io.StringIO()), self.assertRaises(validation.ClickHouseIntegrityError):
-                gold_model.validate_model_metrics(self.client, {name: "a" * 64 for name in gold},
+                in_context(gold_model.validate_model_metrics)(self.client, {name: "a" * 64 for name in gold},
                     {name: "a" * 64 for name in silver}, gold_specs={**gold, TEAM.dataset: replacement}, silver_specs=silver)
 
 

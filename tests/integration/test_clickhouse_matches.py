@@ -10,6 +10,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
+from context_fixtures import in_context
 from integration import test_clickhouse_datasets as silver_tests, test_clickhouse_gold as gold_tests
 from src.analytics import loader, matches_model, validation
 from src.analytics.specs import MATCHES, SPECS
@@ -80,7 +81,7 @@ class LocalMatchTests(unittest.TestCase):
 
     def check(self, silver, gold):
         with redirect_stdout(io.StringIO()):
-            return matches_model.validate_match_references(self.client, {name: "a" * 64 for name in {**silver, **gold}}, specs=silver, gold_specs=gold)
+            return in_context(matches_model.validate_match_references)(self.client, {name: "a" * 64 for name in {**silver, **gold}}, specs=silver, gold_specs=gold)
 
     def test_all_actual_cross_model_joins_pass(self):
         silver, gold = self.tables()

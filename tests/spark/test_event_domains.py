@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "tests"))
 
+from context_fixtures import BRONZE_ARGS
 from pyspark.sql import SparkSession, functions as F
 from pyspark.sql.types import ArrayType, DoubleType, StructType
 
@@ -262,7 +263,7 @@ class EventDomainSparkTests(unittest.TestCase):
 
     def test_check_only_cli_runs_real_domain_read_transform_dq_and_fingerprints(self):
         client = FakeS3()
-        parent = b'[{"match_id": 7}]'
+        parent = b'[{"match_id": 7, "competition": {"competition_id": 43}, "season": {"season_id": 106}}]'
         client.seed("test-bucket", "parent.json", parent)
         item = artifact(7)
         client.seed("test-bucket", item["object_key"], metadata={"sha256": item["sha256"]})
@@ -272,7 +273,7 @@ class EventDomainSparkTests(unittest.TestCase):
                 patch.dict(os.environ, {"S3_BUCKET": "test-bucket"}),
                 patch.object(job, "create_postgres_connection"),
                 patch.object(job, "create_s3_client", return_value=client),
-                patch.object(job, "find_latest_ingestion_object", return_value={
+                patch.object(job, "find_matches_parent", return_value={
                     "s3_bucket": "test-bucket", "object_key": "parent.json", "sha256": sha256_bytes(parent),
                 }),
                 patch.object(job, "find_latest_ingestion_objects", return_value=[artifact(99), item]),
@@ -283,7 +284,7 @@ class EventDomainSparkTests(unittest.TestCase):
                 patch.object(self.spark, "stop"),
                 redirect_stdout(stdout), redirect_stderr(stderr),
             ):
-                self.assertEqual(cli.main(["--dataset", choice, "--limit", "1", "--check-only"]), 0, stderr.getvalue())
+                self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", choice, "--limit", "1", "--check-only"]), 0, stderr.getvalue())
                 publisher.assert_not_called()
             for text in ("Input events: 12", f"Domain events: {count}", "Matches processed: 1",
                          "Input fingerprint:", "Schema SHA256:", "Build ID:", "DQ: PASSED", "CHECK ONLY - nothing published"):

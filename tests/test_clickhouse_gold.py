@@ -1,5 +1,8 @@
 """Stage 3D offline contracts; no real service IO."""
 
+from context_fixtures import CONTEXT_ARGS
+from context_fixtures import in_context
+
 import copy
 import io
 import os
@@ -65,10 +68,10 @@ class GoldServingInputTests(unittest.TestCase):
         for spec in SPECS.values():
             client, build, manifest = fixture(spec)
             with patch.object(gold_input, "find_latest_gold_build", return_value=build) as latest:
-                self.assertEqual(gold_input.resolve_gold_build(None, spec=spec), build)
+                self.assertEqual(in_context(gold_input.resolve_gold_build)(None, spec=spec), build)
                 latest.assert_called_once_with(None, source="statsbomb", dataset=spec.dataset, competition_id=43, season_id=106)
             with patch.object(gold_input, "find_gold_build", return_value=build) as exact:
-                self.assertEqual(gold_input.resolve_gold_build(None, build["build_id"], spec=spec), build)
+                self.assertEqual(in_context(gold_input.resolve_gold_build)(None, build["build_id"], spec=spec), build)
                 exact.assert_called_once_with(None, dataset=spec.dataset, competition_id=43, season_id=106, build_id=build["build_id"])
             self.assertEqual(gold_input.verify_gold_manifest(client, build), manifest)
             self.assertTrue(all(call[2].endswith("_manifest.json") for call in client.calls if call[0] == "get"))
@@ -81,9 +84,9 @@ class GoldServingInputTests(unittest.TestCase):
                        {**build, "transform_version": "wrong"}, {**build, "s3_prefix": "arbitrary/"},
                        {**build, "s3_bucket": "another"}, {**build, "row_count": 0}, {**build, "schema_sha256": "bad"}):
             with patch.object(gold_input, "find_latest_gold_build", return_value=record), self.assertRaises((GoldIntegrityError, ValueError)):
-                gold_input.resolve_gold_build(None, spec=TEAM)
+                in_context(gold_input.resolve_gold_build)(None, spec=TEAM)
         with patch.object(gold_input, "find_gold_build", return_value=build), self.assertRaises(GoldIntegrityError):
-            gold_input.resolve_gold_build(None, "f" * 64, spec=TEAM)
+            in_context(gold_input.resolve_gold_build)(None, "f" * 64, spec=TEAM)
 
     def test_manifest_fields_inputs_counts_and_identity_checked(self):
         for spec in SPECS.values():
@@ -256,7 +259,7 @@ class GoldServingCliTests(unittest.TestCase):
             for args in ([], ["--dataset", "passes"], ["--dataset", "team-match-stats", "--prefix", "x"],
                          ["--dataset", "team-match-stats", "--build-id", "secret"]):
                 with self.assertRaises(SystemExit):
-                    gold_job.main(args)
+                    gold_job.main(CONTEXT_ARGS + args)
             create.assert_not_called()
 
     def test_preflight_before_clickhouse_and_safe_failures(self):
@@ -274,14 +277,14 @@ class GoldServingCliTests(unittest.TestCase):
                 output = io.StringIO()
                 stack.enter_context(redirect_stderr(output))
                 alias = "team-match-stats" if spec == TEAM else "player-match-stats"
-                self.assertEqual(gold_job.main(["--dataset", alias, "--check-only"]), 0)
+                self.assertEqual(gold_job.main(CONTEXT_ARGS + ["--build-id", "a" * 64, "--dataset", alias, "--check-only"]), 0)
                 self.assertTrue(load.call_args.kwargs["check_only"])
                 lock.assert_not_called()
-                self.assertEqual(gold_job.main(["--dataset", alias, "--build-id", build["build_id"]]), 0)
+                self.assertEqual(gold_job.main(CONTEXT_ARGS + ["--dataset", alias, "--build-id", build["build_id"]]), 0)
                 lock.assert_called_once()
                 create_ch.reset_mock()
                 verify.side_effect = GoldIntegrityError("synthetic-secret")
-                self.assertEqual(gold_job.main(["--dataset", alias]), 1)
+                self.assertEqual(gold_job.main(CONTEXT_ARGS + ["--build-id", "a" * 64, "--dataset", alias]), 1)
                 create_ch.assert_not_called()
                 self.assertNotIn("synthetic-secret", output.getvalue())
                 self.assertIn("exception=GoldIntegrityError", output.getvalue())
@@ -307,20 +310,20 @@ class GoldServingModelTests(unittest.TestCase):
                     patch.object(gold_model, "target_metrics", return_value=GoldClient(spec).source), \
                     patch.object(gold_model, "validate_extra"):
                 client.query.return_value.result_rows = [(4, 1, build["build_id"])]
-                self.assertEqual(gold_model.current_gold_builds(client, None, specs={spec.dataset: spec}), {spec.dataset: build})
+                self.assertEqual(in_context(gold_model.current_gold_builds)(client, None, specs={spec.dataset: spec}), {spec.dataset: build})
                 for count, distinct in ((0, 0), (4, 2), (3, 1)):
                     client.query.return_value.result_rows = [(count, distinct, build["build_id"])]
                     with self.assertRaises(ClickHouseIntegrityError):
-                        gold_model.current_gold_builds(client, None, specs={spec.dataset: spec})
+                        in_context(gold_model.current_gold_builds)(client, None, specs={spec.dataset: spec})
                 client.query.return_value.result_rows = [(4, 1, build["build_id"])]
                 for record in (None, {**build, "transform_version": "wrong"}, {**build, "build_id": "f" * 64}):
                     catalog.return_value = record
                     with self.assertRaises(ClickHouseIntegrityError):
-                        gold_model.current_gold_builds(client, None, specs={spec.dataset: spec})
+                        in_context(gold_model.current_gold_builds)(client, None, specs={spec.dataset: spec})
                 catalog.return_value = build
                 loads.return_value = None
                 with self.assertRaises(ClickHouseIntegrityError):
-                    gold_model.current_gold_builds(client, None, specs={spec.dataset: spec})
+                    in_context(gold_model.current_gold_builds)(client, None, specs={spec.dataset: spec})
 
     def test_queries_scope_each_side_to_loaded_context_and_build(self):
         queries = gold_model.model_queries()
@@ -341,13 +344,13 @@ class GoldServingModelTests(unittest.TestCase):
         client = MagicMock()
         client.query.side_effect = [MagicMock(result_rows=[row]) for row in good]
         with redirect_stdout(io.StringIO()):
-            self.assertEqual(len(gold_model.validate_model_metrics(client, {}, {})), 12)
+            self.assertEqual(len(in_context(gold_model.validate_model_metrics)(client, {}, {})), 12)
         for index in range(len(queries)):
             rows = list(good)
             rows[index] = (1,) if queries[index][2] == "zero" else (99, 4)
             client.query.side_effect = [MagicMock(result_rows=[row]) for row in rows]
             with self.subTest(check=queries[index][0]), redirect_stdout(io.StringIO()), self.assertRaises(ClickHouseIntegrityError):
-                gold_model.validate_model_metrics(client, {}, {})
+                in_context(gold_model.validate_model_metrics)(client, {}, {})
 
     def test_lineage_and_changed_serving_snapshot_fail_without_s3(self):
         _, silver, _ = silver_inputs()
@@ -357,17 +360,17 @@ class GoldServingModelTests(unittest.TestCase):
                 patch.object(gold_model, "current_silver_builds", return_value=ids), \
                 patch.object(gold_model, "find_silver_build", side_effect=lambda *a, **kw: next(row for row in silver if row["dataset"] == kw["dataset"])), \
                 patch.object(gold_model, "validate_model_metrics", return_value={}) as metrics, redirect_stdout(io.StringIO()):
-            self.assertEqual(gold_model.check_model(None, None), {})
+            self.assertEqual(in_context(gold_model.check_model)(None, None), {})
             changed = copy.deepcopy(gold)
             changed[TEAM.dataset]["input_fingerprint"] = "f" * 64
             current.return_value = changed
             metrics.reset_mock()
             with self.assertRaises(ClickHouseIntegrityError):
-                gold_model.check_model(None, None)
+                in_context(gold_model.check_model)(None, None)
             metrics.assert_not_called()
             current.side_effect = [gold, changed]
             with self.assertRaises(ClickHouseIntegrityError):
-                gold_model.check_model(None, None)
+                in_context(gold_model.check_model)(None, None)
 
 
 if __name__ == "__main__":

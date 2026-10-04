@@ -20,12 +20,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         audit = json.loads((ROOT / "docs/stage4b_shot_audit.json").read_text(encoding="utf-8"))
-        if check_results([]) != 0:
+        if check_results(["--competition-id", "43", "--season-id", "106"]) != 0:
             raise RuntimeError("Match results prerequisite failed")
         with closing(create_clickhouse_client()) as client, closing(create_postgres_connection()) as connection:
             before = audited_state(client, connection, audit, shadow=args.mode != "bi-v1")
             if args.mode == "bi-v1":
-                check_model(client, connection)
+                check_model(client, connection, competition_id=43, season_id=106)
             else:
                 validate_shadow(client, connection, audit)
             if args.mode != "shadow":

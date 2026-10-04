@@ -5,12 +5,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.analytics.job import run_job
+from src.analytics.job import run_job, parse_args, context_from_args
 
 
 def main(argv=None) -> int:
-    argparse.ArgumentParser(description=__doc__).parse_args(argv)
-    return run_job(smoke=True)
+    args = parse_args(argv)
+    return run_job(smoke=True, build_id=args.build_id, **context_from_args(args))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,20 @@
 # Football Data Platform
 
+## Stage 6B-1 — Context-explicit ETL preparation
+
+Bronze/Silver/Gold orchestration and loaders now require explicit competition/season
+and immutable input references. WC2022 remains the pinned golden regression.
+No second context has been published or loaded: real coexistence is Stage 6B-2.
+
+Recommended next context: StatsBomb 1. Bundesliga 2023/2024 (`9/281`), the 34
+available Bayer Leverkusen matches, **not** the complete league season.
+Public source preflight found all 34 events and 34 lineups files.
+
+See [Stage 6B-1 audit, evidence and exact Stage 6B-2 runbook](docs/stage6b1.md).
+That runbook supersedes historical ETL/load commands below: new invocations need
+`--competition-id`, `--season-id`, exact parent/build pins and (for Bronze children)
+`--bronze-max-id`. Historical stage sections retain their original verification context.
+
 ## Stage 6A — Multi-competition / multi-season foundation
 
 Application context is now explicit: competition → season → match. Catalogs come
@@ -16,7 +31,8 @@ match; it does not assume 43/106. Search stays local to the selected context.
 Generic validators now require `--competition-id` and `--season-id`.
 WC2022 remains a named golden regression, not a universal count rule.
 Only the existing 43/106 dataset is live-verified; no second dataset was ingested.
-Bronze/Silver/Gold orchestration still has documented Stage 6B blockers.
+The original Bronze/Silver/Gold blockers are addressed in Stage 6B-1;
+real second-context onboarding and proof remain Stage 6B-2.
 
 See [Stage 6A](docs/stage6a.md) for contracts, compatibility, context audit,
 verification results, manual commands and the Stage 6B onboarding checklist.

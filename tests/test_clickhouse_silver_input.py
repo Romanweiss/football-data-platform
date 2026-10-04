@@ -1,5 +1,7 @@
 """Offline exact-build manifest checks using the existing in-memory S3 fixture."""
 
+from context_fixtures import in_context
+
 import copy
 import os
 import unittest
@@ -98,9 +100,9 @@ class ClickHouseSilverInputTests(unittest.TestCase):
     @patch("src.analytics.silver_input.find_silver_build")
     def test_latest_and_exact_resolution(self, exact, latest):
         latest.return_value = exact.return_value = self.build
-        self.assertEqual(resolve_silver_build(None), self.build)
+        self.assertEqual(in_context(resolve_silver_build)(None), self.build)
         latest.assert_called_once_with(None, source="statsbomb", dataset="event_core", competition_id=43, season_id=106)
-        self.assertEqual(resolve_silver_build(None, self.build["build_id"]), self.build)
+        self.assertEqual(in_context(resolve_silver_build)(None, self.build["build_id"]), self.build)
         exact.assert_called_once_with(None, dataset="event_core", competition_id=43, season_id=106, build_id=self.build["build_id"])
         self.assertEqual(parquet_url(self.build), "https://test-bucket.s3.ru-3.storage.selcloud.ru/" + self.build["s3_prefix"] + "part-*.parquet")
 
@@ -110,10 +112,10 @@ class ClickHouseSilverInputTests(unittest.TestCase):
                        {"s3_bucket": "other-bucket"}, {"s3_prefix": "football/silver/"}, {"row_count": 0}, {"file_count": True}):
             latest.return_value = {**self.build, **change}
             with self.subTest(change=change), self.assertRaises(SilverIntegrityError):
-                resolve_silver_build(None)
+                in_context(resolve_silver_build)(None)
         latest.return_value = None
         with self.assertRaises(SilverIntegrityError):
-            resolve_silver_build(None)
+            in_context(resolve_silver_build)(None)
 
 
 if __name__ == "__main__":

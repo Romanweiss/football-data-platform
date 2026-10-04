@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
+from context_fixtures import in_context
 from clickhouse_model_fakes import dataset_fixture
 from src.analytics import loader, model, validation
 from src.analytics.specs import SPECS
@@ -138,7 +139,7 @@ class LocalDatasetTests(unittest.TestCase):
         for spec in specs.values():
             self.insert(spec)
         with redirect_stdout(io.StringIO()):
-            counts = model.validate_references(self.client, builds, specs=specs)
+            counts = in_context(model.validate_references)(self.client, builds, specs=specs)
         self.assertTrue(all(count == 0 for count in counts.values()))
         sql = (ROOT / "scripts/clickhouse_model_smoke_queries.sql").read_text()
         for name, spec in specs.items():
@@ -157,12 +158,12 @@ class LocalDatasetTests(unittest.TestCase):
             overrides = {"team_id": "toInt64(999)", "player_id": "toInt64(999)"} if name in ("event_core", "pass_events", "shot_events") else None
             self.insert(spec, overrides=overrides)
         with redirect_stdout(io.StringIO()):
-            counts = model.validate_references(self.client, builds, specs=specs)
+            counts = in_context(model.validate_references)(self.client, builds, specs=specs)
         self.assertTrue(all(counts[check.name] == 4 for check in model.REFERENCE_CHECKS if not check.hard))
         # Point the parent dimension at a new empty temporary table, not production.
         specs["teams"] = self.table(SPECS["teams"])
         with redirect_stdout(io.StringIO()), self.assertRaises(validation.ClickHouseIntegrityError):
-            model.validate_references(self.client, builds, specs=specs)
+            in_context(model.validate_references)(self.client, builds, specs=specs)
 
 
 if __name__ == "__main__":

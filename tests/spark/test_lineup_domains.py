@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "tests"))
 
+from context_fixtures import BRONZE_ARGS
 from pyspark.sql import SparkSession, functions as F
 from scripts import publish_silver_lineup_domains as cli
 from silver_fakes import FakeS3
@@ -352,7 +353,7 @@ class LineupSparkTests(unittest.TestCase):
                     publish.validate_readback(self.spark, frame, {**counts, "row_count": 999}, bucket="unused", files=files)
 
     def test_check_only_cli_all_datasets_uses_real_spark_and_no_publication(self):
-        parent = b'[{"match_id": 7}, {"match_id": 8}]'
+        parent = b'[{"match_id": 7, "competition": {"competition_id": 43}, "season": {"season_id": 106}}, {"match_id": 8, "competition": {"competition_id": 43}, "season": {"season_id": 106}}]'
         client = FakeS3()
         client.seed("test-bucket", "parent.json", parent)
         inputs = [lineup_artifact(8), lineup_artifact(99), lineup_artifact(7)]
@@ -364,7 +365,7 @@ class LineupSparkTests(unittest.TestCase):
                 patch.dict(os.environ, {"S3_BUCKET": "test-bucket"}),
                 patch.object(job, "create_postgres_connection"),
                 patch.object(job, "create_s3_client", return_value=client),
-                patch.object(job, "find_latest_ingestion_object", return_value={"s3_bucket": "test-bucket", "object_key": "parent.json", "sha256": sha256_bytes(parent)}),
+                patch.object(job, "find_matches_parent", return_value={"s3_bucket": "test-bucket", "object_key": "parent.json", "sha256": sha256_bytes(parent)}),
                 patch.object(job, "find_latest_ingestion_objects", return_value=inputs),
                 patch.object(job, "lineup_artifact_s3a_path", side_effect=lambda item: self.paths[item["match_id"] - 7]),
                 patch.object(job, "create_spark_session", return_value=self.spark),
@@ -372,7 +373,7 @@ class LineupSparkTests(unittest.TestCase):
                 patch.object(job, "publish_build") as publisher,
                 redirect_stdout(stdout), redirect_stderr(stderr),
             ):
-                self.assertEqual(cli.main(["--dataset", choice, "--limit", "2", "--check-only"]), 0, stderr.getvalue())
+                self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", choice, "--limit", "2", "--check-only"]), 0, stderr.getvalue())
                 publisher.assert_not_called()
             for message in ("Raw lineup team rows: 4", "Raw lineup player rows: 8", "Matches processed: 2",
                             f"Output rows: {output_count}", "DQ: PASSED", "Build ID:", "CHECK ONLY - nothing published"):

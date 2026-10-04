@@ -1,5 +1,7 @@
 """Offline state machine, SQL contracts and safe CLI diagnostics."""
 
+from context_fixtures import in_context
+
 import io
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -264,7 +266,7 @@ class ClickHouseJobTests(unittest.TestCase):
         with patch.object(job, "create_postgres_connection", side_effect=TimeoutError(secret)):
             output = io.StringIO()
             with redirect_stderr(output):
-                self.assertEqual(job.run_job(), 1)
+                self.assertEqual(in_context(job.run_job)(), 1)
         self.assertNotIn(secret, output.getvalue())
         self.assertIn("exception=TimeoutError", output.getvalue())
         self.assertIn("stage=configuration", output.getvalue())
@@ -287,15 +289,15 @@ class ClickHouseJobTests(unittest.TestCase):
         ch.return_value.server_version = "25.8.23.13"
         ch.return_value.query.return_value.result_rows = [(6, 2, 6, 43, 43, 106, 106)]
         with redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(job.run_job(smoke=True), 0)
+            self.assertEqual(in_context(job.run_job)(smoke=True), 0)
         self.assertIn("CLICKHOUSE S3 CHECK PASSED", output.getvalue())
         load.assert_not_called()
         lock.assert_not_called()
         ch.return_value.command.assert_not_called()
-        self.assertEqual(job.run_job(check_only=True), 0)
+        self.assertEqual(in_context(job.run_job)(check_only=True), 0)
         self.assertTrue(load.call_args.kwargs["check_only"])
         lock.assert_not_called()
-        self.assertEqual(job.run_job(), 0)
+        self.assertEqual(in_context(job.run_job)(), 0)
         lock.assert_called_once()
 
 

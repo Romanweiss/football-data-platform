@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from src.analytics.gold_model import current_gold_builds
 from src.analytics.context import add_context_arguments, context_from_args
-from src.analytics.gold_specs import RESULTS
+from src.analytics.gold_specs import RESULTS, V2_SPECS
 from src.analytics.model import current_builds
 from src.analytics.specs import SPECS
 from src.analytics.validation import ClickHouseIntegrityError
@@ -39,7 +39,7 @@ def main(argv=None):
                 for dataset,keys in (('team_match_stats','match_id,team_id'),('player_match_stats','match_id,team_id,player_id')):
                     row = client.query(f"SELECT count(),uniqExact(tuple({keys})) FROM football.bi_{dataset} WHERE competition_id=%(competition_id)s AND season_id=%(season_id)s",
                                        parameters=context,settings={'readonly':1}).result_rows[0]
-                    expected = client.query(f"SELECT count() FROM football.{dataset} WHERE competition_id=%(competition_id)s AND season_id=%(season_id)s",parameters=context,settings={'readonly':1}).result_rows[0][0]
+                    expected = client.query(f"SELECT count() FROM {V2_SPECS[dataset].target} WHERE competition_id=%(competition_id)s AND season_id=%(season_id)s",parameters=context,settings={'readonly':1}).result_rows[0][0]
                     if row!=(expected,expected) or not expected:
                         raise ClickHouseIntegrityError('Enriched BI view changed its grain/coverage')
                     fields=('went_to_extra_time','went_to_penalties','home_shootout_goals','away_shootout_goals','winner_team_id','winner_team_name','result_method','display_score')

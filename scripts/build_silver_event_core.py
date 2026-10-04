@@ -7,17 +7,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.common.bronze import BronzeIntegrityError
-from src.common.postgres import create_postgres_connection, find_latest_ingestion_objects
+from src.common.postgres import create_postgres_connection, find_latest_ingestion_objects, find_matches_parent
 from src.common.s3 import create_s3_client
 from src.silver.staging import select_event_artifacts, stage_event_artifact
 from src.statsbomb.events import EventArtifactError
+from src.common.bronze_reader import read_bronze_object
+from src.statsbomb.context import add_bronze_arguments, context_from_args, matches_context
+from src.silver.statsbomb.membership import select_parent_event_artifacts
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STAGING_DIR = PROJECT_ROOT / "data/work/bronze_events"
 OUTPUT_DIR = PROJECT_ROOT / "data/work/silver/event_core"
-# Stage 1D's match_events dataset currently contains only this competition/season.
-COMPETITION_ID = 43
-SEASON_ID = 106
 
 
 def positive_int(value: str) -> int:
@@ -30,7 +30,7 @@ def positive_int(value: str) -> int:
     return result
 
 
-def build_local_preview(paths: list[Path]) -> dict:
+def build_local_preview(paths: list[Path], *, competition_id, season_id) -> dict:
     # Lazy imports keep catalog/staging and ordinary unit tests Spark-independent.
     from pyspark.sql import SparkSession
     from src.silver.statsbomb.events import (
@@ -52,7 +52,7 @@ def build_local_preview(paths: list[Path]) -> dict:
         spark.sparkContext.setLogLevel("OFF")
         raw = read_staged_events(spark, paths)
         event_core = transform_event_core(
-            raw, competition_id=COMPETITION_ID, season_id=SEASON_ID,
+            raw, competition_id=competition_id, season_id=season_id,
         ).cache()
         counts = validate_event_core(event_core)
         if counts["match_count"] != len(paths):
@@ -60,7 +60,7 @@ def build_local_preview(paths: list[Path]) -> dict:
                 f"DQ: matches_with_events={counts['match_count']}, selected_artifacts={len(paths)}."
             )
         event_core.printSchema()
-        write_event_core(event_core, OUTPUT_DIR)
+        write_event_core(event_core, OUTPUT_DIR / f"competition_id={competition_id}" / f"season_id={season_id}")
         return {**counts, "spark_version": spark.version, "output_partitions": OUTPUT_PARTITIONS}
     except EventCoreQualityError as error:
         # Only aggregate counts are included; no event payloads or credentials.
@@ -74,22 +74,27 @@ def build_local_preview(paths: list[Path]) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=positive_int, metavar="N", help="select the first N latest artifacts")
+    add_bronze_arguments(parser, children=True)
     args = parser.parse_args(argv)
+    context = context_from_args(args)
     phase = "catalog lookup"
     try:
         with create_postgres_connection() as connection:
+            parent = find_matches_parent(connection, **context, sha256=args.parent_sha256)
             artifacts = find_latest_ingestion_objects(
-                connection, source="statsbomb", dataset="match_events",
+                connection, source="statsbomb", dataset="match_events", max_id=args.bronze_max_id, **context,
             )
-        selected = select_event_artifacts(artifacts, limit=args.limit)
+        select_event_artifacts(artifacts)  # Validate catalog URLs before remote IO.
         phase = "verified Bronze staging"
         with closing(create_s3_client()) as client:
+            raw = read_bronze_object(client, bucket=parent["s3_bucket"], key=parent["object_key"], checksum=parent["sha256"])
+            selected = select_parent_event_artifacts(matches_context(raw, **context), artifacts)[:args.limit]
             paths = [
-                stage_event_artifact(client, artifact, staging_dir=STAGING_DIR)
+                stage_event_artifact(client, artifact, staging_dir=STAGING_DIR / f"competition_id={args.competition_id}" / f"season_id={args.season_id}")
                 for artifact in selected
             ]
         phase = "Spark transformation / DQ / local Parquet write"
-        result = build_local_preview(paths)
+        result = build_local_preview(paths, **context)
     except (EventArtifactError, BronzeIntegrityError) as error:
         print(f"Silver preview failed ({phase}): {error}", file=sys.stderr)
         return 1
@@ -105,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Events read: {result['row_count']}")
     print(f"Events written: {result['row_count']}")
     print(f"Output partitions: {result['output_partitions']}")
-    print("Output: data/work/silver/event_core")
+    print(f"Output: data/work/silver/event_core/competition_id={args.competition_id}/season_id={args.season_id}")
     print(f"Spark version: {result['spark_version']}")
     return 0
 

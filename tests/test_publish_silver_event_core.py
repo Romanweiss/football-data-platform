@@ -1,5 +1,7 @@
 """CLI and full-parent selection tests with no real Spark, S3 or PostgreSQL."""
 
+from context_fixtures import CONTEXT_ARGS, BRONZE_ARGS
+
 import io
 import os
 import unittest
@@ -22,10 +24,10 @@ class PublishJobTests(unittest.TestCase):
         self.pg = self.enterContext(patch.object(pipeline, "create_postgres_connection"))
         self.client = FakeS3()
         self.enterContext(patch.object(pipeline, "create_s3_client", return_value=self.client))
-        parent_raw = b'[{"match_id": 1}, {"match_id": 2}, {"match_id": 3}]'
+        parent_raw = b'[{"match_id": 1, "competition": {"competition_id": 43}, "season": {"season_id": 106}}, {"match_id": 2, "competition": {"competition_id": 43}, "season": {"season_id": 106}}, {"match_id": 3, "competition": {"competition_id": 43}, "season": {"season_id": 106}}]'
         self.parent = {"s3_bucket": "test-bucket", "object_key": "parent.json", "sha256": sha256_bytes(parent_raw)}
         self.client.seed("test-bucket", "parent.json", parent_raw)
-        self.parent_lookup = self.enterContext(patch.object(pipeline, "find_latest_ingestion_object", return_value=self.parent))
+        self.parent_lookup = self.enterContext(patch.object(pipeline, "find_matches_parent", return_value=self.parent))
         self.inputs = [artifact(3), artifact(2), artifact(1), artifact(99)]
         for item in self.inputs:
             self.client.seed(item["s3_bucket"], item["object_key"], b"unused-event-body", {"sha256": item["sha256"]})
@@ -37,7 +39,7 @@ class PublishJobTests(unittest.TestCase):
         }))
         self.frame = MagicMock()
         self.frame.schema.json.return_value = '{"fields":[]}'
-        self.build = self.enterContext(patch.object(job, "build_event_frame", side_effect=lambda spark, paths: (
+        self.build = self.enterContext(patch.object(job, "build_event_frame", side_effect=lambda spark, paths, **context: (
             self.frame, {"row_count": len(paths) * 3, "match_count": len(paths)},
         )))
         self.publish = self.enterContext(patch.object(pipeline, "publish_build", return_value={
@@ -50,13 +52,13 @@ class PublishJobTests(unittest.TestCase):
 
     def test_limit_without_check_only_is_rejected_before_io(self):
         with self.assertRaises(SystemExit) as caught:
-            job.main(["--limit", "2"])
+            job.main(BRONZE_ARGS + ["--limit", "2"])
         self.assertEqual(caught.exception.code, 2)
         self.pg.assert_not_called()
         self.spark_factory.assert_not_called()
 
     def test_limit_two_check_only_reads_events_only_via_spark_and_never_publishes(self):
-        self.assertEqual(job.main(["--limit", "2", "--check-only"]), 0)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--limit", "2", "--check-only"]), 0)
         self.publish.assert_not_called()
         paths = self.build.call_args.args[1]
         self.assertEqual(len(paths), 2)
@@ -72,7 +74,7 @@ class PublishJobTests(unittest.TestCase):
         self.spark_factory.return_value.stop.assert_called_once()
 
     def test_progress_is_reported_before_spark_reads(self):
-        def build(spark, paths):
+        def build(spark, paths, **context):
             output = self.stdout.getvalue()
             messages = [
                 "Parent catalog artifact found", "Parent Bronze verified", "Parent matches discovered: 3",
@@ -84,16 +86,16 @@ class PublishJobTests(unittest.TestCase):
             return self.frame, {"row_count": 6, "match_count": 2}
 
         self.build.side_effect = build
-        self.assertEqual(job.main(["--limit", "2", "--check-only"]), 0)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--limit", "2", "--check-only"]), 0)
 
     def test_full_publish_uses_exact_parent_not_extra_league(self):
-        self.assertEqual(job.main([]), 0)
+        self.assertEqual(job.main(BRONZE_ARGS + []), 0)
         self.assertEqual([item["match_id"] for item in self.publish.call_args.kwargs["inputs"]], [1, 2, 3])
         self.assertIn("Silver event_core publish complete", self.stdout.getvalue())
 
     def test_missing_parent_child_fails_even_with_limit_one(self):
         self.lookup.return_value = [artifact(1), artifact(99)]
-        self.assertEqual(job.main(["--limit", "1", "--check-only"]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--limit", "1", "--check-only"]), 1)
         self.build.assert_not_called()
         self.publish.assert_not_called()
         self.assertIn('stage="membership"', self.stderr.getvalue())
@@ -103,16 +105,16 @@ class PublishJobTests(unittest.TestCase):
     def test_bad_metadata_fails_before_spark(self):
         item = artifact(1)
         self.client.objects[(item["s3_bucket"], item["object_key"])]["Metadata"] = {}
-        self.assertEqual(job.main(["--check-only"]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--check-only"]), 1)
         self.spark_factory.assert_not_called()
         self.assertIn("exception=BronzeIntegrityError category=integrity", self.stderr.getvalue())
         self.assertNotIn("ReadTimeoutError", self.stderr.getvalue())
 
     def test_parent_catalog_failure_is_separate_from_get_and_membership(self):
         self.parent_lookup.side_effect = RuntimeError("synthetic-private-credential")
-        self.assertEqual(job.main(["--check-only"]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--check-only"]), 1)
         self.assertIn('stage="parent catalog"', self.stderr.getvalue())
-        self.assertIn('operation="find_latest_ingestion_object"', self.stderr.getvalue())
+        self.assertIn('operation="find_matches_parent"', self.stderr.getvalue())
         self.assertNotIn("private-credential", self.stderr.getvalue())
         self.assertNotIn("Parent catalog artifact found", self.stdout.getvalue())
         self.assertFalse(any(call[0] == "get" for call in self.client.calls))
@@ -120,7 +122,7 @@ class PublishJobTests(unittest.TestCase):
     def test_parent_get_timeout_has_safe_context(self):
         error = ReadTimeoutError(endpoint_url="https://synthetic-private-credential.example.invalid")
         with patch.object(self.client, "get_object", side_effect=error):
-            self.assertEqual(job.main(["--check-only"]), 1)
+            self.assertEqual(job.main(BRONZE_ARGS + ["--check-only"]), 1)
         diagnostic = self.stderr.getvalue()
         for field in ('stage="parent GET/integrity"', 'operation="GetObject/verify_sha256"',
                       'match_id=n/a', 'key="parent.json"', 'exception=ReadTimeoutError'):
@@ -131,7 +133,7 @@ class PublishJobTests(unittest.TestCase):
 
     def test_parent_checksum_error_remains_an_integrity_failure(self):
         self.client.seed("test-bucket", "parent.json", b"corrupt-parent")
-        self.assertEqual(job.main(["--check-only"]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--check-only"]), 1)
         self.assertIn('stage="parent GET/integrity"', self.stderr.getvalue())
         self.assertIn("exception=BronzeIntegrityError category=integrity", self.stderr.getvalue())
         self.assertNotIn("Parent Bronze verified", self.stdout.getvalue())
@@ -148,7 +150,7 @@ class PublishJobTests(unittest.TestCase):
             return original_head(**kwargs)
 
         with patch.object(self.client, "head_object", side_effect=head):
-            self.assertEqual(job.main(["--check-only"]), 1)
+            self.assertEqual(job.main(BRONZE_ARGS + ["--check-only"]), 1)
         diagnostic = self.stderr.getvalue()
         for field in ('stage="child HEAD preflight"', 'operation="HeadObject/verify_metadata"',
                       'match_id=2', f'key="{artifact(2)["object_key"]}"', 'exception=ReadTimeoutError'):
@@ -162,7 +164,7 @@ class PublishJobTests(unittest.TestCase):
 
     def test_spark_batch_failure_does_not_reuse_last_child_context(self):
         self.build.side_effect = RuntimeError("synthetic-private-credential")
-        self.assertEqual(job.main(["--check-only"]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--check-only"]), 1)
         for field in ('stage="Spark S3A read"', 'operation="read_transform_dq"', 'match_id=n/a', 'key=n/a'):
             self.assertIn(field, self.stderr.getvalue())
         self.assertNotIn("private-credential", self.stderr.getvalue())
@@ -170,7 +172,7 @@ class PublishJobTests(unittest.TestCase):
 
     def test_spark_single_input_failure_keeps_known_object_context(self):
         self.build.side_effect = RuntimeError("synthetic-private-credential")
-        self.assertEqual(job.main(["--check-only", "--limit", "1"]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--check-only", "--limit", "1"]), 1)
         self.assertIn("match_id=1", self.stderr.getvalue())
         self.assertIn(f'key="{artifact(1)["object_key"]}"', self.stderr.getvalue())
 
@@ -185,7 +187,7 @@ class PublishJobTests(unittest.TestCase):
                 self.stderr.seek(0)
                 self.stderr.truncate()
                 self.publish.side_effect = error
-                self.assertEqual(job.main([]), 1)
+                self.assertEqual(job.main(BRONZE_ARGS + []), 1)
                 output = self.stdout.getvalue() + self.stderr.getvalue()
                 for forbidden in (*credentials.values(), "RAW_EXCEPTION", "Traceback", "publish complete"):
                     self.assertNotIn(forbidden, output)
@@ -193,7 +195,7 @@ class PublishJobTests(unittest.TestCase):
 
     def test_remote_error_never_leaks_details_or_reports_success(self):
         self.publish.side_effect = RuntimeError("synthetic-private-credential")
-        self.assertEqual(job.main([]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + []), 1)
         self.assertNotIn("private-credential", self.stderr.getvalue())
         self.assertNotIn("publish complete", self.stdout.getvalue())
 
@@ -207,7 +209,7 @@ class PublishJobTests(unittest.TestCase):
             }]),
             patch.object(publish, "read_manifest", side_effect=error),
         ):
-            self.assertEqual(job.main([]), 1)
+            self.assertEqual(job.main(BRONZE_ARGS + []), 1)
         for field in ('stage="manifest"', 'operation="read_manifest"', 'match_id=n/a',
                       '/_manifest.json"', 'exception=ReadTimeoutError'):
             self.assertIn(field, self.stderr.getvalue())
@@ -218,7 +220,7 @@ class PublishJobTests(unittest.TestCase):
         self.publish.side_effect = ReadTimeoutError(endpoint_url="https://synthetic-private-credential.example.invalid")
         self.frame.unpersist.side_effect = RuntimeError("synthetic-private-credential")
         self.spark_factory.return_value.stop.side_effect = RuntimeError("synthetic-private-credential")
-        self.assertEqual(job.main([]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + []), 1)
         diagnostic = self.stderr.getvalue()
         for field in ('exception=ReadTimeoutError', 'stage="Spark cleanup"',
                       'operation="unpersist"', 'operation="stop"'):
@@ -229,7 +231,7 @@ class PublishJobTests(unittest.TestCase):
 
     def test_cleanup_failure_after_check_only_returns_nonzero_safely(self):
         self.spark_factory.return_value.stop.side_effect = RuntimeError("synthetic-private-credential")
-        self.assertEqual(job.main(["--check-only"]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--check-only"]), 1)
         self.assertIn('stage="Spark cleanup" operation="stop"', self.stderr.getvalue())
         self.assertNotIn("private-credential", self.stderr.getvalue())
 

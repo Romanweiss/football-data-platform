@@ -1,5 +1,7 @@
 """Offline identity, manifests, SQL, Silver preflight, recovery and CLI contracts."""
 
+from context_fixtures import CONTEXT_ARGS
+
 import copy
 import io
 import os
@@ -258,6 +260,7 @@ class GoldCliTests(unittest.TestCase):
         self.spark = self.enterContext(patch.object(job, "create_spark_session"))
         self.enterContext(patch.object(job, "configure_s3a"))
         self.read = self.enterContext(patch.object(job, "read_inputs", return_value={name: MagicMock() for name in identity.REQUIRED_INPUTS}))
+        self.pins = [arg for build in self.builds for arg in ("--silver-build", build["dataset"] + "=" + build["build_id"])]
         self.frame = MagicMock()
         self.frame.schema.json.return_value = '{"fields":[]}'
         self.build = self.enterContext(patch.object(job, "build_frame", return_value=(self.frame, {"row_count": 4, "match_count": 2})))
@@ -265,7 +268,7 @@ class GoldCliTests(unittest.TestCase):
 
     def test_check_only_both_datasets_never_publishes(self):
         for dataset in ("team-match-stats", "player-match-stats"):
-            self.assertEqual(job.main(["--dataset", dataset, "--check-only"]), 0)
+            self.assertEqual(job.main(CONTEXT_ARGS + self.pins + ["--dataset", dataset, "--check-only"]), 0)
         self.publish.assert_not_called()
         self.assertNotIn("put", [call[0] for call in self.client.calls])
         for label in ("Selected Silver inputs", "Input fingerprint", "Schema SHA256", "Build ID", "Matches: 2", "CHECK ONLY - nothing published"):
@@ -275,12 +278,12 @@ class GoldCliTests(unittest.TestCase):
         for args in ([], ["--dataset", "unknown"], ["--dataset", "team-match-stats", "--limit", "1"],
                      ["--dataset", "team-match-stats", "--build-id", "a" * 64]):
             with self.assertRaises(SystemExit):
-                job.main(args)
+                job.main(CONTEXT_ARGS + args)
         self.resolve.assert_not_called()
 
     def test_failure_is_safe_and_stops_publication(self):
         self.build.side_effect = GoldIntegrityError("synthetic-access-secret synthetic-private-secret")
-        self.assertEqual(job.main(["--dataset", "team-match-stats", "--check-only"]), 1)
+        self.assertEqual(job.main(CONTEXT_ARGS + self.pins + ["--dataset", "team-match-stats", "--check-only"]), 1)
         self.assertIn("exception=GoldIntegrityError category=integrity", self.stderr.getvalue())
         self.assertIn('stage="Gold transformation/DQ"', self.stderr.getvalue())
         self.assertNotIn("secret", self.stderr.getvalue())
@@ -288,7 +291,7 @@ class GoldCliTests(unittest.TestCase):
         self.spark.return_value.stop.assert_called_once()
 
     def test_full_run_uses_gold_publisher(self):
-        self.assertEqual(job.main(["--dataset", "player-match-stats"]), 0)
+        self.assertEqual(job.main(CONTEXT_ARGS + self.pins + ["--dataset", "player-match-stats"]), 0)
         self.assertEqual(self.publish.call_args.kwargs["specification"]["transform_version"], "player_match_stats_v1")
         self.assertIn("CREATED", self.stdout.getvalue())
 

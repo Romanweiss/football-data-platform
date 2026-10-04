@@ -1,5 +1,8 @@
 """Every dataset follows one immutable load/validation/recovery contract, offline."""
 
+from context_fixtures import CONTEXT_ARGS
+from context_fixtures import in_context
+
 import io
 import os
 import re
@@ -73,13 +76,13 @@ class DatasetSpecsTests(unittest.TestCase):
     def test_cli_all_known_datasets_and_invalid_inputs_before_io(self):
         with patch.object(cli, "run_job", return_value=0) as run:
             for option, dataset in CLI_DATASETS.items():
-                self.assertEqual(cli.main(["--dataset", option, "--check-only", "--build-id", "a" * 64]), 0)
-                run.assert_called_with(dataset=dataset, build_id="a" * 64, check_only=True)
+                self.assertEqual(cli.main(CONTEXT_ARGS + ["--dataset", option, "--check-only", "--build-id", "a" * 64]), 0)
+                run.assert_called_with(dataset=dataset, build_id="a" * 64, check_only=True, competition_id=43, season_id=106)
             run.reset_mock()
             for args in ([], ["--dataset", "arbitrary"], ["--dataset", "teams", "--build-id", "secret"],
                          ["--dataset", "teams", "--prefix", "anything"]):
                 with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-                    cli.main(args)
+                    cli.main(CONTEXT_ARGS + args)
             run.assert_not_called()
 
 
@@ -92,10 +95,10 @@ class DatasetManifestTests(unittest.TestCase):
                     self.assertEqual(silver_input.verify_silver_manifest(s3, build, spec=spec), manifest)
                     self.assertEqual("match_count" in manifest, spec.has_match_count)
                     with patch.object(silver_input, "find_latest_silver_build", return_value=build) as latest:
-                        self.assertEqual(silver_input.resolve_silver_build(None, spec=spec), build)
+                        self.assertEqual(in_context(silver_input.resolve_silver_build)(None, spec=spec), build)
                         latest.assert_called_once_with(None, source="statsbomb", dataset=spec.dataset, competition_id=43, season_id=106)
                     with patch.object(silver_input, "find_silver_build", return_value=build) as exact:
-                        self.assertEqual(silver_input.resolve_silver_build(None, build["build_id"], spec=spec), build)
+                        self.assertEqual(in_context(silver_input.resolve_silver_build)(None, build["build_id"], spec=spec), build)
                         exact.assert_called_once_with(None, dataset=spec.dataset, competition_id=43, season_id=106, build_id=build["build_id"])
                     self.assertTrue(all(call[2].endswith("_manifest.json") for call in s3.calls if call[0] == "get"))
 

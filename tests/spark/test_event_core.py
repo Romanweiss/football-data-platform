@@ -181,7 +181,7 @@ class EventCoreSparkTests(unittest.TestCase):
         ):
             session.builder.appName.return_value.master.return_value.config.return_value.config.return_value.getOrCreate.return_value = fake_spark
             with self.assertRaisesRegex(EventArtifactError, "null_event_id=3"):
-                job.build_local_preview([self.path])
+                job.build_local_preview([self.path], competition_id=43, season_id=106)
         writer.assert_not_called()
         fake_spark.stop.assert_called_once()
 
@@ -195,7 +195,7 @@ class EventCoreSparkTests(unittest.TestCase):
         ):
             session.builder.appName.return_value.master.return_value.config.return_value.config.return_value.getOrCreate.return_value = fake_spark
             with self.assertRaisesRegex(EventArtifactError, "matches_with_events=1, selected_artifacts=2"):
-                job.build_local_preview([self.path, self.directory / "match_id=22.json"])
+                job.build_local_preview([self.path, self.directory / "match_id=22.json"], competition_id=43, season_id=106)
         writer.assert_not_called()
 
     def test_writer_repartitions_four_and_uses_snappy_overwrite(self):
@@ -230,18 +230,21 @@ class SilverJobSyntheticIntegrationTests(unittest.TestCase):
             output = directory / "silver/event_core"
             with (
                 patch.object(job, "create_postgres_connection"),
+                patch.object(job, "find_matches_parent", return_value={"s3_bucket": "offline-bucket", "object_key": "parent", "sha256": "a" * 64}),
+                patch.object(job, "read_bronze_object", return_value=b'[{"match_id":11,"competition":{"competition_id":43},"season":{"season_id":106}},{"match_id":22,"competition":{"competition_id":43},"season":{"season_id":106}},{"match_id":33,"competition":{"competition_id":43},"season":{"season_id":106}}]'),
                 patch.object(job, "find_latest_ingestion_objects", return_value=artifacts),
                 patch.object(job, "create_s3_client", return_value=client),
                 patch.object(job, "STAGING_DIR", directory / "bronze_events"),
                 patch.object(job, "OUTPUT_DIR", output),
                 redirect_stdout(stdout),
             ):
-                self.assertEqual(job.main(["--limit", "2"]), 0)
+                self.assertEqual(job.main(["--competition-id", "43", "--season-id", "106", "--parent-sha256", "a" * 64, "--bronze-max-id", "1000", "--limit", "2"]), 0)
+            output = output / "competition_id=43/season_id=106"
             self.assertTrue((output / "_SUCCESS").exists())
             self.assertTrue(list(output.glob("*.snappy.parquet")))
-            self.assertEqual((directory / "bronze_events/match_id=11.json").read_bytes(), raw)
-            self.assertEqual((directory / "bronze_events/match_id=22.json").read_bytes(), raw)
-            self.assertFalse((directory / "bronze_events/match_id=33.json").exists())
+            self.assertEqual((directory / "bronze_events/competition_id=43/season_id=106/match_id=11.json").read_bytes(), raw)
+            self.assertEqual((directory / "bronze_events/competition_id=43/season_id=106/match_id=22.json").read_bytes(), raw)
+            self.assertFalse((directory / "bronze_events/competition_id=43/season_id=106/match_id=33.json").exists())
         self.assertEqual(client.get_object.call_count, 2)
         client.close.assert_called_once()
         for message in (

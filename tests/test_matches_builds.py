@@ -1,5 +1,8 @@
 """Offline Stage 3E lineage, publisher recovery, serving schema and model checks."""
 
+from context_fixtures import CONTEXT_ARGS
+from context_fixtures import in_context
+
 import io
 import unittest
 from contextlib import redirect_stdout
@@ -28,7 +31,7 @@ class MatchBuildTests(unittest.TestCase):
         for key, value in (("s3_bucket", "other"), ("object_key", "other/key"), ("sha256", "f" * 64),
                            ("source_url", item["source_url"].replace("hudl", "statsbomb"))):
             self.assertNotEqual(baseline, identity.input_fingerprint([{**item, key: value}], artifact_kind="matches"))
-        for changes in ({"source": "wrong"}, {"dataset": "wrong"}, {"source_url": item["source_url"].replace("106", "107")}, {"sha256": "wrong"}):
+        for changes in ({"source": "wrong"}, {"dataset": "wrong"}, {"source_url": "https://untrusted.invalid/matches/43/106.json"}, {"sha256": "wrong"}):
             with self.assertRaises(ValueError):
                 identity.input_fingerprint([{**item, **changes}], artifact_kind="matches")
         for inputs in ([], [item, item]):
@@ -93,8 +96,8 @@ class MatchBuildTests(unittest.TestCase):
 
     def test_publish_cli_has_only_check_only(self):
         with patch.object(cli, "run_job", return_value=0) as run:
-            self.assertEqual(cli.main(["--check-only"]), 0)
-            run.assert_called_once_with(check_only=True)
+            self.assertEqual(cli.main(CONTEXT_ARGS + ["--parent-sha256", "a" * 64, "--teams-build-id", "b" * 64, "--check-only"]), 0)
+            run.assert_called_once_with(check_only=True, competition_id=43, season_id=106, parent_sha256="a" * 64, teams_build_id="b" * 64)
 
 
 class MatchModelTests(unittest.TestCase):
@@ -111,10 +114,10 @@ class MatchModelTests(unittest.TestCase):
             client.query.side_effect = [MagicMock(result_rows=[(int(index == failed),)]) for index in range(len(queries))]
             with redirect_stdout(io.StringIO()):
                 if failed < 0:
-                    self.assertEqual(len(matches_model.validate_match_references(client, {})), 11)
+                    self.assertEqual(len(in_context(matches_model.validate_match_references)(client, {})), 11)
                 else:
                     with self.assertRaises(ClickHouseIntegrityError):
-                        matches_model.validate_match_references(client, {})
+                        in_context(matches_model.validate_match_references)(client, {})
         client.command.assert_not_called()
 
     def test_full_model_preserves_old_checks_and_detects_changed_snapshot(self):
@@ -122,11 +125,11 @@ class MatchModelTests(unittest.TestCase):
                 patch.object(matches_model, "current_gold_builds", return_value={"team_match_stats": {"build_id": "b" * 64}}), \
                 patch.object(matches_model, "validate_references", return_value={"old": 0}) as old, \
                 patch.object(matches_model, "validate_match_references", return_value={"new": 0}), redirect_stdout(io.StringIO()):
-            self.assertEqual(matches_model.check_model(None, None), {"old": 0, "new": 0})
+            self.assertEqual(in_context(matches_model.check_model)(None, None), {"old": 0, "new": 0})
             old.assert_called_once()
             silver.side_effect = [{"matches": "a" * 64}, {"matches": "b" * 64}]
             with self.assertRaises(ClickHouseIntegrityError):
-                matches_model.check_model(None, None)
+                in_context(matches_model.check_model)(None, None)
 
 
 if __name__ == "__main__":

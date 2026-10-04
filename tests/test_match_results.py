@@ -1,4 +1,6 @@
 """Stage 4B offline identity, manifest, input, loader and CLI contracts."""
+
+from context_fixtures import CONTEXT_ARGS
 import copy
 import io
 import json
@@ -76,11 +78,11 @@ class MatchResultsOfflineTests(unittest.TestCase):
     def test_new_cli_requires_exact_builds_before_connections(self):
         with patch.object(job,'create_postgres_connection') as connect,redirect_stderr(io.StringIO()):
             for args in (['--dataset','match-results'],['--dataset','team-match-stats','--transform-version','team_match_stats_v2']):
-                with self.assertRaises(SystemExit): job.main(args)
+                with self.assertRaises(SystemExit): job.main(CONTEXT_ARGS + args)
             connect.assert_not_called()
-        self.assertEqual(gold_job.parse_args(['--dataset','match-results']).dataset,'match-results')
+        self.assertEqual(gold_job.parse_args(CONTEXT_ARGS + ['--build-id', 'a' * 64, '--dataset','match-results']).dataset,'match-results')
         with redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
-            gold_job.parse_args(['--dataset','match-results','--transform-version','v2'])
+            gold_job.parse_args(CONTEXT_ARGS + ['--dataset','match-results','--transform-version','v2'])
 
     def test_v2_identity_changes_and_model_checks_keep_extra_time(self):
         _,builds,_=silver_inputs()
@@ -106,7 +108,7 @@ class MatchResultsOfflineTests(unittest.TestCase):
                 patch.object(job,'create_spark_session'),patch.object(job,'configure_s3a'),patch.object(job,'read_inputs',return_value={}), \
                 patch.object(job,'build_frame',return_value=(frame,{'row_count':4,'match_count':4})), \
                 patch.object(job,'publish_build') as publish,redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(job.main(args),0)
+            self.assertEqual(job.main(CONTEXT_ARGS + args),0)
             publish.assert_not_called()
             self.assertEqual(resolve.call_args.kwargs['required'],RESULT_INPUTS)
             self.assertIn('Transform version: match_results_v1',output.getvalue())

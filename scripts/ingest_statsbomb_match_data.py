@@ -17,11 +17,12 @@ from src.common.http import DownloadError, download_bytes
 from src.common.postgres import (
     IngestionObjectNotFoundError,
     create_postgres_connection,
-    find_latest_ingestion_object,
+    find_matches_parent,
     register_ingestion_object,
 )
 from src.common.s3 import create_s3_client
-from src.statsbomb.matches import MatchDataError, extract_match_ids
+from src.statsbomb.matches import MatchDataError
+from src.statsbomb.context import add_bronze_arguments, context_from_args, matches_context, child_prefix, SourceContextError
 
 SOURCE_BASE_URL = "https://raw.githubusercontent.com/hudl/open-data/master/data"
 CHILD_DATASETS = (("events", "match_events"), ("lineups", "match_lineups"))
@@ -43,7 +44,9 @@ def main(argv: list[str] | None = None) -> int:
         "--limit", type=positive_int, metavar="N",
         help="ingest events and lineups for only the first N unique matches (writes data)",
     )
+    add_bronze_arguments(parser)
     args = parser.parse_args(argv)
+    context = context_from_args(args)
     bucket = os.environ.get("S3_BUCKET", "").strip()
     if not bucket:
         print("S3 configuration error: S3_BUCKET is required.", file=sys.stderr)
@@ -54,16 +57,14 @@ def main(argv: list[str] | None = None) -> int:
     current = "parent catalog lookup"
     try:
         with create_postgres_connection() as connection:
-            parent = find_latest_ingestion_object(
-                connection, source="statsbomb", dataset="world_cup_2022_matches"
-            )
+            parent = find_matches_parent(connection, **context, sha256=args.parent_sha256)
             client = create_s3_client()
             current = "parent S3 read"
             raw = read_bronze_object(
                 client, bucket=parent["s3_bucket"], key=parent["object_key"],
                 checksum=parent["sha256"],
             )
-            match_ids = extract_match_ids(raw)
+            match_ids = matches_context(raw, **context)
             discovered = len(match_ids)
             print(f"Parent bucket: {parent['s3_bucket']}")
             print(f"Parent key: {parent['object_key']}")
@@ -80,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
                     downloaded += 1
                     checksum = sha256_bytes(data)
                     key = build_versioned_key(
-                        f"football/bronze/statsbomb/{kind}/match_id={match_id}",
+                        child_prefix(kind, match_id, **context),
                         f"{kind}.json", checksum,
                     )
                     if put_immutable_object(
@@ -90,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
                             "layer": "bronze",
                             "dataset": dataset,
                             "match_id": str(match_id),
+                            **{name: str(value) for name, value in context.items()},
                             "sha256": checksum,
                             "source_url": source_url,
                         },
@@ -113,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         already_registered += 1
                         print(f"ALREADY_REGISTERED: {key}")
-    except (IngestionObjectNotFoundError, BronzeIntegrityError, MatchDataError, DownloadError) as error:
+    except (IngestionObjectNotFoundError, BronzeIntegrityError, MatchDataError, DownloadError, SourceContextError) as error:
         print(f"StatsBomb match ingestion failed ({current}): {error}", file=sys.stderr)
         return 1
     except ClientError as error:

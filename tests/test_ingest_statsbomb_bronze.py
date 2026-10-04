@@ -1,5 +1,7 @@
 """Offline tests for immutable S3 artifacts and PostgreSQL catalog recovery."""
 
+from context_fixtures import CONTEXT_ARGS, BRONZE_ARGS
+
 import io
 import os
 import unittest
@@ -34,7 +36,7 @@ class UploadImmutableObjectTests(unittest.TestCase):
     def setUp(self):
         self.client = MagicMock(spec=["head_object", "put_object"])
         self.data = b'[\r\n  {"id": 1, "label": "Raw  JSON"}\r\n]\n'
-        source = ingestion.SOURCES[0]
+        source = ingestion.sources(dict(competition_id=43, season_id=106))[0]
         self.params = {
             "bucket": "test-bucket", "key": source_key(source, self.data),
             "data": self.data, "checksum": sha256_bytes(self.data),
@@ -143,7 +145,7 @@ class IngestionMainTests(unittest.TestCase):
         self.errors = self.enterContext(redirect_stderr(io.StringIO()))
         self.stored = {}
         self.catalog = {}
-        self.data = (b'[ {"competition_id": 43} ]\n', b'[\r\n {"match_id": 1}\r\n]\n')
+        self.data = (b'[ {"competition_id": 43, "season_id": 106} ]\n', b'[\r\n {"match_id": 1, "competition": {"competition_id": 43}, "season": {"season_id": 106}}\r\n]\n')
         self.download.side_effect = self.data
         self.client.head_object.side_effect = self.head
         self.client.put_object.side_effect = self.put
@@ -178,12 +180,12 @@ class IngestionMainTests(unittest.TestCase):
         self.output.truncate()
 
     def test_first_run_and_repeat_have_no_duplicate_objects_or_catalog_rows(self):
-        self.assertEqual(ingestion.main(), 0)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 0)
         self.assertEqual(self.client.put_object.call_count, 2)
         self.assertEqual(len(self.catalog), 2)
         self.assertIn("Downloaded: 2\nUploaded: 2\nUnchanged: 0\nRegistered: 2\nAlready registered: 0", self.output.getvalue())
-        self.assertEqual(self.download.call_args_list, [call(source["source_url"]) for source in ingestion.SOURCES])
-        for raw, source in zip(self.data, ingestion.SOURCES):
+        self.assertEqual(self.download.call_args_list, [call(source["source_url"]) for source in ingestion.sources(dict(competition_id=43, season_id=106))])
+        for raw, source in zip(self.data, ingestion.sources(dict(competition_id=43, season_id=106))):
             key = source_key(source, raw)
             self.assertIs(self.stored[key]["Body"], raw)
             self.assertEqual(self.stored[key]["Metadata"]["dataset"], source["dataset"])
@@ -193,37 +195,37 @@ class IngestionMainTests(unittest.TestCase):
 
         self.reset_output()
         self.download.side_effect = self.data
-        self.assertEqual(ingestion.main(), 0)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 0)
         self.assertEqual(self.client.put_object.call_count, 2)
         self.assertEqual(len(self.catalog), 2)
         self.assertIn("Uploaded: 0\nUnchanged: 2\nRegistered: 0\nAlready registered: 2", self.output.getvalue())
 
     def test_changed_source_creates_new_version_and_preserves_old_bytes(self):
-        self.assertEqual(ingestion.main(), 0)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 0)
         original = dict(self.stored)
-        changed = b'[ {"competition_id": 44} ]\n'
+        changed = b'[ {"competition_id": 43, "season_id": 106, "new_source_field": true} ]\n'
         self.download.side_effect = (changed, self.data[1])
         self.reset_output()
-        self.assertEqual(ingestion.main(), 0)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 0)
         self.assertEqual(len(self.stored), 3)
         self.assertEqual(len(self.catalog), 3)
         for key, value in original.items():
             self.assertIs(self.stored[key], value)
-        new_key = source_key(ingestion.SOURCES[0], changed)
+        new_key = source_key(ingestion.sources(dict(competition_id=43, season_id=106))[0], changed)
         self.assertIs(self.stored[new_key]["Body"], changed)
         self.assertIn("Uploaded: 1\nUnchanged: 1\nRegistered: 1\nAlready registered: 1", self.output.getvalue())
 
     def test_existing_s3_versions_with_no_catalog_are_registered_without_upload(self):
-        for source, raw in zip(ingestion.SOURCES, self.data):
+        for source, raw in zip(ingestion.sources(dict(competition_id=43, season_id=106)), self.data):
             self.stored[source_key(source, raw)] = {"Body": raw, "Metadata": {"sha256": sha256_bytes(raw)}}
-        self.assertEqual(ingestion.main(), 0)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 0)
         self.client.put_object.assert_not_called()
         self.assertEqual(len(self.catalog), 2)
         self.assertIn("Uploaded: 0\nUnchanged: 2\nRegistered: 2", self.output.getvalue())
 
     def test_postgres_error_preserves_s3_and_next_run_repairs_catalog(self):
         self.register.side_effect = psycopg.OperationalError("synthetic-password")
-        self.assertEqual(ingestion.main(), 1)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 1)
         self.assertEqual(len(self.stored), 1)
         self.assertEqual(self.catalog, {})
         self.assertIn("PostgreSQL error", self.errors.getvalue())
@@ -233,25 +235,25 @@ class IngestionMainTests(unittest.TestCase):
 
         self.register.side_effect = self.register_row
         self.download.side_effect = self.data
-        self.assertEqual(ingestion.main(), 0)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 0)
         self.assertIs(self.stored[old_key], old_object)
         self.assertEqual(self.client.put_object.call_count, 2)
         self.assertEqual(len(self.catalog), 2)
         self.assertTrue(all(item[0] in {"head_object", "put_object"} for item in self.client.method_calls))
 
     def test_integrity_failure_prevents_registration_and_overwrite(self):
-        key = source_key(ingestion.SOURCES[0], self.data[0])
+        key = source_key(ingestion.sources(dict(competition_id=43, season_id=106))[0], self.data[0])
         self.stored[key] = {"Body": self.data[0], "Metadata": {"sha256": "wrong"}}
-        self.assertEqual(ingestion.main(), 1)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 1)
         self.client.put_object.assert_not_called()
         self.register.assert_not_called()
         self.assertIn("integrity violation", self.errors.getvalue())
 
     def test_legacy_flat_keys_are_not_read_or_modified(self):
-        for source in ingestion.SOURCES:
+        for source in ingestion.sources(dict(competition_id=43, season_id=106)):
             self.stored[f'{source["base_prefix"]}/{source["filename"]}'] = {"Body": b"legacy", "Metadata": {}}
         legacy = dict(self.stored)
-        self.assertEqual(ingestion.main(), 0)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 0)
         self.assertEqual(len(self.stored), 4)
         for key, value in legacy.items():
             self.assertIs(self.stored[key], value)
@@ -259,14 +261,14 @@ class IngestionMainTests(unittest.TestCase):
 
     def test_missing_bucket_fails_before_any_external_call(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(ingestion.main(), 2)
+            self.assertEqual(ingestion.main(CONTEXT_ARGS), 2)
         self.factory.assert_not_called()
         self.pg_factory.assert_not_called()
         self.download.assert_not_called()
 
     def test_download_failure_stops_before_s3_or_catalog_write(self):
         self.download.side_effect = DownloadError("HTTP 503 while downloading source")
-        self.assertEqual(ingestion.main(), 1)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 1)
         self.client.head_object.assert_not_called()
         self.client.put_object.assert_not_called()
         self.register.assert_not_called()
@@ -274,7 +276,7 @@ class IngestionMainTests(unittest.TestCase):
 
     def test_access_denied_stops_before_catalog_write_without_logging_credentials(self):
         self.client.head_object.side_effect = s3_error("AccessDenied", 403)
-        self.assertEqual(ingestion.main(), 1)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 1)
         self.client.put_object.assert_not_called()
         self.register.assert_not_called()
         self.assertIn("HTTP 403, code AccessDenied", self.errors.getvalue())
@@ -283,13 +285,13 @@ class IngestionMainTests(unittest.TestCase):
 
     def test_upload_error_prevents_registration(self):
         self.client.put_object.side_effect = s3_error("AccessDenied", 403)
-        self.assertEqual(ingestion.main(), 1)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 1)
         self.register.assert_not_called()
         self.assertEqual(self.catalog, {})
 
     def test_postgres_connection_failure_is_reported_without_password(self):
         self.pg_factory.side_effect = psycopg.OperationalError("synthetic-password")
-        self.assertEqual(ingestion.main(), 1)
+        self.assertEqual(ingestion.main(CONTEXT_ARGS), 1)
         self.download.assert_not_called()
         self.assertIn("PostgreSQL error", self.errors.getvalue())
         self.assertNotIn("synthetic-password", self.errors.getvalue())

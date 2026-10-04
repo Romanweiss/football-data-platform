@@ -1,5 +1,6 @@
 """Preserve StatsBomb raw versions in S3 and register their PostgreSQL metadata."""
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -15,23 +16,24 @@ from src.common.http import DownloadError, download_bytes
 from src.common.postgres import create_postgres_connection, register_ingestion_object
 from src.common.s3 import create_s3_client
 
-SOURCES = (
-    {
-        "source_url": "https://raw.githubusercontent.com/hudl/open-data/master/data/competitions.json",
-        "dataset": "competitions",
-        "base_prefix": "football/bronze/statsbomb/competitions",
-        "filename": "competitions.json",
-    },
-    {
-        "source_url": "https://raw.githubusercontent.com/hudl/open-data/master/data/matches/43/106.json",
-        "dataset": "world_cup_2022_matches",
-        "base_prefix": "football/bronze/statsbomb/matches/competition_id=43/season_id=106",
-        "filename": "matches.json",
-    },
-)
+from src.statsbomb.context import (add_context_arguments, context_from_args, CATALOG_URL,
+                                   catalog_context, matches_context, matches_url, matches_prefix, SourceContextError)
 
 
-def main() -> int:
+def sources(context):
+    return (
+        {"source_url": CATALOG_URL, "dataset": "competitions",
+         "base_prefix": "football/bronze/statsbomb/competitions", "filename": "competitions.json"},
+        {"source_url": matches_url(**context), "dataset": "matches",
+         "base_prefix": matches_prefix(**context), "filename": "matches.json"},
+    )
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_context_arguments(parser)
+    args = parser.parse_args(argv)
+    context = context_from_args(args)
     bucket = os.environ.get("S3_BUCKET", "").strip()
     if not bucket:
         print("S3 configuration error: S3_BUCKET is required.", file=sys.stderr)
@@ -43,10 +45,14 @@ def main() -> int:
     try:
         client = create_s3_client()
         with create_postgres_connection() as connection:
-            for source in SOURCES:
+            for source in sources(context):
                 current_key = source["base_prefix"]
                 data = download_bytes(source["source_url"])
                 downloaded += 1
+                if source["dataset"] == "competitions":
+                    catalog_context(data, **context)
+                else:
+                    matches_context(data, **context)
                 checksum = sha256_bytes(data)
                 key = build_versioned_key(source["base_prefix"], source["filename"], checksum)
                 current_key = key
@@ -87,7 +93,7 @@ def main() -> int:
                 else:
                     already_registered += 1
                     print(f"ALREADY_REGISTERED: {key}")
-    except BronzeIntegrityError as error:
+    except (BronzeIntegrityError, SourceContextError) as error:
         print(f"StatsBomb ingestion failed: {error}", file=sys.stderr)
         return 1
     except DownloadError as error:

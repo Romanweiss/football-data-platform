@@ -1,5 +1,7 @@
 """Lineup CLI uses shared preflight and publication with no external IO."""
 
+from context_fixtures import CONTEXT_ARGS, BRONZE_ARGS
+
 import io
 import os
 import unittest
@@ -17,11 +19,11 @@ class LineupCliTests(unittest.TestCase):
     def setUp(self):
         self.enterContext(patch.dict(os.environ, {"S3_BUCKET": "test-bucket"}, clear=True))
         self.client = FakeS3()
-        parent = b'[{"match_id": 1}, {"match_id": 2}, {"match_id": 3}]'
+        parent = b'[{"match_id": 1, "competition": {"competition_id": 43}, "season": {"season_id": 106}}, {"match_id": 2, "competition": {"competition_id": 43}, "season": {"season_id": 106}}, {"match_id": 3, "competition": {"competition_id": 43}, "season": {"season_id": 106}}]'
         self.client.seed("test-bucket", "parent.json", parent)
         self.pg = self.enterContext(patch.object(job, "create_postgres_connection"))
         self.enterContext(patch.object(job, "create_s3_client", return_value=self.client))
-        self.enterContext(patch.object(job, "find_latest_ingestion_object", return_value={
+        self.enterContext(patch.object(job, "find_matches_parent", return_value={
             "s3_bucket": "test-bucket", "object_key": "parent.json", "sha256": sha256_bytes(parent),
         }))
         inputs = [lineup_artifact(3), lineup_artifact(99), lineup_artifact(2), lineup_artifact(1)]
@@ -57,7 +59,7 @@ class LineupCliTests(unittest.TestCase):
     def test_check_only_all_choices_never_publish_or_get_bulk_bodies(self):
         for choice in cli.DATASETS:
             self.client.calls.clear()
-            self.assertEqual(cli.main(["--dataset", choice, "--limit", "2", "--check-only"]), 0)
+            self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", choice, "--limit", "2", "--check-only"]), 0)
             self.assertEqual(self.lookup.call_args.kwargs["dataset"], "match_lineups")
             self.assertEqual(self.build.call_args.args[2], [1, 2])
             self.assertTrue(all(path.endswith("/lineups.json") and path.startswith("s3a://") for path in self.build.call_args.args[1]))
@@ -74,7 +76,7 @@ class LineupCliTests(unittest.TestCase):
     def test_full_publish_uses_one_dataset_and_complete_parent(self):
         for choice, dataset in cli.DATASETS.items():
             self.publish.reset_mock()
-            self.assertEqual(cli.main(["--dataset", choice]), 0)
+            self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", choice]), 0)
             self.publish.assert_called_once()
             options = self.publish.call_args.kwargs
             self.assertEqual([item["match_id"] for item in options["inputs"]], [1, 2, 3])
@@ -83,16 +85,16 @@ class LineupCliTests(unittest.TestCase):
 
     def test_missing_match_fails_even_with_limit_one(self):
         self.lookup.return_value = [lineup_artifact(1)]
-        self.assertEqual(cli.main(["--dataset", "teams", "--limit", "1", "--check-only"]), 1)
+        self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", "teams", "--limit", "1", "--check-only"]), 1)
         self.spark.assert_not_called()
         self.publish.assert_not_called()
 
     def test_duplicate_match_and_metadata_corruption_fail_before_spark(self):
         self.lookup.return_value.append(lineup_artifact(1))
-        self.assertEqual(cli.main(["--dataset", "players", "--check-only"]), 1)
+        self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", "players", "--check-only"]), 1)
         self.lookup.return_value.pop()
         self.client.objects[("test-bucket", lineup_artifact(1)["object_key"])]["Metadata"] = {}
-        self.assertEqual(cli.main(["--dataset", "players", "--check-only"]), 1)
+        self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", "players", "--check-only"]), 1)
         self.spark.assert_not_called()
         self.publish.assert_not_called()
 

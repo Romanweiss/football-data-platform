@@ -6,7 +6,8 @@ from functools import partial
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.silver.job import COMPETITION_ID, SEASON_ID, parse_publish_args, run_publish_job
+from src.statsbomb.context import context_from_args
+from src.silver.job import parse_publish_args, run_publish_job
 
 DATASETS = {
     "passes": ("pass_events", "pass_events_v1"),
@@ -14,11 +15,11 @@ DATASETS = {
 }
 
 
-def build_domain_frame(spark, paths: list[str], match_ids: list[int], *, dataset: str):
+def build_domain_frame(spark, paths: list[str], match_ids: list[int], *, dataset: str, competition_id, season_id):
     # Keep the CLI/imports usable by offline tests without installing PySpark in python-tools.
     from src.silver.statsbomb.event_domains import build_domain_frame as build
 
-    return build(spark, paths, match_ids, dataset=dataset, competition_id=COMPETITION_ID, season_id=SEASON_ID)
+    return build(spark, paths, match_ids, dataset=dataset, competition_id=competition_id, season_id=season_id)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -29,7 +30,8 @@ def main(argv: list[str] | None = None) -> int:
     return run_publish_job(
         dataset=dataset, transform_version=transform_version,
         build_frame=partial(build_domain_frame, dataset=args.dataset),
-        check_only=args.check_only, limit=args.limit,
+        check_only=args.check_only, limit=args.limit, **context_from_args(args),
+        parent_sha256=args.parent_sha256, bronze_max_id=args.bronze_max_id,
     )
 
 

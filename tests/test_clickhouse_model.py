@@ -1,5 +1,7 @@
 """Offline current-build selection and cross-table hard/informational references."""
 
+from context_fixtures import in_context
+
 import io
 import unittest
 from contextlib import redirect_stdout, redirect_stderr
@@ -35,13 +37,13 @@ class ModelTests(unittest.TestCase):
         client = MagicMock()
         client.query.side_effect = [SimpleNamespace(result_rows=[(0 if check.hard else 9,)]) for check in model.REFERENCE_CHECKS]
         with redirect_stdout(io.StringIO()) as output:
-            counts = model.validate_references(client, builds)
+            counts = in_context(model.validate_references)(client, builds)
         self.assertEqual(len(counts), 11)
         self.assertIn("INFO event_core_player_orphan_rows: 9", output.getvalue())
         for failed in range(5):
             client.query.side_effect = [SimpleNamespace(result_rows=[(int(index == failed),)]) for index in range(11)]
             with self.subTest(failed=failed), redirect_stdout(io.StringIO()), self.assertRaises(ClickHouseIntegrityError):
-                model.validate_references(client, builds)
+                in_context(model.validate_references)(client, builds)
         client.command.assert_not_called()
 
     @patch.object(model, "validate_table_schema")
@@ -53,21 +55,21 @@ class ModelTests(unittest.TestCase):
         client.query.side_effect = [SimpleNamespace(result_rows=[(6, 1, build["build_id"])]) for build in fixtures.values()]
         find_silver.side_effect = lambda *a, **k: fixtures[k["dataset"]]
         find_load.side_effect = lambda *a, **k: load_record(fixtures[k["clickhouse_table"]], spec=SPECS[k["clickhouse_table"]])
-        self.assertEqual(model.current_builds(client, None), {key: value["build_id"] for key, value in fixtures.items()})
+        self.assertEqual(in_context(model.current_builds)(client, None), {key: value["build_id"] for key, value in fixtures.items()})
         self.assertEqual(schema.call_count, len(SPECS))
         client.command.assert_not_called()
         for count, distinct, error in ((0, 0, ClickHouseIntegrityError), (6, 2, ClickHouseBuildConflictError)):
             client.query.side_effect = None
             client.query.return_value.result_rows = [(count, distinct, "a" * 64)]
             with self.assertRaises(error):
-                model.current_builds(client, None)
+                in_context(model.current_builds)(client, None)
 
     @patch.object(model, "current_builds")
     @patch.object(model, "validate_references", return_value={})
     def test_changed_model_during_read_fails(self, references, current):
         current.side_effect = [{"teams": "a" * 64}, {"teams": "b" * 64}]
         with self.assertRaises(ClickHouseIntegrityError):
-            model.check_model(None, None)
+            in_context(model.check_model)(None, None)
 
     def test_model_cli_errors_redacted(self):
         with patch.object(cli, "create_clickhouse_client", side_effect=RuntimeError("fake secret")):

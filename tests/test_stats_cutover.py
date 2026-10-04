@@ -1,4 +1,6 @@
 """Offline Stage 4C mapping, migration, loader state machine and exact-delta tests."""
+
+from context_fixtures import CONTEXT_ARGS, in_context
 import copy
 import io
 import json
@@ -19,6 +21,10 @@ from gold_clickhouse_fakes import fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 AUDIT = json.loads((ROOT / "docs/stage4b_shot_audit.json").read_text())
+
+
+def stats_pins():
+    return [arg for name, value in PINNED_STATS_INPUTS.items() for arg in ("--silver-build", name + "=" + value)]
 
 
 def audit_fixture(spec):
@@ -61,9 +67,9 @@ class CutoverContractTests(unittest.TestCase):
     def test_cli_arbitrary_destination_and_latest_v2_rejected_before_io(self):
         with patch.object(gold_job, "create_postgres_connection") as connect, redirect_stderr(io.StringIO()):
             for extra in (["--table-override", "football.team_match_stats"], ["--table", "random"], ["--transform-version", "v2"]):
-                with self.assertRaises(SystemExit): gold_job.main(["--dataset", "team-match-stats", *extra])
+                with self.assertRaises(SystemExit): gold_job.main(CONTEXT_ARGS + ["--dataset", "team-match-stats", *extra])
             connect.assert_not_called()
-        parsed = gold_job.parse_args(["--dataset", "team-match-stats", "--transform-version", "v2", "--build-id", "a" * 64])
+        parsed = gold_job.parse_args(CONTEXT_ARGS + stats_pins() + ["--dataset", "team-match-stats", "--transform-version", "v2", "--build-id", "a" * 64])
         self.assertEqual(parsed.transform_version, "v2")
 
     def test_exact_pins_are_mandatory_for_build_and_load(self):
@@ -75,7 +81,7 @@ class CutoverContractTests(unittest.TestCase):
         for item in valid:
             args += ["--silver-build", item["dataset"] + "=" + "f" * 64]
         with patch.object(build_job, "create_postgres_connection") as connect, redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            build_job.main(args)
+            build_job.main(CONTEXT_ARGS + args)
         connect.assert_not_called()
 
     def test_v2_exact_manifest_resolution_and_version_mismatch(self):
@@ -84,9 +90,9 @@ class CutoverContractTests(unittest.TestCase):
         spec = V2_SPECS["team_match_stats"]
         client, build, manifest = fixture(spec)
         with patch.dict(os.environ, ENV, clear=True), patch.object(gold_input, "find_gold_build", return_value=build):
-            self.assertEqual(gold_input.resolve_gold_build(None, build["build_id"], spec=spec), build)
+            self.assertEqual(in_context(gold_input.resolve_gold_build)(None, build["build_id"], spec=spec), build)
             with self.assertRaises(GoldIntegrityError):
-                gold_input.resolve_gold_build(None, build["build_id"], spec=SPECS[spec.dataset])
+                in_context(gold_input.resolve_gold_build)(None, build["build_id"], spec=SPECS[spec.dataset])
         self.assertEqual(gold_input.verify_gold_manifest(client, build), manifest)
         self.assertEqual(build["transform_version"], "team_match_stats_v2")
 
@@ -94,7 +100,7 @@ class CutoverContractTests(unittest.TestCase):
         for alias, name in (("team-match-stats", "team_match_stats"), ("player-match-stats", "player_match_stats")):
             spec = V2_SPECS[name]
             _, build, manifest = fixture(spec)
-            manifest["inputs"] = [{"dataset": dataset, "build_id": value} for dataset, value in PINNED_STATS_INPUTS.items()]
+            manifest["inputs"] = [{"dataset": dataset, "build_id": value, "s3_prefix": f"football/silver/statsbomb/{dataset}/competition_id=43/season_id=106/build_id={value}/"} for dataset, value in PINNED_STATS_INPUTS.items()]
             with ExitStack() as stack:
                 for resource in ("create_postgres_connection", "create_s3_client"):
                     stack.enter_context(patch.object(gold_job, resource, return_value=MagicMock()))
@@ -107,17 +113,17 @@ class CutoverContractTests(unittest.TestCase):
                 load = stack.enter_context(patch.object(gold_job, "load_gold"))
                 errors = stack.enter_context(redirect_stderr(io.StringIO()))
                 args = ["--dataset", alias, "--transform-version", "v2", "--build-id", build["build_id"]]
-                self.assertEqual(gold_job.main(args), 0)
+                self.assertEqual(gold_job.main(CONTEXT_ARGS + stats_pins() + args), 0)
                 self.assertIs(load.call_args.kwargs["spec"], spec)
                 lock.assert_called_once()
                 lock.reset_mock()
-                self.assertEqual(gold_job.main([*args, "--check-only"]), 0)
+                self.assertEqual(gold_job.main(CONTEXT_ARGS + stats_pins() + [*args, "--check-only"]), 0)
                 lock.assert_not_called()
                 self.assertTrue(load.call_args.kwargs["check_only"])
                 create_ch.reset_mock()
                 load.reset_mock()
                 manifest["inputs"][0]["build_id"] = "f" * 64
-                self.assertEqual(gold_job.main(args), 1)
+                self.assertEqual(gold_job.main(CONTEXT_ARGS + stats_pins() + args), 1)
                 create_ch.assert_not_called()
                 load.assert_not_called()
                 self.assertIn("exception=GoldIntegrityError", errors.getvalue())

@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from context_fixtures import CONTEXT_ARGS
 from pyspark.sql import SparkSession, functions as F
 from gold_fixture import silver_frames
 from gold_fakes import silver_inputs
@@ -195,8 +196,8 @@ class GoldSparkTests(unittest.TestCase):
                                    match_count=2)
             seed_manifest(client, build, manifests[name])
         with patch.dict(os.environ, {"S3_BUCKET": "test-bucket"}, clear=True), \
-                patch.object(inputs, "find_latest_silver_build", side_effect=lambda *a, **kw: next(b for b in builds if b["dataset"] == kw["dataset"])):
-            selected, verified = inputs.resolve_inputs(None, client, competition_id=43, season_id=106, diagnostics=job.Diagnostics())
+                patch.object(inputs, "find_silver_build", side_effect=lambda *a, **kw: next(b for b in builds if b["dataset"] == kw["dataset"])):
+            selected, verified = inputs.resolve_inputs(None, client, competition_id=43, season_id=106, diagnostics=job.Diagnostics(), build_ids={b["dataset"]: b["build_id"] for b in builds})
         # Actual Parquet counts must match the registered build before transformation.
         incorrect = [{**build, "row_count": build["row_count"] + 1} for build in selected]
         with patch.object(inputs, "s3a_uri", side_effect=lambda bucket, key: paths[key]), self.assertRaises(GoldIntegrityError):
@@ -209,11 +210,11 @@ class GoldSparkTests(unittest.TestCase):
             output = io.StringIO()
             with patch.dict(os.environ, {"S3_BUCKET": "test-bucket"}, clear=True), \
                     patch.object(job, "create_postgres_connection"), patch.object(job, "create_s3_client", return_value=client), \
-                    patch.object(inputs, "find_latest_silver_build", side_effect=lambda *a, **kw: next(b for b in builds if b["dataset"] == kw["dataset"])), \
+                    patch.object(inputs, "find_silver_build", side_effect=lambda *a, **kw: next(b for b in builds if b["dataset"] == kw["dataset"])), \
                     patch.object(job, "create_spark_session", return_value=self.spark), patch.object(job, "configure_s3a"), \
                     patch.object(self.spark, "stop"), patch.object(inputs, "s3a_uri", side_effect=lambda bucket, key: paths[key]), \
                     patch.object(job, "publish_build") as writer, redirect_stdout(output):
-                self.assertEqual(job.main(["--dataset", option, "--check-only"]), 0)
+                self.assertEqual(job.main(CONTEXT_ARGS + [arg for b in builds for arg in ("--silver-build", b["dataset"] + "=" + b["build_id"])] + ["--dataset", option, "--check-only"]), 0)
                 writer.assert_not_called()
             self.assertIn("CHECK ONLY - nothing published", output.getvalue())
         self.assertFalse(any(call[0] == "put" for call in client.calls))

@@ -1,5 +1,7 @@
 """Domain CLI through shared orchestration with mocked Spark and in-memory S3."""
 
+from context_fixtures import CONTEXT_ARGS, BRONZE_ARGS
+
 import io
 import os
 import unittest
@@ -16,11 +18,11 @@ class DomainCliTests(unittest.TestCase):
     def setUp(self):
         self.enterContext(patch.dict(os.environ, {"S3_BUCKET": "test-bucket"}, clear=True))
         self.client = FakeS3()
-        parent = b'[{"match_id": 1}, {"match_id": 2}, {"match_id": 3}]'
+        parent = b'[{"match_id": 1, "competition": {"competition_id": 43}, "season": {"season_id": 106}}, {"match_id": 2, "competition": {"competition_id": 43}, "season": {"season_id": 106}}, {"match_id": 3, "competition": {"competition_id": 43}, "season": {"season_id": 106}}]'
         self.client.seed("test-bucket", "parent.json", parent)
         self.pg = self.enterContext(patch.object(job, "create_postgres_connection"))
         self.s3 = self.enterContext(patch.object(job, "create_s3_client", return_value=self.client))
-        self.enterContext(patch.object(job, "find_latest_ingestion_object", return_value={
+        self.enterContext(patch.object(job, "find_matches_parent", return_value={
             "s3_bucket": "test-bucket", "object_key": "parent.json", "sha256": sha256_bytes(parent),
         }))
         self.inputs = [artifact(3), artifact(99), artifact(1), artifact(2)]
@@ -58,9 +60,9 @@ class DomainCliTests(unittest.TestCase):
         for choice, dataset in (("passes", "pass_events"), ("shots", "shot_events")):
             with self.subTest(dataset=dataset):
                 self.client.calls.clear()
-                self.assertEqual(cli.main(["--dataset", choice, "--limit", "2", "--check-only"]), 0)
+                self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", choice, "--limit", "2", "--check-only"]), 0)
                 self.assertEqual(self.build.call_args.args[2], [1, 2])
-                self.assertEqual(self.build.call_args.kwargs, {"dataset": choice})
+                self.assertEqual(self.build.call_args.kwargs, {"dataset": choice, "competition_id": 43, "season_id": 106})
                 self.assertTrue(all(path.startswith("s3a://") for path in self.build.call_args.args[1]))
                 self.publish.assert_not_called()
                 self.assertEqual([call for call in self.client.calls if call[0] == "get"], [("get", "test-bucket", "parent.json")])
@@ -76,7 +78,7 @@ class DomainCliTests(unittest.TestCase):
         for choice, dataset in (("passes", "pass_events"), ("shots", "shot_events")):
             with self.subTest(dataset=dataset):
                 self.publish.reset_mock()
-                self.assertEqual(cli.main(["--dataset", choice]), 0)
+                self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", choice]), 0)
                 self.publish.assert_called_once()
                 arguments = self.publish.call_args.kwargs
                 self.assertEqual([item["match_id"] for item in arguments["inputs"]], [1, 2, 3])
@@ -87,20 +89,20 @@ class DomainCliTests(unittest.TestCase):
 
     def test_missing_match_is_rejected_before_limit_and_before_spark(self):
         self.lookup.return_value = [artifact(1), artifact(99)]
-        self.assertEqual(cli.main(["--dataset", "passes", "--limit", "1", "--check-only"]), 1)
+        self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", "passes", "--limit", "1", "--check-only"]), 1)
         self.spark.assert_not_called()
         self.publish.assert_not_called()
         self.assertIn('stage="membership"', self.stderr.getvalue())
 
     def test_duplicate_match_fails_before_spark(self):
         self.lookup.return_value = self.inputs + [artifact(1)]
-        self.assertEqual(cli.main(["--dataset", "shots", "--check-only"]), 1)
+        self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", "shots", "--check-only"]), 1)
         self.spark.assert_not_called()
         self.publish.assert_not_called()
 
     def test_build_failure_never_publishes_or_exposes_raw_exception(self):
         self.build.side_effect = ValueError("synthetic-private-credential")
-        self.assertEqual(cli.main(["--dataset", "passes"]), 1)
+        self.assertEqual(cli.main(BRONZE_ARGS + ["--dataset", "passes"]), 1)
         self.publish.assert_not_called()
         self.assertNotIn("private-credential", self.stderr.getvalue())
         self.assertNotIn("DQ: PASSED", self.stdout.getvalue())

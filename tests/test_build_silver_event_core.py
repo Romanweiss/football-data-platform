@@ -1,5 +1,7 @@
 """Offline job orchestration tests; Spark and all external clients are mocked."""
 
+from context_fixtures import CONTEXT_ARGS, BRONZE_ARGS
+
 import io
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -17,6 +19,8 @@ class SilverJobTests(unittest.TestCase):
         self.pg = self.enterContext(patch.object(job, "create_postgres_connection"))
         self.lookup = self.enterContext(patch.object(job, "find_latest_ingestion_objects"))
         self.s3 = self.enterContext(patch.object(job, "create_s3_client"))
+        self.enterContext(patch.object(job, "find_matches_parent", return_value={"s3_bucket": "test", "object_key": "parent", "sha256": "a" * 64}))
+        self.enterContext(patch.object(job, "read_bronze_object", return_value=b'[{"match_id":1,"competition":{"competition_id":43},"season":{"season_id":106}},{"match_id":2,"competition":{"competition_id":43},"season":{"season_id":106}},{"match_id":3,"competition":{"competition_id":43},"season":{"season_id":106}}]'))
         self.stage = self.enterContext(patch.object(job, "stage_event_artifact"))
         self.build = self.enterContext(patch.object(job, "build_local_preview"))
         self.lookup.return_value = [{"source_url": BASE + f"{n}.json"} for n in (1, 2, 3)]
@@ -31,7 +35,7 @@ class SilverJobTests(unittest.TestCase):
         self.enterContext(redirect_stderr(self.stderr))
 
     def test_limit_and_summary_after_successful_local_write(self):
-        def build(paths):
+        def build(paths, **context):
             self.assertNotIn("build complete", self.stdout.getvalue())
             self.assertEqual(len(paths), 2)
             self.pg.return_value.__exit__.assert_called_once_with(None, None, None)
@@ -39,12 +43,12 @@ class SilverJobTests(unittest.TestCase):
             return self.build.return_value
 
         self.build.side_effect = build
-        self.assertEqual(job.main(["--limit", "2"]), 0)
+        self.assertEqual(job.main(BRONZE_ARGS + ["--limit", "2"]), 0)
         self.lookup.assert_called_once_with(
-            self.pg.return_value.__enter__.return_value, source="statsbomb", dataset="match_events",
+            self.pg.return_value.__enter__.return_value, source="statsbomb", dataset="match_events", competition_id=43, season_id=106, max_id=1000,
         )
         self.assertEqual(self.stage.call_count, 2)
-        self.assertEqual([call.args[1] for call in self.stage.call_args_list], self.lookup.return_value[:2])
+        self.assertEqual([call.args[1] for call in self.stage.call_args_list], [{**row, "match_id": i} for i, row in enumerate(self.lookup.return_value[:2], 1)])
         for message in (
             "Silver event_core build complete", "Bronze artifacts selected: 2", "Matches processed: 2",
             "Events read: 5", "Events written: 5", "Output partitions: 4",
@@ -53,45 +57,45 @@ class SilverJobTests(unittest.TestCase):
             self.assertIn(message, self.stdout.getvalue())
 
     def test_no_limit_stages_all_artifacts(self):
-        self.assertEqual(job.main([]), 0)
+        self.assertEqual(job.main(BRONZE_ARGS + []), 0)
         self.assertEqual(self.stage.call_count, 3)
 
     def test_invalid_limit_never_accesses_catalog(self):
         for limit in ("0", "-1", "word", "1.5"):
             with self.subTest(limit=limit), self.assertRaises(SystemExit) as caught:
-                job.main(["--limit", limit])
+                job.main(BRONZE_ARGS + ["--limit", limit])
             self.assertEqual(caught.exception.code, 2)
         self.pg.assert_not_called()
 
     def test_bad_or_duplicate_source_after_limit_never_stages(self):
         for second in ("invalid", BASE + "1.json"):
             self.lookup.return_value = [{"source_url": BASE + "1.json"}, {"source_url": second}]
-            self.assertEqual(job.main(["--limit", "1"]), 1)
+            self.assertEqual(job.main(BRONZE_ARGS + ["--limit", "1"]), 1)
         self.s3.assert_not_called()
         self.build.assert_not_called()
 
     def test_empty_catalog_never_stages(self):
         self.lookup.return_value = []
-        self.assertEqual(job.main([]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + []), 1)
         self.s3.assert_not_called()
         self.build.assert_not_called()
 
     def test_checksum_failure_never_starts_spark(self):
         self.stage.side_effect = BronzeIntegrityError("SHA-256 mismatch")
-        self.assertEqual(job.main([]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + []), 1)
         self.build.assert_not_called()
         self.assertNotIn("build complete", self.stdout.getvalue())
         self.s3.return_value.close.assert_called_once()
 
     def test_catalog_failure_is_nonzero_and_does_not_leak_details(self):
         self.lookup.side_effect = RuntimeError("synthetic private credential")
-        self.assertEqual(job.main([]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + []), 1)
         self.s3.assert_not_called()
         self.assertNotIn("private credential", self.stderr.getvalue())
 
     def test_write_failure_never_reports_success_or_leaks_data(self):
         self.build.side_effect = RuntimeError("synthetic private payload")
-        self.assertEqual(job.main([]), 1)
+        self.assertEqual(job.main(BRONZE_ARGS + []), 1)
         self.assertNotIn("build complete", self.stdout.getvalue())
         self.assertNotIn("private payload", self.stderr.getvalue())
 
