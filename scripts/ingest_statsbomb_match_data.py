@@ -1,6 +1,7 @@
 """Fan out a cataloged StatsBomb matches artifact into events and lineups."""
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -11,21 +12,51 @@ from botocore.exceptions import BotoCoreError, ClientError
 # Support direct execution with `python scripts/ingest_statsbomb_match_data.py`.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.common.bronze import BronzeIntegrityError, build_versioned_key, put_immutable_object
-from src.common.bronze_reader import read_bronze_object
+from src.common.bronze_reader import read_bronze_object, verify_bronze_object_metadata
 from src.common.checksum import sha256_bytes
 from src.common.http import DownloadError, download_bytes
 from src.common.postgres import (
     IngestionObjectNotFoundError,
     create_postgres_connection,
     find_matches_parent,
+    find_latest_ingestion_objects,
     register_ingestion_object,
 )
 from src.common.s3 import create_s3_client
 from src.statsbomb.matches import MatchDataError
+from src.statsbomb.events import extract_match_id_from_events_url
+from src.statsbomb.lineups import extract_match_id_from_lineups_url
 from src.statsbomb.context import add_bronze_arguments, context_from_args, matches_context, child_prefix, SourceContextError
 
 SOURCE_BASE_URL = "https://raw.githubusercontent.com/hudl/open-data/master/data"
 CHILD_DATASETS = (("events", "match_events"), ("lineups", "match_lineups"))
+
+
+def validate_child_bytes(data):
+    """Validate JSON framing only; keep raw bytes and Silver's DQ semantics."""
+    try:
+        value = json.loads(data)
+    except (ValueError, UnicodeError):
+        raise MatchDataError("Invalid child JSON; nothing published.") from None
+    if not isinstance(value, list):
+        raise MatchDataError("Child JSON must be an array; nothing published.")
+
+
+def cataloged_children(connection, context, match_ids):
+    """Use the catalog, not a local checkpoint; never reuse a foreign context."""
+    existing = {}
+    for kind, dataset in CHILD_DATASETS:
+        prefix = child_prefix(kind, match_ids[0], **context).rsplit("/match_id=", 1)[0] + "/"
+        extract_id = extract_match_id_from_events_url if kind == "events" else extract_match_id_from_lineups_url
+        for artifact in find_latest_ingestion_objects(connection, source="statsbomb", dataset=dataset, **context):
+            if not artifact["object_key"].startswith(prefix):
+                continue  # Historical flat WC rows are not this context's checkpoint.
+            match_id = extract_id(artifact["source_url"])
+            expected = build_versioned_key(child_prefix(kind, match_id, **context), f"{kind}.json", artifact["sha256"])
+            if match_id not in match_ids or artifact["object_key"] != expected:
+                raise BronzeIntegrityError("Cataloged child source/path is outside the exact parent identity.")
+            existing[artifact["source_url"]] = artifact
+    return existing
 
 
 def positive_int(value: str) -> int:
@@ -70,6 +101,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Parent key: {parent['object_key']}")
             print(f"Parent SHA256: {parent['sha256']}")
             print(f"Discovered matches: {discovered}")
+            existing = cataloged_children(connection, context, match_ids)
             if args.limit is not None:
                 match_ids = match_ids[:args.limit]
 
@@ -77,7 +109,22 @@ def main(argv: list[str] | None = None) -> int:
                 for kind, dataset in CHILD_DATASETS:
                     current = f"{kind.upper()} match_id={match_id}"
                     source_url = f"{SOURCE_BASE_URL}/{kind}/{match_id}.json"
+                    artifact = existing.get(source_url)
+                    if artifact is not None:
+                        if artifact["s3_bucket"] != bucket:
+                            raise BronzeIntegrityError("Cataloged child bucket does not match the target bucket.")
+                        verify_bronze_object_metadata(client, artifact)
+                        data = read_bronze_object(client, bucket=bucket, key=artifact["object_key"], checksum=artifact["sha256"])
+                        if len(data) != artifact["size_bytes"]:
+                            raise BronzeIntegrityError("Cataloged child byte size mismatch.")
+                        validate_child_bytes(data)
+                        unchanged += 1
+                        already_registered += 1
+                        print(f"{kind.upper()} UNCHANGED: match_id={match_id}")
+                        print(f"ALREADY_REGISTERED: {artifact['object_key']}")
+                        continue
                     data = download_bytes(source_url)
+                    validate_child_bytes(data)
                     downloaded += 1
                     checksum = sha256_bytes(data)
                     key = build_versioned_key(

@@ -49,6 +49,10 @@ test('root initial choice, browser history and intentional error states', async 
   await page.goto('/');
   await expect(page).toHaveURL(/\/matches\/\d+$/);
   await expect(page.getByTestId('match-header')).toBeVisible();
+  // Root follows the live catalog's first context; WC golden checks select WC explicitly.
+  await page.getByRole('combobox', { name: 'Competition', exact: true }).selectOption('43');
+  await expect(page).toHaveURL(/\/competitions\/43\/seasons\/106\/matches\/\d+$/);
+  await expect(page.getByTestId('match-header')).toBeVisible();
   await chooseMatch(page, '3869685');
   await expect(page.getByTestId('shot-count')).toHaveText('30 normal shots');
   await chooseMatch(page, '3857265');

@@ -1,12 +1,37 @@
 # Football Data Platform
 
+## Stage 6B-2 — Real multi-context onboarding
+
+WC2022 (`43/106`) and StatsBomb Bundesliga 2023/2024 (`9/281`) now coexist in
+Bronze/Silver/Gold, the approved ClickHouse serving tables and API/React catalogs.
+9/281 is the **34 available Bayer Leverkusen matches**, not the complete league:
+18 teams, 460 players, 137765 events, 39214 passes, 916 normal shots,
+110 shot goals and xG 100.5025969706; no extra time or shootout.
+
+All seven Silver and three Gold builds passed DQ and explicit-input validation.
+All ten loads registered, then repeated as `UNCHANGED / ALREADY_LOADED` without
+row/catalog growth. WC2022 counts, served build IDs and all 64 analysis-response
+hashes are unchanged. Real 9/281 frontend navigation/interactions and mobile/
+desktop acceptance passed; no backend/frontend runtime semantics changed.
+
+Bronze GET uses three transient-only attempts with 1s/2s backoff and verified TLS;
+resume verifies/reuses cataloged immutable children rather than downloading their
+source again. Full evidence, exact build IDs and runbook pins:
+[Stage 6B-2](docs/stage6b2.md).
+
+**Immediate BI follow-up:** World Cup 2022 Overview's eight Superset charts lack
+fixed 43/106 filters and can now mix both contexts (98 unfiltered matches).
+Match Analysis also needs an enforced selected-match guard. Superset was audited
+read-only and not modified; its WC dashboard is not certified semantically safe.
+
 ## Stage 6B-1 — Context-explicit ETL preparation
 
 Bronze/Silver/Gold orchestration and loaders now require explicit competition/season
 and immutable input references. WC2022 remains the pinned golden regression.
-No second context has been published or loaded: real coexistence is Stage 6B-2.
+At the end of 6B-1 no second context had been published or loaded; real coexistence
+has since been verified in Stage 6B-2 above.
 
-Recommended next context: StatsBomb 1. Bundesliga 2023/2024 (`9/281`), the 34
+The selected context was StatsBomb 1. Bundesliga 2023/2024 (`9/281`), the 34
 available Bayer Leverkusen matches, **not** the complete league season.
 Public source preflight found all 34 events and 34 lineups files.
 Container connectivity has been intermittent; the runbook requires a successful
@@ -32,9 +57,9 @@ match; it does not assume 43/106. Search stays local to the selected context.
 
 Generic validators now require `--competition-id` and `--season-id`.
 WC2022 remains a named golden regression, not a universal count rule.
-Only the existing 43/106 dataset is live-verified; no second dataset was ingested.
+Stage 6A live verification covered 43/106 only; 9/281 is now verified in 6B-2.
 The original Bronze/Silver/Gold blockers are addressed in Stage 6B-1;
-real second-context onboarding and proof remain Stage 6B-2.
+real second-context onboarding and proof are recorded in Stage 6B-2 above.
 
 See [Stage 6A](docs/stage6a.md) for contracts, compatibility, context audit,
 verification results, manual commands and the Stage 6B onboarding checklist.

@@ -5,6 +5,7 @@ from context_fixtures import CONTEXT_ARGS, BRONZE_ARGS
 import io
 import json
 import os
+import ssl
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import MagicMock, call, patch
@@ -17,6 +18,9 @@ from scripts import ingest_statsbomb_match_data as ingestion
 from src.common.bronze import build_versioned_key
 from src.common.checksum import sha256_bytes
 from src.common.http import DownloadError
+from src.common.http import download_bytes as production_download
+from http.client import IncompleteRead
+from urllib.error import URLError
 from src.common.postgres import IngestionObjectNotFoundError
 
 
@@ -35,6 +39,7 @@ class MatchFanOutTests(unittest.TestCase):
         self.s3_factory = self.enterContext(patch.object(ingestion, "create_s3_client"))
         self.download = self.enterContext(patch.object(ingestion, "download_bytes"))
         self.register = self.enterContext(patch.object(ingestion, "register_ingestion_object"))
+        self.children = self.enterContext(patch.object(ingestion, "find_latest_ingestion_objects", return_value=[]))
         self.connection = self.pg_factory.return_value.__enter__.return_value
         self.pg_factory.return_value.__exit__.return_value = False
         self.client = MagicMock(spec=["get_object", "head_object", "put_object"])
@@ -73,6 +78,11 @@ class MatchFanOutTests(unittest.TestCase):
         self.find.return_value = self.parent
 
     def get_parent(self, *, Bucket, Key):
+        if (Bucket, Key) in self.stored:
+            raw = self.stored[(Bucket, Key)]["Body"]
+            stream = io.BytesIO(raw)
+            self.streams.append(stream)
+            return {"Body": StreamingBody(stream, len(raw))}
         self.find.assert_called_with(
             self.connection, competition_id=43, season_id=106, sha256="a" * 64
         )
@@ -325,6 +335,104 @@ class MatchFanOutTests(unittest.TestCase):
             self.assertEqual(ingestion.main(CONTEXT_ARGS + ["--parent-sha256", "a" * 64] + []), 2)
         self.pg_factory.assert_not_called()
         self.s3_factory.assert_not_called()
+
+
+    def enable_catalog_reuse(self):
+        self.children.side_effect = lambda connection, **args: [dict(row) for row in self.catalog.values() if row['dataset'] == args['dataset']]
+
+    def test_cataloged_children_reused_without_remote_get_or_registration(self):
+        args = CONTEXT_ARGS + ["--parent-sha256", "a" * 64, "--limit", "1"]
+        self.assertEqual(ingestion.main(args), 0)
+        self.enable_catalog_reuse()
+        self.download.reset_mock()
+        self.register.reset_mock()
+        self.client.put_object.reset_mock()
+        self.assertEqual(ingestion.main(args), 0)
+        self.download.assert_not_called()
+        self.register.assert_not_called()
+        self.client.put_object.assert_not_called()
+        self.assertTrue(all(stream.closed for stream in self.streams))
+
+    def test_reused_child_content_corruption_fails_without_remote_get_or_put(self):
+        args = CONTEXT_ARGS + ["--parent-sha256", "a" * 64, "--limit", "1"]
+        self.assertEqual(ingestion.main(args), 0)
+        self.enable_catalog_reuse()
+        next(iter(self.stored.values()))['Body'] = b'[]'
+        self.download.reset_mock()
+        self.register.reset_mock()
+        self.client.put_object.reset_mock()
+        self.assertEqual(ingestion.main(args), 1)
+        self.download.assert_not_called()
+        self.register.assert_not_called()
+        self.client.put_object.assert_not_called()
+
+    def test_partial_catalog_fetches_only_missing_children(self):
+        args = CONTEXT_ARGS + ["--parent-sha256", "a" * 64]
+        self.assertEqual(ingestion.main(args + ['--limit', '1']), 0)
+        self.enable_catalog_reuse()
+        self.download.reset_mock()
+        self.register.reset_mock()
+        self.client.put_object.reset_mock()
+        self.assertEqual(ingestion.main(args), 0)
+        expected = [call(self.url(kind, mid)) for mid in (12, 7) for kind in ('events', 'lineups')]
+        self.assertEqual(self.download.call_args_list, expected)
+        self.assertEqual(self.register.call_count, 4)
+        self.assertEqual(self.client.put_object.call_count, 4)
+        self.assertEqual(len(self.catalog), 6)
+
+    def test_foreign_context_catalog_artifacts_are_not_reused(self):
+        self.children.return_value = [{'object_key': 'football/bronze/statsbomb/events/competition_id=9/season_id=281/match_id=90'}]
+        self.assertEqual(ingestion.main(CONTEXT_ARGS + ['--parent-sha256', 'a' * 64, '--limit', '1']), 0)
+        self.assertEqual(self.download.call_count, 2)
+
+    def test_catalog_source_key_mismatch_fails_before_remote_get_or_writes(self):
+        args = CONTEXT_ARGS + ['--parent-sha256', 'a' * 64, '--limit', '1']
+        self.assertEqual(ingestion.main(args), 0)
+        self.enable_catalog_reuse()
+        next(iter(self.catalog.values()))['object_key'] += '-invalid'
+        self.download.reset_mock()
+        self.register.reset_mock()
+        self.client.put_object.reset_mock()
+        self.assertEqual(ingestion.main(args), 1)
+        self.download.assert_not_called()
+        self.client.put_object.assert_not_called()
+        self.register.assert_not_called()
+
+    def test_remote_retry_has_one_publication_registration_path_per_child(self):
+        response = MagicMock()
+        response.status, response.headers = 200, {}
+        response.read.return_value = b'[]'
+        context = MagicMock()
+        context.__enter__.return_value = response
+        self.download.side_effect = production_download
+        with patch('src.common.http.urlopen', side_effect=[URLError(ssl.SSLEOFError()), context, context]) as remote, \
+             patch('src.common.source_transport.time.sleep'):
+            self.assertEqual(ingestion.main(CONTEXT_ARGS + ['--parent-sha256', 'a' * 64, '--limit', '1']), 0)
+        self.assertEqual(remote.call_count, 3)
+        self.assertEqual(self.client.put_object.call_count, 2)
+        self.assertEqual(self.register.call_count, 2)
+
+    def test_exhausted_partial_reads_never_reach_publication_or_registration(self):
+        response = MagicMock()
+        response.status, response.headers = 200, {}
+        response.read.side_effect = IncompleteRead(b'partial-secret', 20)
+        self.download.side_effect = production_download
+        with patch('src.common.http.urlopen') as remote, patch('src.common.source_transport.time.sleep'):
+            remote.return_value.__enter__.return_value = response
+            self.assertEqual(ingestion.main(CONTEXT_ARGS + ['--parent-sha256', 'a' * 64]), 1)
+        self.assertEqual(remote.call_count, 3)
+        self.client.put_object.assert_not_called()
+        self.register.assert_not_called()
+        self.assertNotIn('partial-secret', self.errors.getvalue())
+
+    def test_invalid_child_content_is_not_published_or_retried(self):
+        self.download.side_effect = None
+        self.download.return_value = b'private-invalid-json'
+        self.assertEqual(ingestion.main(CONTEXT_ARGS + ['--parent-sha256', 'a' * 64]), 1)
+        self.download.assert_called_once()
+        self.client.put_object.assert_not_called()
+        self.register.assert_not_called()
+        self.assertNotIn('private-invalid-json', self.errors.getvalue())
 
 
 if __name__ == "__main__":

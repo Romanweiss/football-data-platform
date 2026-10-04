@@ -1,6 +1,8 @@
 """HTTP tests replace urlopen; no internet access is used."""
 
 import unittest
+import io
+from contextlib import redirect_stderr
 from http.client import IncompleteRead
 from urllib.error import HTTPError, URLError
 from unittest.mock import ANY, MagicMock, patch
@@ -14,6 +16,9 @@ class DownloadBytesTests(unittest.TestCase):
         self.urlopen = self.enterContext(patch("src.common.http.urlopen"))
         self.response = MagicMock()
         self.response.status = 200
+        self.response.headers = {}
+        self.sleep = self.enterContext(patch("src.common.source_transport.time.sleep"))
+        self.errors = self.enterContext(redirect_stderr(io.StringIO()))
         self.urlopen.return_value.__enter__.return_value = self.response
 
     def test_preserves_bytes_and_sets_timeout_and_user_agent(self):
@@ -53,7 +58,8 @@ class DownloadBytesTests(unittest.TestCase):
         self.response.read.side_effect = IncompleteRead(b"partial", 100)
         with self.assertRaisesRegex(DownloadError, "IncompleteRead"):
             download_bytes(self.url)
-        self.urlopen.return_value.__exit__.assert_called_once()
+        self.assertEqual(self.urlopen.call_count, 3)
+        self.assertEqual(self.urlopen.return_value.__exit__.call_count, 3)
 
 
 if __name__ == "__main__":
