@@ -13,9 +13,24 @@ with DAG(
             "season_id": Param(type="integer", minimum=1, maximum=2**32 - 1)},
     default_args={"retries": 0, "execution_timeout": timedelta(minutes=65)},
     tags=["statsbomb", "manual", "context"],
-    doc_md="""Existing CLI pipeline. Supply both context IDs. Run ID never enters
-    build identity. Stop manual writers before running. One Spark job at a time;
-    existing immutable/catalog checks decide reuse, not task history. No cleanup.
+    doc_md="""### StatsBomb context pipeline
+    Manually orchestrates the existing Bronze -> Silver -> Gold -> ClickHouse
+    jobs, with explicit preflight, integrity/DQ and serving/API validation gates.
+
+    **Required params:** `competition_id` and `season_id`, both positive UInt32
+    integers. No default context and no automatic schedule.
+
+    **Authoritative state:** immutable S3 artifacts, the platform PostgreSQL
+    catalog and ClickHouse serving builds. XCom carries small IDs/statuses only;
+    the Airflow run ID never enters deterministic build identity. Completed
+    artifacts/builds are verified and reused on replay.
+
+    **Local execution:** one active DAG run across all contexts; `spark_local`
+    allows one Spark-heavy task at a time. Stop independent manual writers before
+    triggering. Automatic Airflow retries are disabled; project HTTP transport
+    already applies bounded retries. Diagnose a failure, then start a fresh run
+    or clear only failed tasks with still-valid upstream pins. Never bypass a
+    failed validator or delete platform data to resume.
     """,
 ) as dag:
     @task

@@ -1,0 +1,106 @@
+{
+  "before": {
+    "runs": [
+      {
+        "run_id": "manual__stage6c1_9_281_20261004",
+        "state": "success",
+        "start_date": "2026-10-04T20:11:54.249842+00:00",
+        "end_date": "2026-10-04T20:26:40.435706+00:00"
+      },
+      {
+        "run_id": "manual__stage6c1_invalid_context_20261005",
+        "state": "failed",
+        "start_date": "2026-10-05T08:25:13.223889+00:00",
+        "end_date": "2026-10-05T08:25:20.176761+00:00"
+      }
+    ],
+    "task_count": 120,
+    "xcom_count": 61,
+    "pool": 1
+  },
+  "after": {
+    "runs": [
+      {
+        "run_id": "manual__stage6c1_9_281_20261004",
+        "state": "success",
+        "start_date": "2026-10-04T20:11:54.249842+00:00",
+        "end_date": "2026-10-04T20:26:40.435706+00:00"
+      },
+      {
+        "run_id": "manual__stage6c1_invalid_context_20261005",
+        "state": "failed",
+        "start_date": "2026-10-05T08:25:13.223889+00:00",
+        "end_date": "2026-10-05T08:25:20.176761+00:00"
+      }
+    ],
+    "task_count": 120,
+    "xcom_count": 61,
+    "pool": 1
+  },
+  "identical": true,
+  "after_clean_replay": {
+    "before": {
+      "runs": [
+        {
+          "run_id": "manual__stage6c1_9_281_20261004",
+          "state": "success",
+          "start_date": "2026-10-04T20:11:54.249842+00:00",
+          "end_date": "2026-10-04T20:26:40.435706+00:00"
+        },
+        {
+          "run_id": "manual__stage6c1_invalid_context_20261005",
+          "state": "failed",
+          "start_date": "2026-10-05T08:25:13.223889+00:00",
+          "end_date": "2026-10-05T08:25:20.176761+00:00"
+        },
+        {
+          "run_id": "manual__stage6c2_unknown_context_20261005",
+          "state": "failed",
+          "start_date": "2026-10-05T08:52:40.777941+00:00",
+          "end_date": "2026-10-05T08:52:49.126905+00:00"
+        },
+        {
+          "run_id": "manual__stage6c2_clean_9_281_20261005T0856",
+          "state": "success",
+          "start_date": "2026-10-05T08:54:24.988181+00:00",
+          "end_date": "2026-10-05T09:07:42.157521+00:00"
+        }
+      ],
+      "task_count": 240,
+      "xcom_count": 122,
+      "pool": 1
+    },
+    "after": {
+      "runs": [
+        {
+          "run_id": "manual__stage6c1_9_281_20261004",
+          "state": "success",
+          "start_date": "2026-10-04T20:11:54.249842+00:00",
+          "end_date": "2026-10-04T20:26:40.435706+00:00"
+        },
+        {
+          "run_id": "manual__stage6c1_invalid_context_20261005",
+          "state": "failed",
+          "start_date": "2026-10-05T08:25:13.223889+00:00",
+          "end_date": "2026-10-05T08:25:20.176761+00:00"
+        },
+        {
+          "run_id": "manual__stage6c2_unknown_context_20261005",
+          "state": "failed",
+          "start_date": "2026-10-05T08:52:40.777941+00:00",
+          "end_date": "2026-10-05T08:52:49.126905+00:00"
+        },
+        {
+          "run_id": "manual__stage6c2_clean_9_281_20261005T0856",
+          "state": "success",
+          "start_date": "2026-10-05T08:54:24.988181+00:00",
+          "end_date": "2026-10-05T09:07:42.157521+00:00"
+        }
+      ],
+      "task_count": 240,
+      "xcom_count": 122,
+      "pool": 1
+    },
+    "identical": true
+  }
+}

@@ -1,5 +1,13 @@
 # Football Data Platform
 
+## Stage 6C-2 — Airflow operations and clean replay
+
+Clean image builds, restart persistence, required-parameter rejection and a fresh
+9/281 replay are covered by [docs/stage6c2.md](docs/stage6c2.md). The architecture
+and 60-task manual DAG remain unchanged; Spark-heavy tasks share the one-slot
+`spark_local` pool. The runbook includes health, trigger, failed-task inspection,
+resume and non-destructive restart/stop commands, plus XCom/log audits and evidence.
+
 ## Stage 6C-1 — Airflow orchestration
 
 Manual `statsbomb_context_pipeline` orchestrates the existing CLIs with required

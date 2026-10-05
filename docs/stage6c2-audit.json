@@ -1,0 +1,94 @@
+{
+  "contract": "PASS",
+  "xcom_count": 60,
+  "keys": [
+    "return_value"
+  ],
+  "min_bytes": 39,
+  "max_bytes": 1228,
+  "mean_bytes": 281.6166666666667,
+  "fields": [
+    "already_registered",
+    "bronze_max_id",
+    "build_id",
+    "catalog",
+    "catalog_sha256",
+    "competition_id",
+    "dataset",
+    "downloaded",
+    "expected_builds",
+    "layer",
+    "match_count",
+    "parent_sha256",
+    "registered",
+    "reused",
+    "row_count",
+    "season_id",
+    "status",
+    "step",
+    "transport_retries",
+    "uploaded"
+  ],
+  "spark_tasks": 20,
+  "spark_overlap_pairs": 0,
+  "spark_pool_slots_all_one": true,
+  "automatic_task_retries": 0,
+  "public_http_retries": 4,
+  "publishes_reused": 10,
+  "loads_reused": 10,
+  "secret_audit": {
+    "result": "PASS",
+    "log_files": 60,
+    "pattern_counts": {
+      "credential_assignment": 0,
+      "unmasked_connection_password": 0,
+      "signed_url": 0,
+      "bearer_token": 0,
+      "jwt": 0,
+      "generated_password": 0
+    }
+  },
+  "parameter_tests": [
+    {
+      "case": "missing_competition_id",
+      "result": "REJECTED_NO_DAGRUN",
+      "exit_code": 1
+    },
+    {
+      "case": "missing_season_id",
+      "result": "REJECTED_NO_DAGRUN",
+      "exit_code": 1
+    },
+    {
+      "case": "non_integer",
+      "result": "REJECTED_NO_DAGRUN",
+      "exit_code": 1
+    },
+    {
+      "case": "unknown_context_9_4294967294",
+      "result": "SOURCE_PREFLIGHT_FAILED",
+      "no_downstream_attempts": true
+    }
+  ],
+  "before_after_identical": true,
+  "ui": "PASS",
+  "ui_checks": {
+    "browser": "Microsoft Edge (Chromium), authenticated by operator",
+    "dag_visible": true,
+    "task_groups_readable": true,
+    "run_id": "manual__stage6c2_clean_9_281_20261005T0856",
+    "latest_run_success": true,
+    "competition_id": 9,
+    "season_id": 281,
+    "run_parameters_visible": true,
+    "task_logs_accessible": "validation.application_api",
+    "task_log_context_visible": true,
+    "dag_documentation_visible": true,
+    "no_state_mutations": true,
+    "screenshots": [
+      "stage6c2-ui-graph.png",
+      "stage6c2-ui-run-details.png",
+      "stage6c2-ui-task-logs.png"
+    ]
+  }
+}

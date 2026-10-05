@@ -34,6 +34,19 @@ class DagTests(unittest.TestCase):
         for name in dag.params:
             self.assertFalse(dag.params.get_param(name).has_value)
         self.assertEqual(len(dag.tasks), 60)
+        spark_tasks = [t for t in dag.tasks if t.task_id.startswith(("silver.", "gold."))
+                       and t.task_id.endswith((".check", ".publish"))]
+        self.assertEqual(len(spark_tasks), 20)
+        self.assertTrue(all(t.pool == "spark_local" and t.pool_slots == 1 for t in spark_tasks))
+        self.assertTrue(all(t.pool != "spark_local" for t in dag.tasks if t not in spark_tasks))
+        for params in ({"season_id": 281}, {"competition_id": 9},
+                       {"competition_id": "9", "season_id": 281}):
+            with self.subTest(params=params), self.assertRaises(Exception):
+                # Same required Param schemas used by Airflow before DagRun creation.
+                from copy import deepcopy
+                candidate = deepcopy(dag.params)
+                candidate.update(params)
+                candidate.validate()
         for t in dag.tasks:
             self.assertEqual(t.retries, 0)
         self.assertIn("validate_context", dag.get_task("source.preflight").upstream_task_ids)
