@@ -1,0 +1,53 @@
+"""Airflow-image offline parse test. Execute with --network none, no secrets."""
+import os
+import subprocess
+import sys
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, "/app")
+
+
+class DagTests(unittest.TestCase):
+    def test_project_interpreter_has_all_existing_cli_dependencies(self):
+        result = subprocess.run(["/usr/bin/python3", "-c",
+                                 "import boto3, psycopg, clickhouse_connect; "
+                                 "from importlib.metadata import version; "
+                                 "assert version('boto3') == '1.40.21'; "
+                                 "assert version('psycopg') == '3.3.6'; "
+                                 "assert version('clickhouse-connect') == '0.15.0'"],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, "Project CLI dependencies unavailable")
+
+    def test_parse_contract_without_network_or_project_environment(self):
+        from airflow.dag_processing.dagbag import DagBag
+        with patch.dict(os.environ, {"AIRFLOW_HOME": "/tmp/airflow-parse-test", "AIRFLOW__CORE__LOAD_EXAMPLES": "false"}, clear=True):
+            with patch("socket.socket.connect", side_effect=AssertionError("DAG parse attempted network IO")):
+                bag = DagBag(dag_folder="/opt/airflow/dags", include_examples=False)
+        self.assertEqual(bag.import_errors, {})
+        self.assertEqual(set(bag.dags), {"statsbomb_context_pipeline"})
+        dag = bag.dags["statsbomb_context_pipeline"]
+        self.assertIsNone(dag.schedule)
+        self.assertEqual(dag.max_active_runs, 1)
+        self.assertEqual(dag.max_active_tasks, 2)
+        self.assertEqual(set(dag.params), {"competition_id", "season_id"})
+        for name in dag.params:
+            self.assertFalse(dag.params.get_param(name).has_value)
+        self.assertEqual(len(dag.tasks), 60)
+        for t in dag.tasks:
+            self.assertEqual(t.retries, 0)
+        self.assertIn("validate_context", dag.get_task("source.preflight").upstream_task_ids)
+        self.assertIn("silver.teams.validate", dag.get_task("silver.matches.check").upstream_task_ids)
+        for name in ("event_core", "match_squads", "pass_events", "shot_events"):
+            self.assertIn(f"silver.{name}.validate", dag.get_task("gold.team_match_stats.check").upstream_task_ids)
+        self.assertIn("silver.matches.validate", dag.get_task("gold.match_results.check").upstream_task_ids)
+        self.assertIn("gold.match_results.validate", dag.get_task("clickhouse.silver_teams.preflight").upstream_task_ids)
+        self.assertIn("clickhouse.silver_teams.preflight", dag.get_task("clickhouse.silver_teams.load").upstream_task_ids)
+        self.assertEqual(dag.get_task("silver.event_core.check").pool, "spark_local")
+        self.assertEqual(dag.get_task("silver.event_core.publish").pool, "spark_local")
+        self.assertEqual(dag.get_task("validation.application_api").upstream_task_ids,
+                         {"validate_context", "validation.serving_model", "validation.gold_model", "validation.match_results"})
+
+
+if __name__ == "__main__":
+    unittest.main()

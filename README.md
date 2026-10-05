@@ -1,5 +1,16 @@
 # Football Data Platform
 
+## Stage 6C-1 — Airflow orchestration
+
+Manual `statsbomb_context_pipeline` orchestrates the existing CLIs with required
+`competition_id` / `season_id`, exact build pins and explicit validation gates.
+LocalExecutor, one Spark job at a time, dedicated Airflow PostgreSQL, no Docker
+socket. UI: `http://127.0.0.1:18080`. The optional `airflow` Compose profile does
+not replace the existing manual pipeline.
+
+Architecture, complete graph, build/init/start/trigger/stop commands, security,
+tests and replay evidence: [docs/stage6c1.md](docs/stage6c1.md).
+
 ## Stage 6B-2 — Real multi-context onboarding
 
 WC2022 (`43/106`) and StatsBomb Bundesliga 2023/2024 (`9/281`) now coexist in

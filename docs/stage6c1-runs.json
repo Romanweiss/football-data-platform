@@ -1,0 +1,1788 @@
+{
+  "runs": [
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "state": "success",
+      "start_date": "2026-10-04T20:11:54.249842+00:00",
+      "end_date": "2026-10-04T20:26:40.435706+00:00",
+      "duration_seconds": 886.185864
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "state": "failed",
+      "start_date": "2026-10-05T08:25:13.223889+00:00",
+      "end_date": "2026-10-05T08:25:20.176761+00:00",
+      "duration_seconds": 6.952872
+    }
+  ],
+  "tasks": [
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "bronze.children_ingest",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 30.154
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "bronze.freeze_snapshot",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 0.217
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "bronze.parent_ingest",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.911
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "bronze.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 6.657
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_match_results.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.461
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_match_results.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.358
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_player_match_stats.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.536
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_player_match_stats.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.479
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_team_match_stats.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.622
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_team_match_stats.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.709
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_event_core.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 3.327
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_event_core.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 9.407
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_match_squads.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.744
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_match_squads.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.746
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_matches.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.386
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_matches.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.473
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_pass_events.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 2.04
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_pass_events.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 2.632
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_players.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 7.125
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_players.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.726
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_shot_events.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.689
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_shot_events.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.725
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_teams.load",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.958
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_teams.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.573
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.match_results.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 35.303
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.match_results.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 22.623
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.match_results.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.854
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.player_match_stats.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 38.673
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.player_match_stats.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 24.618
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.player_match_stats.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 2.011
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.team_match_stats.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 22.721
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.team_match_stats.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 26.107
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.team_match_stats.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 2.18
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.event_core.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 35.203
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.event_core.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 39.743
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.event_core.validate",
+      "state": "success",
+      "try_number": 2,
+      "duration_seconds": 11.516
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.match_squads.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 28.027
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.match_squads.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 29.768
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.match_squads.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 2.931
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.matches.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 11.852
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.matches.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 22.916
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.matches.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.802
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.pass_events.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 37.913
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.pass_events.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 51.267
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.pass_events.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 2.901
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.players.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 26.942
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.players.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 24.426
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.players.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 4.619
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.shot_events.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 35.7
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.shot_events.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 45.49
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.shot_events.validate",
+      "state": "success",
+      "try_number": 2,
+      "duration_seconds": 5.735
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.teams.check",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 26.869
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.teams.publish",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 29.351
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.teams.validate",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 2.231
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "source.preflight",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 21.083
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validate_context",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.83
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validation.application_api",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.234
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validation.gold_model",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 0.579
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validation.match_results",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 0.451
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validation.serving_model",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 0.71
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "bronze.children_ingest",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "bronze.freeze_snapshot",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "bronze.parent_ingest",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "bronze.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.gold_match_results.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.gold_match_results.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.gold_player_match_stats.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.gold_player_match_stats.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.gold_team_match_stats.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.gold_team_match_stats.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_event_core.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_event_core.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_match_squads.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_match_squads.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_matches.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_matches.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_pass_events.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_pass_events.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_players.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_players.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_shot_events.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_shot_events.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_teams.load",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "clickhouse.silver_teams.preflight",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.match_results.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.match_results.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.match_results.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.player_match_stats.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.player_match_stats.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.player_match_stats.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.team_match_stats.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.team_match_stats.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "gold.team_match_stats.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.event_core.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.event_core.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.event_core.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.match_squads.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.match_squads.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.match_squads.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.matches.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.matches.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.matches.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.pass_events.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.pass_events.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.pass_events.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.players.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.players.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.players.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.shot_events.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.shot_events.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.shot_events.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.teams.check",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.teams.publish",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "silver.teams.validate",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "source.preflight",
+      "state": "failed",
+      "try_number": 1,
+      "duration_seconds": 0.698
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "validate_context",
+      "state": "success",
+      "try_number": 1,
+      "duration_seconds": 1.856
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "validation.application_api",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "validation.gold_model",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "validation.match_results",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "validation.serving_model",
+      "state": "upstream_failed",
+      "try_number": 0,
+      "duration_seconds": 0
+    }
+  ],
+  "results": [
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "bronze.children_ingest",
+      "value": {
+        "step": "children",
+        "reused": 68,
+        "status": "SUCCESS",
+        "uploaded": 0,
+        "season_id": 281,
+        "downloaded": 0,
+        "registered": 0,
+        "competition_id": 9,
+        "transport_retries": 0,
+        "already_registered": 68
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "bronze.freeze_snapshot",
+      "value": {
+        "step": "freeze",
+        "status": "FROZEN",
+        "season_id": 281,
+        "match_count": 34,
+        "bronze_max_id": 267,
+        "parent_sha256": "13dff90f126d9f73da410ae3292b2773744657d3ba968a2b7a9c02135033581c",
+        "catalog_sha256": "e6cd42f5d8956d6aa30fb917ce8d4c3b3df1879a93f02f8feba820930a6971fa",
+        "competition_id": 9,
+        "expected_builds": {
+          "silver/teams": "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+          "silver/matches": "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+          "silver/players": "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+          "silver/event_core": "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+          "gold/match_results": "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+          "silver/pass_events": "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+          "silver/shot_events": "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+          "silver/match_squads": "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+          "gold/team_match_stats": "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+          "gold/player_match_stats": "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480"
+        },
+        "transport_retries": 5
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "bronze.parent_ingest",
+      "value": {
+        "step": "parent",
+        "reused": 2,
+        "status": "SUCCESS",
+        "uploaded": 0,
+        "season_id": 281,
+        "downloaded": 2,
+        "registered": 0,
+        "competition_id": 9,
+        "transport_retries": 0,
+        "already_registered": 2
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "bronze.validate",
+      "value": {
+        "step": "bronze_validate",
+        "status": "SUCCESS",
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_match_results.load",
+      "value": {
+        "step": "load",
+        "layer": "gold",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "match_results",
+        "build_id": "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_match_results.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "match_results",
+        "build_id": "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_player_match_stats.load",
+      "value": {
+        "step": "load",
+        "layer": "gold",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "player_match_stats",
+        "build_id": "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_player_match_stats.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "player_match_stats",
+        "build_id": "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_team_match_stats.load",
+      "value": {
+        "step": "load",
+        "layer": "gold",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "team_match_stats",
+        "build_id": "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+        "row_count": 68,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.gold_team_match_stats.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "team_match_stats",
+        "build_id": "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+        "row_count": 68,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_event_core.load",
+      "value": {
+        "step": "load",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "event_core",
+        "build_id": "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+        "row_count": 137765,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_event_core.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "event_core",
+        "build_id": "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+        "row_count": 137765,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_match_squads.load",
+      "value": {
+        "step": "load",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "match_squads",
+        "build_id": "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_match_squads.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "match_squads",
+        "build_id": "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_matches.load",
+      "value": {
+        "step": "load",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "matches",
+        "build_id": "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_matches.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "matches",
+        "build_id": "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_pass_events.load",
+      "value": {
+        "step": "load",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "pass_events",
+        "build_id": "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+        "row_count": 39214,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_pass_events.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "pass_events",
+        "build_id": "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+        "row_count": 39214,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_players.load",
+      "value": {
+        "step": "load",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "players",
+        "build_id": "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+        "row_count": 460,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_players.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "players",
+        "build_id": "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+        "row_count": 460,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_shot_events.load",
+      "value": {
+        "step": "load",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "shot_events",
+        "build_id": "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+        "row_count": 916,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_shot_events.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "shot_events",
+        "build_id": "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+        "row_count": 916,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_teams.load",
+      "value": {
+        "step": "load",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_LOADED",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "teams",
+        "build_id": "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+        "row_count": 18,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "clickhouse.silver_teams.preflight",
+      "value": {
+        "step": "load_preflight",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "teams",
+        "build_id": "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+        "row_count": 18,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.match_results.check",
+      "value": {
+        "step": "build_check",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "match_results",
+        "build_id": "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.match_results.publish",
+      "value": {
+        "step": "publish",
+        "layer": "gold",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "match_results",
+        "build_id": "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.match_results.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "match_results",
+        "build_id": "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.player_match_stats.check",
+      "value": {
+        "step": "build_check",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "player_match_stats",
+        "build_id": "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.player_match_stats.publish",
+      "value": {
+        "step": "publish",
+        "layer": "gold",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "player_match_stats",
+        "build_id": "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.player_match_stats.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "player_match_stats",
+        "build_id": "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.team_match_stats.check",
+      "value": {
+        "step": "build_check",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "team_match_stats",
+        "build_id": "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+        "row_count": 68,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.team_match_stats.publish",
+      "value": {
+        "step": "publish",
+        "layer": "gold",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "team_match_stats",
+        "build_id": "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+        "row_count": 68,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "gold.team_match_stats.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "gold",
+        "status": "CHECKED",
+        "dataset": "team_match_stats",
+        "build_id": "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+        "row_count": 68,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.event_core.check",
+      "value": {
+        "step": "build_check",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "event_core",
+        "build_id": "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+        "row_count": 137765,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.event_core.publish",
+      "value": {
+        "step": "publish",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "event_core",
+        "build_id": "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+        "row_count": 137765,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.event_core.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "event_core",
+        "build_id": "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+        "row_count": 137765,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.match_squads.check",
+      "value": {
+        "step": "build_check",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "match_squads",
+        "build_id": "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.match_squads.publish",
+      "value": {
+        "step": "publish",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "match_squads",
+        "build_id": "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.match_squads.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "match_squads",
+        "build_id": "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+        "row_count": 1353,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.matches.check",
+      "value": {
+        "step": "build_check",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "matches",
+        "build_id": "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.matches.publish",
+      "value": {
+        "step": "publish",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "matches",
+        "build_id": "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.matches.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "matches",
+        "build_id": "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+        "row_count": 34,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.pass_events.check",
+      "value": {
+        "step": "build_check",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "pass_events",
+        "build_id": "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+        "row_count": 39214,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.pass_events.publish",
+      "value": {
+        "step": "publish",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "pass_events",
+        "build_id": "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+        "row_count": 39214,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.pass_events.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "pass_events",
+        "build_id": "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+        "row_count": 39214,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.players.check",
+      "value": {
+        "step": "build_check",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "players",
+        "build_id": "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+        "row_count": 460,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.players.publish",
+      "value": {
+        "step": "publish",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "players",
+        "build_id": "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+        "row_count": 460,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.players.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "players",
+        "build_id": "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+        "row_count": 460,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.shot_events.check",
+      "value": {
+        "step": "build_check",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "shot_events",
+        "build_id": "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+        "row_count": 916,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.shot_events.publish",
+      "value": {
+        "step": "publish",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "shot_events",
+        "build_id": "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+        "row_count": 916,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.shot_events.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "shot_events",
+        "build_id": "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+        "row_count": 916,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.teams.check",
+      "value": {
+        "step": "build_check",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "teams",
+        "build_id": "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+        "row_count": 18,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.teams.publish",
+      "value": {
+        "step": "publish",
+        "layer": "silver",
+        "status": "UNCHANGED / ALREADY_BUILT",
+        "catalog": "ALREADY_REGISTERED",
+        "dataset": "teams",
+        "build_id": "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+        "row_count": 18,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "silver.teams.validate",
+      "value": {
+        "step": "artifact_validate",
+        "layer": "silver",
+        "status": "CHECKED",
+        "dataset": "teams",
+        "build_id": "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+        "row_count": 18,
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "source.preflight",
+      "value": {
+        "step": "source",
+        "status": "CHECKED",
+        "season_id": 281,
+        "match_count": 34,
+        "parent_sha256": "13dff90f126d9f73da410ae3292b2773744657d3ba968a2b7a9c02135033581c",
+        "catalog_sha256": "e6cd42f5d8956d6aa30fb917ce8d4c3b3df1879a93f02f8feba820930a6971fa",
+        "competition_id": 9,
+        "expected_builds": {
+          "silver/teams": "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+          "silver/matches": "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+          "silver/players": "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+          "silver/event_core": "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+          "gold/match_results": "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+          "silver/pass_events": "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+          "silver/shot_events": "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+          "silver/match_squads": "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+          "gold/team_match_stats": "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+          "gold/player_match_stats": "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480"
+        },
+        "transport_retries": 5
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validate_context",
+      "value": {
+        "season_id": 281,
+        "competition_id": 9
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validation.application_api",
+      "value": {
+        "step": "application",
+        "status": "SUCCESS",
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validation.gold_model",
+      "value": {
+        "step": "serving_gold",
+        "status": "SUCCESS",
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validation.match_results",
+      "value": {
+        "step": "serving_results",
+        "status": "SUCCESS",
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_9_281_20261004",
+      "task_id": "validation.serving_model",
+      "value": {
+        "step": "serving_model",
+        "status": "SUCCESS",
+        "season_id": 281,
+        "competition_id": 9,
+        "transport_retries": 0
+      }
+    },
+    {
+      "run_id": "manual__stage6c1_invalid_context_20261005",
+      "task_id": "validate_context",
+      "value": {
+        "season_id": 4294967295,
+        "competition_id": 9
+      }
+    }
+  ]
+}

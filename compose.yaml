@@ -1,6 +1,148 @@
 name: ${COMPOSE_PROJECT_NAME:-football-data-platform}
 
+x-football-airflow: &football-airflow
+  image: football-airflow:3.2.2
+  build:
+    context: .
+    dockerfile: docker/airflow/Dockerfile
+    additional_contexts:
+      project_spark: docker-image://football-spark-runtime:6c1-0b540b6bee67
+  profiles: [airflow]
+  user: "50000:0"
+  environment: &airflow-environment
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__PARALLELISM: "2"
+    AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "2"
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN_CMD: /usr/bin/python3 /opt/airflow/config/bootstrap.py connection
+    AIRFLOW__CORE__FERNET_KEY_CMD: /usr/bin/python3 /opt/airflow/config/bootstrap.py fernet_key
+    AIRFLOW__API_AUTH__JWT_SECRET_CMD: /usr/bin/python3 /opt/airflow/config/bootstrap.py jwt_secret
+    AIRFLOW__API__SECRET_KEY_CMD: /usr/bin/python3 /opt/airflow/config/bootstrap.py api_secret
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: airflow:admin
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/secrets/simple_auth_manager_passwords.json
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://football-airflow-api:8080/execution/
+    AIRFLOW__API__BASE_URL: http://localhost:${AIRFLOW_HOST_PORT:-18080}
+    AIRFLOW__API__WORKERS: "1"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    AIRFLOW__DAG_PROCESSOR__PARSING_PROCESSES: "1"
+  volumes:
+    - football_airflow_secrets:/opt/airflow/secrets:ro
+    - football_airflow_logs:/opt/airflow/logs
+  networks: [football-network]
+
 services:
+  football-airflow-bootstrap:
+    <<: *football-airflow
+    user: "0:0"
+    environment: {}
+    command: [/usr/bin/python3, /opt/airflow/config/bootstrap.py, init]
+    volumes:
+      - football_airflow_secrets:/opt/airflow/secrets
+      - football_airflow_logs:/opt/airflow/logs
+    restart: "no"
+
+  football-airflow-db:
+    image: postgres:17.6-alpine3.22
+    profiles: [airflow]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD_FILE: /run/airflow-secrets/db_password
+    volumes:
+      - football_airflow_db_data:/var/lib/postgresql/data
+      - football_airflow_secrets:/run/airflow-secrets:ro
+    networks: [football-network]
+    depends_on:
+      football-airflow-bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U airflow -d airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  football-airflow-init:
+    <<: *football-airflow
+    command: [sh, -c, "airflow db migrate && airflow pools set spark_local 1 'One local Spark job'"]
+    restart: "no"
+    depends_on:
+      football-airflow-db:
+        condition: service_healthy
+
+  football-airflow-api:
+    <<: *football-airflow
+    command: [airflow, api-server]
+    # SimpleAuthManager locks its pre-generated password file with a+.
+    volumes:
+      - football_airflow_secrets:/opt/airflow/secrets
+      - football_airflow_logs:/opt/airflow/logs
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${AIRFLOW_HOST_PORT:-18080}:8080"
+    depends_on:
+      football-airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, /usr/bin/python3, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/v2/monitor/health', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  football-airflow-dag-processor:
+    <<: *football-airflow
+    command: [airflow, dag-processor]
+    restart: unless-stopped
+    depends_on:
+      football-airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+
+  football-airflow-scheduler:
+    <<: *football-airflow
+    command: [airflow, scheduler]
+    restart: unless-stopped
+    environment:
+      <<: *airflow-environment
+      POSTGRES_HOST: football-postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      CLICKHOUSE_HOST: football-clickhouse
+      CLICKHOUSE_HTTP_PORT: "8123"
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
+      AWS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      SPARK_LOCAL_IP: 127.0.0.1
+    depends_on:
+      football-airflow-api:
+        condition: service_healthy
+      football-airflow-dag-processor:
+        condition: service_started
+    healthcheck:
+      test: [CMD-SHELL, 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+
   football-postgres:
     image: postgres:17.6-alpine3.22
     container_name: football-postgres
@@ -235,6 +377,12 @@ networks:
     driver: bridge
 
 volumes:
+  football_airflow_db_data:
+    name: football_airflow_db_data
+  football_airflow_secrets:
+    name: football_airflow_secrets
+  football_airflow_logs:
+    name: football_airflow_logs
   football_superset_db_data:
     name: football_superset_db_data
   football_postgres_data:
