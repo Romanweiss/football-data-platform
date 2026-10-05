@@ -1,0 +1,354 @@
+{
+  "bronze_global": {
+    "count": 199,
+    "sha256": "21f9bc033910ee213452075fec045714bb16f382a457e4221f4af7fbc544843e"
+  },
+  "contexts": {
+    "43/106": {
+      "api": {
+        "all_analysis_sha256": "b8e15494beecb1a709e3380fa83c2420c09a0aa6cba3993659f67f7056f3408d",
+        "match_count": 64
+      },
+      "bronze": {
+        "count": 129,
+        "sha256": "3e7c770d5c253b4569cc8b6c4f5c5b6a7f3560cb2880d4c889855dc7232ab6ff"
+      },
+      "bronze_max_id": 267,
+      "clickhouse": {
+        "event_core": [
+          [
+            "f62c4943ef505dc56ce02b4c1724fedd69cfc773b23a8f3a1b6cf575bf2f526d",
+            234637
+          ]
+        ],
+        "match_results": [
+          [
+            "e64306623d34074950ff541e4a5c4cdd79f764723e63d478cef0595343746360",
+            64
+          ]
+        ],
+        "match_squads": [
+          [
+            "e00cc4605530a68a791981771b75c26f283bba55070014c33db27f4bed0443bd",
+            3244
+          ]
+        ],
+        "matches": [
+          [
+            "e9949f2c1c976fc6b21b25ed99c3206e62b7e64dbd3fec663ed67e0bd54e0c7b",
+            64
+          ]
+        ],
+        "pass_events": [
+          [
+            "635dc7e21a3e07793c3d7129c2263dccebfa3fea13956225a574b2a94d45553a",
+            68515
+          ]
+        ],
+        "player_match_stats_v2": [
+          [
+            "65f1a3c4e2e69b602c14c2254668b1a500e5e2c0cb3a67f46a87776aa145fe9e",
+            3244
+          ]
+        ],
+        "players": [
+          [
+            "3286ca6d2f863c3517b1ae046eb47706468086f6f6c5a3725dd0465fd2e174c0",
+            829
+          ]
+        ],
+        "shot_events": [
+          [
+            "a67da8f5404c02ce557f6f2a5c8a95e052ecaeb5e8e8b5ac271c9bb5c4992584",
+            1494
+          ]
+        ],
+        "team_match_stats_v2": [
+          [
+            "b9a786b952f976d1ce320d37757fea83fe390ad552439c5f0feef8d79d98d7b4",
+            128
+          ]
+        ],
+        "teams": [
+          [
+            "84d91f09c7076338b3ce33dcce51c45a2d7e0a3fcadd622737e9047554fc78c8",
+            32
+          ]
+        ]
+      },
+      "competition_id": 43,
+      "gold": [
+        {
+          "build_id": "e64306623d34074950ff541e4a5c4cdd79f764723e63d478cef0595343746360",
+          "dataset": "match_results",
+          "file_count": 1,
+          "row_count": 64,
+          "transform_version": "match_results_v1"
+        },
+        {
+          "build_id": "045e67c06fe65c6777384c75895557aba3b851f78f5030aa597f60d5c9ae723b",
+          "dataset": "player_match_stats",
+          "file_count": 2,
+          "row_count": 3244,
+          "transform_version": "player_match_stats_v1"
+        },
+        {
+          "build_id": "65f1a3c4e2e69b602c14c2254668b1a500e5e2c0cb3a67f46a87776aa145fe9e",
+          "dataset": "player_match_stats",
+          "file_count": 2,
+          "row_count": 3244,
+          "transform_version": "player_match_stats_v2"
+        },
+        {
+          "build_id": "1c1da5d8c0a9a1a3221ed236b5d3981c66e796b1facbe7cf8a863a950b194d5f",
+          "dataset": "team_match_stats",
+          "file_count": 1,
+          "row_count": 128,
+          "transform_version": "team_match_stats_v1"
+        },
+        {
+          "build_id": "b9a786b952f976d1ce320d37757fea83fe390ad552439c5f0feef8d79d98d7b4",
+          "dataset": "team_match_stats",
+          "file_count": 1,
+          "row_count": 128,
+          "transform_version": "team_match_stats_v2"
+        }
+      ],
+      "load_catalog": {
+        "clickhouse_gold_loads": {
+          "count": 5,
+          "sha256": "85ada8331894b54a174d4f0d42bb91f4e4fa9a88934e5f3c5eb35c88b012dcde"
+        },
+        "clickhouse_loads": {
+          "count": 7,
+          "sha256": "a75bd3157d0441b21f933ce466743875750efaed8b114a65bbed6d56a9b7a017"
+        }
+      },
+      "parents": [
+        {
+          "id": 2,
+          "sha256": "b9d7516dc9919a825f04c204ca85487958c8a2431e84140a48e944934661efc7",
+          "size_bytes": 119132
+        }
+      ],
+      "season_id": 106,
+      "silver": [
+        {
+          "build_id": "f62c4943ef505dc56ce02b4c1724fedd69cfc773b23a8f3a1b6cf575bf2f526d",
+          "dataset": "event_core",
+          "file_count": 4,
+          "row_count": 234637,
+          "transform_version": "event_core_v1"
+        },
+        {
+          "build_id": "e00cc4605530a68a791981771b75c26f283bba55070014c33db27f4bed0443bd",
+          "dataset": "match_squads",
+          "file_count": 2,
+          "row_count": 3244,
+          "transform_version": "match_squads_v1"
+        },
+        {
+          "build_id": "e9949f2c1c976fc6b21b25ed99c3206e62b7e64dbd3fec663ed67e0bd54e0c7b",
+          "dataset": "matches",
+          "file_count": 1,
+          "row_count": 64,
+          "transform_version": "matches_v1"
+        },
+        {
+          "build_id": "635dc7e21a3e07793c3d7129c2263dccebfa3fea13956225a574b2a94d45553a",
+          "dataset": "pass_events",
+          "file_count": 4,
+          "row_count": 68515,
+          "transform_version": "pass_events_v1"
+        },
+        {
+          "build_id": "3286ca6d2f863c3517b1ae046eb47706468086f6f6c5a3725dd0465fd2e174c0",
+          "dataset": "players",
+          "file_count": 2,
+          "row_count": 829,
+          "transform_version": "players_v1"
+        },
+        {
+          "build_id": "a67da8f5404c02ce557f6f2a5c8a95e052ecaeb5e8e8b5ac271c9bb5c4992584",
+          "dataset": "shot_events",
+          "file_count": 4,
+          "row_count": 1494,
+          "transform_version": "shot_events_v1"
+        },
+        {
+          "build_id": "84d91f09c7076338b3ce33dcce51c45a2d7e0a3fcadd622737e9047554fc78c8",
+          "dataset": "teams",
+          "file_count": 1,
+          "row_count": 32,
+          "transform_version": "teams_v1"
+        }
+      ]
+    },
+    "9/281": {
+      "api": {
+        "all_analysis_sha256": "63bfc1fe1d54124dad60ba04e6a977e52c5ae1f4d6b97652d98e8f45d240ac4a",
+        "match_count": 34
+      },
+      "bronze": {
+        "count": 69,
+        "sha256": "b10cddf7b6acc6c31f832ab5d8d845ebc9bcd32c1f47cef621f2537649ca23f1"
+      },
+      "bronze_max_id": 267,
+      "clickhouse": {
+        "event_core": [
+          [
+            "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+            137765
+          ]
+        ],
+        "match_results": [
+          [
+            "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+            34
+          ]
+        ],
+        "match_squads": [
+          [
+            "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+            1353
+          ]
+        ],
+        "matches": [
+          [
+            "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+            34
+          ]
+        ],
+        "pass_events": [
+          [
+            "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+            39214
+          ]
+        ],
+        "player_match_stats_v2": [
+          [
+            "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480",
+            1353
+          ]
+        ],
+        "players": [
+          [
+            "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+            460
+          ]
+        ],
+        "shot_events": [
+          [
+            "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+            916
+          ]
+        ],
+        "team_match_stats_v2": [
+          [
+            "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+            68
+          ]
+        ],
+        "teams": [
+          [
+            "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+            18
+          ]
+        ]
+      },
+      "competition_id": 9,
+      "gold": [
+        {
+          "build_id": "a99c1fd9f20b54cc0a18b75dfaf41cd1cc1c8e9238bf25083d66aad193a5f284",
+          "dataset": "match_results",
+          "file_count": 1,
+          "row_count": 34,
+          "transform_version": "match_results_v1"
+        },
+        {
+          "build_id": "a901e32250b595ccb69278f68b7ba6deb61a918d239dea87c77e8dad9343a480",
+          "dataset": "player_match_stats",
+          "file_count": 2,
+          "row_count": 1353,
+          "transform_version": "player_match_stats_v2"
+        },
+        {
+          "build_id": "4860842745a367e641a4a36c976ed6172ae00f97133cf3cdbe69699565134077",
+          "dataset": "team_match_stats",
+          "file_count": 1,
+          "row_count": 68,
+          "transform_version": "team_match_stats_v2"
+        }
+      ],
+      "load_catalog": {
+        "clickhouse_gold_loads": {
+          "count": 3,
+          "sha256": "ce40ac104436e7029b122f151380df6aaefdfbd1bef09ec2f227a684c72500e7"
+        },
+        "clickhouse_loads": {
+          "count": 7,
+          "sha256": "27fb062d58b91a09220612293f8745387c9b2960ad5a3cf3f6f4509d6b360b56"
+        }
+      },
+      "parents": [
+        {
+          "id": 146,
+          "sha256": "13dff90f126d9f73da410ae3292b2773744657d3ba968a2b7a9c02135033581c",
+          "size_bytes": 63079
+        }
+      ],
+      "season_id": 281,
+      "silver": [
+        {
+          "build_id": "6da4cacc187df6a6bdf1d9f1687396bd4f94c5abf742a3310fa6dc67efc55288",
+          "dataset": "event_core",
+          "file_count": 4,
+          "row_count": 137765,
+          "transform_version": "event_core_v1"
+        },
+        {
+          "build_id": "5f20bf72ef8a2ec7be7fa9f51b60092b086f270725d011175743c86b0ea64418",
+          "dataset": "match_squads",
+          "file_count": 2,
+          "row_count": 1353,
+          "transform_version": "match_squads_v1"
+        },
+        {
+          "build_id": "0559f5effc14d3387d47f774e6a3ec0e727b7915400ed140e7e30a6d4d1a0abb",
+          "dataset": "matches",
+          "file_count": 1,
+          "row_count": 34,
+          "transform_version": "matches_v1"
+        },
+        {
+          "build_id": "dc16623c4307c6ab7f278aeafd08a6f89d940ae9a94857ac1d9d14e5b7405118",
+          "dataset": "pass_events",
+          "file_count": 4,
+          "row_count": 39214,
+          "transform_version": "pass_events_v1"
+        },
+        {
+          "build_id": "6812dabdc3df85171cc4e4947620c97e5477c35ffaa8f3454a8daba1d3aa9dd7",
+          "dataset": "players",
+          "file_count": 2,
+          "row_count": 460,
+          "transform_version": "players_v1"
+        },
+        {
+          "build_id": "032e806d47ecc5f761a749ef724fc866020204dbb601de646e958a8374556676",
+          "dataset": "shot_events",
+          "file_count": 4,
+          "row_count": 916,
+          "transform_version": "shot_events_v1"
+        },
+        {
+          "build_id": "65225ec0d725e42e77af05c83a986595889629a4e10b13e5cd37db3afb65de63",
+          "dataset": "teams",
+          "file_count": 1,
+          "row_count": 18,
+          "transform_version": "teams_v1"
+        }
+      ]
+    }
+  }
+}

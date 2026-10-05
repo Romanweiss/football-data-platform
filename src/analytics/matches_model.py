@@ -39,25 +39,27 @@ def match_queries(*, specs=SPECS, gold_specs=GOLD_SPECS):
     return queries
 
 
-def validate_match_references(client, builds, *, competition_id, season_id, specs=SPECS, gold_specs=GOLD_SPECS):
+def validate_match_references(client, builds, *, competition_id, season_id, specs=SPECS, gold_specs=GOLD_SPECS, report=None):
     parameters = {"competition_id": competition_id, "season_id": season_id,
                   **{name + "_build_id": build_id for name, build_id in builds.items()}}
     counts = {}
     for name, sql in match_queries(specs=specs, gold_specs=gold_specs):
         counts[name] = client.query(sql, parameters=parameters).result_rows[0][0]
+        if report is not None:
+            report(name, counts[name], 0, counts[name] == 0, True)
         print(f"HARD {name}: {counts[name]}")
     if any(counts.values()):
         raise ClickHouseIntegrityError("Match dimension cross-model references failed.")
     return counts
 
 
-def check_model(client, connection, *, competition_id, season_id, specs=SPECS, gold_specs=GOLD_SPECS):
+def check_model(client, connection, *, competition_id, season_id, specs=SPECS, gold_specs=GOLD_SPECS, report=None):
     context = {"competition_id": competition_id, "season_id": season_id}
     silver = current_builds(client, connection, specs=specs, **context)
     gold = current_gold_builds(client, connection, specs=gold_specs, **context)
-    counts = validate_references(client, silver, specs=specs, **context)
+    counts = validate_references(client, silver, specs=specs, report=report, **context)
     counts.update(validate_match_references(client, {**silver, **{name: row["build_id"] for name, row in gold.items()}},
-        specs=specs, gold_specs=gold_specs, **context))
+        specs=specs, gold_specs=gold_specs, report=report, **context))
     if (silver != current_builds(client, connection, specs=specs, **context)
             or gold != current_gold_builds(client, connection, specs=gold_specs, **context)):
         raise ClickHouseIntegrityError("Model changed during validation; repeat after writers finish.")

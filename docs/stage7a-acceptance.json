@@ -1,0 +1,68 @@
+{
+  "verified_on": "2026-10-05",
+  "offline_tests": 499,
+  "dq_unit_tests": 18,
+  "airflow_tests": 2,
+  "postgres_schema_tests": 1,
+  "read_only_observability_queries": 4,
+  "compose_config": "PASS",
+  "git_diff_check": "PASS",
+  "platform_before_after_identical": true,
+  "airflow_services": "4 healthy",
+  "airflow_import_errors": 0,
+  "live_contexts": [
+    {
+      "competition_id": 43,
+      "season_id": 106,
+      "execution_id": "032c29ff-5704-43a4-8b7e-37cc24a0d5af",
+      "status": "PASS",
+      "counts": {
+        "FAIL": 0,
+        "PASS": 170,
+        "SKIP": 0,
+        "WARN": 0
+      },
+      "persisted": true,
+      "duration_seconds": 41.79
+    },
+    {
+      "competition_id": 9,
+      "season_id": 281,
+      "execution_id": "0e218908-9398-4dec-97f0-a68a6cc9ca87",
+      "status": "PASS",
+      "counts": {
+        "FAIL": 0,
+        "PASS": 166,
+        "SKIP": 2,
+        "WARN": 0
+      },
+      "persisted": true,
+      "duration_seconds": 26.159
+    }
+  ],
+  "previous_success_comparison": {
+    "retained_rule_changes": 0,
+    "removed_noop_rules": [
+      "gold.match_results.team_coverage",
+      "gold.player_match_stats.team_coverage",
+      "silver.event_core.team_coverage",
+      "silver.matches.team_coverage",
+      "silver.pass_events.team_coverage",
+      "silver.players.team_coverage",
+      "silver.shot_events.team_coverage",
+      "silver.teams.team_coverage"
+    ],
+    "explanation": "No analytical/DQ semantics changed; no-op team-coverage checks are not reported for inapplicable datasets. Initial executions remain stored."
+  },
+  "adapter_smoke": {
+    "execution_id": "f0739a12-5bdc-49e9-a996-340df16b5ae3",
+    "scope": "api",
+    "context": "9/281",
+    "status": "PASS",
+    "persisted": true,
+    "actual_dag_run": false
+  },
+  "live_dataset_writes": false,
+  "new_contexts": 0,
+  "commit": false
+}

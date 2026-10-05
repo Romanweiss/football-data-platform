@@ -81,7 +81,7 @@ def reference_sql(check, *, specs=SPECS):
     )
 
 
-def validate_references(client, builds, *, competition_id, season_id, specs=SPECS):
+def validate_references(client, builds, *, competition_id, season_id, specs=SPECS, report=None):
     parameters = {"competition_id": competition_id, "season_id": season_id,
                   **{dataset + "_build_id": build_id for dataset, build_id in builds.items()}}
     failed = False
@@ -89,6 +89,8 @@ def validate_references(client, builds, *, competition_id, season_id, specs=SPEC
     for check in REFERENCE_CHECKS:
         count = client.query(reference_sql(check, specs=specs), parameters=parameters).result_rows[0][0]
         counts[check.name] = count
+        if report is not None:
+            report(check.name, count, 0, count == 0, check.hard)
         print(f"{'HARD' if check.hard else 'INFO'} {check.name}: {count}")
         failed |= check.hard and count != 0
     if failed:
@@ -96,9 +98,9 @@ def validate_references(client, builds, *, competition_id, season_id, specs=SPEC
     return counts
 
 
-def check_model(client, connection, *, competition_id, season_id, specs=SPECS):
+def check_model(client, connection, *, competition_id, season_id, specs=SPECS, report=None):
     builds = current_builds(client, connection, competition_id=competition_id, season_id=season_id, specs=specs)
-    counts = validate_references(client, builds, competition_id=competition_id, season_id=season_id, specs=specs)
+    counts = validate_references(client, builds, competition_id=competition_id, season_id=season_id, specs=specs, report=report)
     # Detect a changed materialization/catalog during the series of read-only queries.
     if builds != current_builds(client, connection, competition_id=competition_id, season_id=season_id, specs=specs):
         raise ClickHouseIntegrityError("Model changed during validation; repeat after writers finish.")

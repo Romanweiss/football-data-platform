@@ -1,5 +1,14 @@
 # Football Data Platform
 
+## Stage 7A — Persistent data quality and observability
+
+Context-aware DQ checks now emit one human/JSON contract and append execution
+history to the existing platform PostgreSQL. The same contract powers Airflow
+validation gates; immutable build IDs and existing analytical rules are unchanged.
+Both real contexts passed live checks with unchanged data/counts/API hashes.
+Runbook, validator inventory, result/schema contract, exact commands and the
+read-only Grafana foundation: [docs/stage7a.md](docs/stage7a.md).
+
 ## Stage 6C-2 — Airflow operations and clean replay
 
 Clean image builds, restart persistence, required-parameter rejection and a fresh

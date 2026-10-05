@@ -60,6 +60,18 @@ class DagTests(unittest.TestCase):
         self.assertEqual(dag.get_task("silver.event_core.publish").pool, "spark_local")
         self.assertEqual(dag.get_task("validation.application_api").upstream_task_ids,
                          {"validate_context", "validation.serving_model", "validation.gold_model", "validation.match_results"})
+        # Exercise the real decorated callable's metadata bridge without SDK/DB IO.
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        callback = dag.get_task('validation.application_api').python_callable
+        invoke = Mock(return_value={'dq_status':'PASS'})
+        task_context = {'run_id':'manual__dq_fixture', 'ti':SimpleNamespace(
+            dag_id=dag.dag_id, task_id='validation.application_api'), 'token':'synthetic-secret'}
+        with patch.dict(callback.__globals__, {'get_current_context':lambda:task_context, 'invoke':invoke}):
+            callback('application', {'competition_id':9,'season_id':281})
+        self.assertEqual(invoke.call_args.args[0]['airflow'],
+                         {'dag_id':dag.dag_id,'run_id':'manual__dq_fixture','task_id':'validation.application_api'})
+        self.assertNotIn('synthetic-secret', str(invoke.call_args))
 
 
 if __name__ == "__main__":

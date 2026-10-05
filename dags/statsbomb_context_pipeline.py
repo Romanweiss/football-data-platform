@@ -31,6 +31,10 @@ with DAG(
     already applies bounded retries. Diagnose a failure, then start a fresh run
     or clear only failed tasks with still-valid upstream pins. Never bypass a
     failed validator or delete platform data to resume.
+
+    **Quality evidence:** validation tasks persist normalized rule results in the
+    platform PostgreSQL DQ history. Logs/XCom link the DQ execution and failed
+    rule IDs; Airflow is not the authoritative quality store.
     """,
 ) as dag:
     @task
@@ -41,8 +45,11 @@ with DAG(
 
     @task
     def run_step(step, ctx, snapshot=None, layer=None, dataset=None, upstream=None, build=None):
+        task_context = get_current_context()
+        ti = task_context['ti']
         return invoke({"step": step, "context": ctx, "snapshot": snapshot,
-                       "layer": layer, "dataset": dataset, "upstream": upstream, "build": build})
+                       "layer": layer, "dataset": dataset, "upstream": upstream, "build": build,
+                       'airflow': {'dag_id':ti.dag_id, 'run_id':task_context['run_id'], 'task_id':ti.task_id}})
 
     ctx = validate_context()
     with TaskGroup("source"):

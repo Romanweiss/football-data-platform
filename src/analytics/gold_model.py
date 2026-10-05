@@ -83,7 +83,7 @@ def model_queries(*, gold_specs=SPECS, silver_specs=INPUT_SPECS):
 
 
 def validate_model_metrics(client, gold_builds, silver_builds, *, competition_id, season_id,
-                           gold_specs=SPECS, silver_specs=INPUT_SPECS):
+                           gold_specs=SPECS, silver_specs=INPUT_SPECS, report=None):
     parameters = {"competition_id": competition_id, "season_id": season_id,
                   **{name + "_build_id": value for name, value in {**gold_builds, **silver_builds}.items()}}
     failures = []
@@ -96,6 +96,8 @@ def validate_model_metrics(client, gold_builds, silver_builds, *, competition_id
         tolerance = f" rel_tol={XG_REL_TOL} abs_tol={XG_ABS_TOL}" if rule == "close" else ""
         print(f"{'PASS' if valid else 'FAIL'} {name}: Gold={actual} expected={expected}{tolerance}")
         results[name] = (actual, expected)
+        if report is not None:
+            report(name, actual, expected, valid)
         if not valid:
             failures.append(name)
     if failures:
@@ -103,7 +105,7 @@ def validate_model_metrics(client, gold_builds, silver_builds, *, competition_id
     return results
 
 
-def check_model(client, connection, *, competition_id, season_id, gold_specs=SPECS, silver_specs=INPUT_SPECS):
+def check_model(client, connection, *, competition_id, season_id, gold_specs=SPECS, silver_specs=INPUT_SPECS, report=None):
     context = {"competition_id": competition_id, "season_id": season_id}
     gold = current_gold_builds(client, connection, specs=gold_specs, **context)
     silver = current_silver_builds(client, connection, specs=silver_specs, **context)
@@ -114,7 +116,7 @@ def check_model(client, connection, *, competition_id, season_id, gold_specs=SPE
     if any(record["input_fingerprint"] != fingerprint for record in gold.values()):
         raise ClickHouseIntegrityError("Gold lineage differs from the currently loaded Silver builds.")
     gold_ids = {name: record["build_id"] for name, record in gold.items()}
-    result = validate_model_metrics(client, gold_ids, silver, gold_specs=gold_specs, silver_specs=silver_specs, **context)
+    result = validate_model_metrics(client, gold_ids, silver, gold_specs=gold_specs, silver_specs=silver_specs, report=report, **context)
     if (gold != current_gold_builds(client, connection, specs=gold_specs, **context)
             or silver != current_silver_builds(client, connection, specs=silver_specs, **context)):
         raise ClickHouseIntegrityError("Serving model changed during validation; repeat after writers finish.")

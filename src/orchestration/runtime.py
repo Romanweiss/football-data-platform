@@ -99,7 +99,10 @@ def execute(request):
         return {**snapshot, "step": step, "bronze_max_id": inventory["bronze_max_id"],
                 "transport_retries": 0, "status": "FROZEN"}
     elif step == "bronze_validate":
-        stdout, stderr = run_cli(["check_statsbomb_bronze.py", *bronze_args(snapshot)])
+        from src.dq.orchestration import validate
+        bronze_args(snapshot)  # Preserve exact frozen-boundary argument validation.
+        return {**result, 'status': 'SUCCESS', **validate(request, 'bronze',
+                parent_sha256=snapshot['parent_sha256'], bronze_max_id=snapshot['bronze_max_id'])}
     elif step in ("build_check", "publish", "artifact_validate", "load_preflight", "load"):
         layer, dataset = request["layer"], request["dataset"]
         upstream = request.get("upstream") or {}
@@ -114,6 +117,16 @@ def execute(request):
             if context(build) != c or build["dataset"] != dataset or build["layer"] != layer:
                 raise ValueError("Loader build identity/context mismatch")
             argv = load_command(layer, dataset, snapshot, build, upstream, step != "load")
+            if step == 'artifact_validate':
+                from src.dq.orchestration import validate
+                expected = snapshot['expected_builds'].get(layer + '/' + dataset)
+                if expected is not None and build['build_id'] != expected:
+                    raise ValueError('Existing deterministic build identity changed; STOP')
+                quality = validate(request, 'artifact', layer=layer, dataset=dataset, build_id=build['build_id'],
+                                   expected_inputs={name:item['build_id'] for name,item in upstream.items()})
+                row = registered(layer, dataset, c, build['build_id'])
+                return {**result, 'layer':layer, 'dataset':dataset, 'build_id':build['build_id'],
+                        'row_count':row['row_count'], 'status':'CHECKED', **quality}
             stdout, stderr = run_cli(argv)
         parsed = parse_result(stdout + "\n" + stderr, require_build=True)
         expected = snapshot["expected_builds"].get(layer + "/" + dataset)
@@ -128,13 +141,9 @@ def execute(request):
             raise ValueError("Missing publication/load completion status")
         return {**result, "layer": layer, "dataset": dataset, **parsed}
     elif step in ("serving_model", "serving_gold", "serving_results", "application"):
-        commands = {
-            "serving_model": ["check_clickhouse_model.py", "--transform-version", "v2"],
-            "serving_gold": ["check_clickhouse_gold_model.py", "--transform-version", "v2"],
-            "serving_results": ["check_clickhouse_match_results.py", "--bi"],
-            "application": ["check_application_api.py", "--base-url", "http://football-api:8000"],
-        }
-        stdout, stderr = run_cli(commands[step] + context_args(c))
+        from src.dq.orchestration import validate
+        suite = {'serving_model':'references','serving_gold':'gold','serving_results':'results','application':'api'}[step]
+        return {**result, 'status':'SUCCESS', **validate(request, suite)}
     else:
         raise ValueError("Unknown orchestration step")
     return {**result, "status": "SUCCESS", **parse_result(stdout + "\n" + stderr)}
