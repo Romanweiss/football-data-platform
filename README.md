@@ -1,5 +1,15 @@
 # Football Data Platform
 
+## Stage 7B — Grafana Data Quality observability
+
+Optional Grafana at `http://127.0.0.1:13000` reads approved platform PostgreSQL
+views through `grafana_reader`. Provisioned dashboard: **Football Data Platform —
+Data Quality**. Current health means latest **full** DQ per context; append-only
+execution/rule history, intentional SKIPs and build/load observations are separate.
+Grafana does not execute validators and is not a pipeline dependency.
+Migration, private credential bootstrap, start/restart/stop commands, security,
+verification evidence and limitations: [docs/stage7b.md](docs/stage7b.md).
+
 ## Stage 7A — Persistent data quality and observability
 
 Context-aware DQ checks now emit one human/JSON contract and append execution

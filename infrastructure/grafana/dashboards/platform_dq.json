@@ -1,0 +1,1670 @@
+{
+  "id": null,
+  "uid": "football-platform-dq",
+  "title": "Football Data Platform — Data Quality",
+  "description": "Read-only PostgreSQL DQ evidence. Current panels = latest FULL execution, independent of time/detail filters. History panels = all persisted scopes in selected time range. Grafana does not run DQ; Airflow owns task operations, Superset owns football BI.",
+  "tags": [
+    "football",
+    "dq",
+    "platform"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "competition",
+        "label": "Competition",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "football-metadata-dq"
+        },
+        "query": "SELECT 'Competition '||competition_id AS __text,competition_id::text AS __value FROM observability.dq_current_executions ORDER BY competition_id",
+        "definition": "SELECT 'Competition '||competition_id AS __text,competition_id::text AS __value FROM observability.dq_current_executions ORDER BY competition_id",
+        "refresh": 1,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "season",
+        "label": "Season",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "football-metadata-dq"
+        },
+        "query": "SELECT 'Season '||season_id AS __text,season_id::text AS __value FROM observability.dq_current_executions WHERE competition_id = ${competition:sqlstring} ORDER BY season_id",
+        "definition": "SELECT 'Season '||season_id AS __text,season_id::text AS __value FROM observability.dq_current_executions WHERE competition_id = ${competition:sqlstring} ORDER BY season_id",
+        "refresh": 1,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "layer",
+        "label": "Layer",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "football-metadata-dq"
+        },
+        "query": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT layer AS __text,layer AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "definition": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT layer AS __text,layer AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "refresh": 1,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "All",
+          "value": "__all"
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "dataset",
+        "label": "Dataset",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "football-metadata-dq"
+        },
+        "query": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT dataset AS __text,dataset AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "definition": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT dataset AS __text,dataset AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "refresh": 1,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "All",
+          "value": "__all"
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "severity",
+        "label": "Severity",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "football-metadata-dq"
+        },
+        "query": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT severity AS __text,severity AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "definition": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT severity AS __text,severity AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "refresh": 1,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "All",
+          "value": "__all"
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "status",
+        "label": "Status",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "football-metadata-dq"
+        },
+        "query": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT status AS __text,status AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "definition": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT status AS __text,status AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "refresh": 1,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "All",
+          "value": "__all"
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      },
+      {
+        "name": "rule_id",
+        "label": "Rule ID",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "football-metadata-dq"
+        },
+        "query": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT rule_id AS __text,rule_id AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "definition": "SELECT __text,__value FROM (SELECT 'All' AS __text,'__all' AS __value UNION ALL SELECT DISTINCT rule_id AS __text,rule_id AS __value FROM observability.dq_rule_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}) choices ORDER BY (__value <> '__all'),__value",
+        "refresh": 1,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "All",
+          "value": "__all"
+        },
+        "options": [],
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Current full DQ status",
+      "type": "stat",
+      "description": "Latest full execution, including failures. Independent of time range and detail filters. PASS may include intentional SKIPs.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT status FROM observability.dq_current_executions WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "PASS": {
+                  "text": "PASS",
+                  "color": "green"
+                },
+                "FAIL": {
+                  "text": "FAIL",
+                  "color": "red"
+                },
+                "WARN": {
+                  "text": "WARN",
+                  "color": "orange"
+                },
+                "SKIP": {
+                  "text": "SKIP — not applicable / not executed",
+                  "color": "blue"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^status$/"
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "PASS · current full",
+      "type": "stat",
+      "description": "All rules in the latest FULL execution; not summed history or filtered rules.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT passed FROM observability.dq_current_executions WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "FAIL · current full",
+      "type": "stat",
+      "description": "All rules in the latest FULL execution; not summed history or filtered rules.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT failed FROM observability.dq_current_executions WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "WARN · current full",
+      "type": "stat",
+      "description": "All rules in the latest FULL execution; not summed history or filtered rules.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT warnings FROM observability.dq_current_executions WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "SKIP · current full",
+      "type": "stat",
+      "description": "All rules in the latest FULL execution; not summed history or filtered rules.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT skipped FROM observability.dq_current_executions WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Last full DQ execution",
+      "type": "stat",
+      "description": "Factual timestamp; on-demand runs have no daily freshness SLA.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT extract(epoch FROM finished_at)*1000 AS last_execution FROM observability.dq_current_executions WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "dateTimeAsIso"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Current quality by layer",
+      "type": "table",
+      "description": "All rules in latest FULL execution. Bronze, Silver, Gold, serving and API use the persisted layer taxonomy.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT layer, count(*) FILTER(WHERE status='PASS') AS \"PASS\", count(*) FILTER(WHERE status='FAIL') AS \"FAIL\", count(*) FILTER(WHERE status='WARN') AS \"WARN\", count(*) FILTER(WHERE status='SKIP') AS \"SKIP\" FROM observability.dq_current_results WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring} GROUP BY layer ORDER BY layer"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 60
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "text": "PASS",
+                        "color": "green"
+                      },
+                      "FAIL": {
+                        "text": "FAIL",
+                        "color": "red"
+                      },
+                      "WARN": {
+                        "text": "WARN",
+                        "color": "orange"
+                      },
+                      "SKIP": {
+                        "text": "SKIP — not applicable / not executed",
+                        "color": "blue"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PASS"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FAIL"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "WARN"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SKIP"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "layer"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "All contexts · latest full health",
+      "type": "table",
+      "description": "Always all persisted FULL contexts, independent of selectors/time range. Partial runs never replace current full health.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 4,
+        "w": 16,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT competition_id,season_id,finished_at,status,passed AS \"PASS\",failed AS \"FAIL\",warnings AS \"WARN\",skipped AS \"SKIP\" FROM observability.dq_current_executions ORDER BY competition_id,season_id"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 60
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "text": "PASS",
+                        "color": "green"
+                      },
+                      "FAIL": {
+                        "text": "FAIL",
+                        "color": "red"
+                      },
+                      "WARN": {
+                        "text": "WARN",
+                        "color": "orange"
+                      },
+                      "SKIP": {
+                        "text": "SKIP — not applicable / not executed",
+                        "color": "blue"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PASS"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 55
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FAIL"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 55
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "WARN"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 55
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SKIP"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 55
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "competition_id"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 85
+              },
+              {
+                "id": "displayName",
+                "value": "Competition"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "season_id"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 65
+              },
+              {
+                "id": "displayName",
+                "value": "Season"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "finished_at"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              },
+              {
+                "id": "displayName",
+                "value": "Last full execution"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              },
+              {
+                "id": "displayName",
+                "value": "Status"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Recent non-PASS results · history",
+      "type": "table",
+      "description": "Append-only history in the selected time range. Intentional SKIPs remain visible, distinct from failures. Only sanitized Stage 7A messages.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT checked_at,competition_id,season_id,suite,layer,dataset,rule_id,status,severity,message FROM observability.dq_rule_history WHERE $__timeFilter(checked_at) AND competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}\n  AND (${layer:sqlstring} = '__all' OR layer = ${layer:sqlstring})\n  AND (${dataset:sqlstring} = '__all' OR dataset = ${dataset:sqlstring})\n  AND (${severity:sqlstring} = '__all' OR severity = ${severity:sqlstring})\n  AND (${status:sqlstring} = '__all' OR status = ${status:sqlstring})\n  AND (${rule_id:sqlstring} = '__all' OR rule_id = ${rule_id:sqlstring}) AND status <> 'PASS' ORDER BY checked_at DESC,execution_id DESC,rule_id LIMIT 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 60
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "text": "PASS",
+                        "color": "green"
+                      },
+                      "FAIL": {
+                        "text": "FAIL",
+                        "color": "red"
+                      },
+                      "WARN": {
+                        "text": "WARN",
+                        "color": "orange"
+                      },
+                      "SKIP": {
+                        "text": "SKIP — not applicable / not executed",
+                        "color": "blue"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rule_id"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Rule history",
+                    "url": "/d/football-platform-dq?${__url_time_range}&var-competition=${competition:percentencode}&var-season=${season:percentencode}&var-rule_id=${__data.fields.rule_id}&var-layer=__all&var-dataset=__all&var-severity=__all&var-status=__all",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Rule detail · history",
+      "type": "table",
+      "description": "Filter Rule ID or click a rule in the non-PASS table. Numeric/boolean/null observations retain their real meaning; no invented numeric PASS values.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT checked_at,suite,rule_id,layer,dataset,status,severity,observed::text AS observed,expected::text AS expected,message,build_id,execution_id FROM observability.dq_rule_history WHERE $__timeFilter(checked_at) AND competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}\n  AND (${layer:sqlstring} = '__all' OR layer = ${layer:sqlstring})\n  AND (${dataset:sqlstring} = '__all' OR dataset = ${dataset:sqlstring})\n  AND (${severity:sqlstring} = '__all' OR severity = ${severity:sqlstring})\n  AND (${status:sqlstring} = '__all' OR status = ${status:sqlstring})\n  AND (${rule_id:sqlstring} = '__all' OR rule_id = ${rule_id:sqlstring}) ORDER BY checked_at DESC,execution_id DESC,rule_id LIMIT 500"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 60
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "text": "PASS",
+                        "color": "green"
+                      },
+                      "FAIL": {
+                        "text": "FAIL",
+                        "color": "red"
+                      },
+                      "WARN": {
+                        "text": "WARN",
+                        "color": "orange"
+                      },
+                      "SKIP": {
+                        "text": "SKIP — not applicable / not executed",
+                        "color": "blue"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Dataset / build traceability · current full",
+      "type": "table",
+      "description": "Build identity is traceability, not the main label. Last full execution results, detail filters apply.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT layer,dataset,build_id,max(checked_at) AS checked_at,count(*) FILTER(WHERE status='PASS') AS \"PASS\",count(*) FILTER(WHERE status='FAIL') AS \"FAIL\",count(*) FILTER(WHERE status='WARN') AS \"WARN\",count(*) FILTER(WHERE status='SKIP') AS \"SKIP\" FROM observability.dq_current_results WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}\n  AND (${layer:sqlstring} = '__all' OR layer = ${layer:sqlstring})\n  AND (${dataset:sqlstring} = '__all' OR dataset = ${dataset:sqlstring})\n  AND (${severity:sqlstring} = '__all' OR severity = ${severity:sqlstring})\n  AND (${status:sqlstring} = '__all' OR status = ${status:sqlstring})\n  AND (${rule_id:sqlstring} = '__all' OR rule_id = ${rule_id:sqlstring}) AND build_id IS NOT NULL GROUP BY layer,dataset,build_id ORDER BY layer,dataset LIMIT 200"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 60
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "text": "PASS",
+                        "color": "green"
+                      },
+                      "FAIL": {
+                        "text": "FAIL",
+                        "color": "red"
+                      },
+                      "WARN": {
+                        "text": "WARN",
+                        "color": "orange"
+                      },
+                      "SKIP": {
+                        "text": "SKIP — not applicable / not executed",
+                        "color": "blue"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "DQ executions · history (all scopes)",
+      "type": "table",
+      "description": "Each row is an actual execution, including partial scopes. No daily cadence or gap-is-failure assumption. Rule-level detail filters do not change execution counts.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT finished_at,suite,status,total_checks,passed AS \"PASS\",failed AS \"FAIL\",warnings AS \"WARN\",skipped AS \"SKIP\",airflow_dag_id,airflow_task_id,execution_id FROM observability.dq_execution_history WHERE $__timeFilter(finished_at) AND competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring} ORDER BY finished_at DESC,execution_id DESC LIMIT 200"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 60
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "text": "PASS",
+                        "color": "green"
+                      },
+                      "FAIL": {
+                        "text": "FAIL",
+                        "color": "red"
+                      },
+                      "WARN": {
+                        "text": "WARN",
+                        "color": "orange"
+                      },
+                      "SKIP": {
+                        "text": "SKIP — not applicable / not executed",
+                        "color": "blue"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Recorded volumes / xG · history",
+      "type": "timeseries",
+      "description": "Only actual persisted volume/xG observations. Values from different rules have different units: use Rule ID to isolate one metric. Informational, no anomaly thresholds. SQL NULL stays missing.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT checked_at AS \"time\",numeric_observed AS value,rule_id AS metric FROM observability.dq_rule_history WHERE $__timeFilter(checked_at) AND competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}\n  AND (${layer:sqlstring} = '__all' OR layer = ${layer:sqlstring})\n  AND (${dataset:sqlstring} = '__all' OR dataset = ${dataset:sqlstring})\n  AND (${severity:sqlstring} = '__all' OR severity = ${severity:sqlstring})\n  AND (${status:sqlstring} = '__all' OR status = ${status:sqlstring})\n  AND (${rule_id:sqlstring} = '__all' OR rule_id = ${rule_id:sqlstring}) AND numeric_observed IS NOT NULL AND rule_id ~ '(row_count|match_count|shot_count|event_count|team_shot_xg)$' ORDER BY checked_at,rule_id LIMIT 2000"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "showPoints": "always",
+            "pointSize": 5,
+            "lineWidth": 0,
+            "spanNulls": false,
+            "axisLabel": "Persisted observation"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Build / load observations · current full",
+      "type": "table",
+      "description": "Factual registered build/load timestamps observed by Stage 7A, not an inferred SLA or stale classification.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 18,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT layer,dataset,rule_id,build_id,to_timestamp(numeric_observed::double precision) AS registered_at,checked_at FROM observability.dq_current_results WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring}\n  AND (${layer:sqlstring} = '__all' OR layer = ${layer:sqlstring})\n  AND (${dataset:sqlstring} = '__all' OR dataset = ${dataset:sqlstring})\n  AND (${severity:sqlstring} = '__all' OR severity = ${severity:sqlstring})\n  AND (${status:sqlstring} = '__all' OR status = ${status:sqlstring})\n  AND (${rule_id:sqlstring} = '__all' OR rule_id = ${rule_id:sqlstring}) AND status='PASS' AND numeric_observed IS NOT NULL AND rule_id ~ '(build_timestamp|load_timestamp)$' ORDER BY layer,dataset,rule_id LIMIT 200"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "minWidth": 60
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASS": {
+                        "text": "PASS",
+                        "color": "green"
+                      },
+                      "FAIL": {
+                        "text": "FAIL",
+                        "color": "red"
+                      },
+                      "WARN": {
+                        "text": "WARN",
+                        "color": "orange"
+                      },
+                      "SKIP": {
+                        "text": "SKIP — not applicable / not executed",
+                        "color": "blue"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "Last successful full DQ",
+      "type": "stat",
+      "description": "Last successful full execution, separate from latest health. PASS can contain intentional SKIPs.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "football-metadata-dq"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 52,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "football-metadata-dq"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT extract(epoch FROM max(finished_at))*1000 AS last_success FROM observability.dq_execution_history WHERE competition_id = ${competition:sqlstring} AND season_id = ${season:sqlstring} AND suite='full' AND status='PASS'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "dateTimeAsIso"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    }
+  ]
+}

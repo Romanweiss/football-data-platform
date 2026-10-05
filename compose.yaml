@@ -33,6 +33,63 @@ x-football-airflow: &football-airflow
   networks: [football-network]
 
 services:
+  football-grafana-bootstrap:
+    image: football-python-tools:3.12
+    profiles: [grafana]
+    user: "0:0"
+    working_dir: /app
+    command: [python, infrastructure/grafana/bootstrap.py, init]
+    environment:
+      POSTGRES_HOST: football-postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - .:/app:ro
+      - football_grafana_secrets:/run/grafana-secrets
+    networks: [football-network]
+    depends_on:
+      football-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  football-grafana:
+    image: grafana/grafana:13.0.1
+    profiles: [grafana]
+    user: "472:0"
+    entrypoint: [sh, /etc/grafana/entrypoint.sh]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/grafana-secrets/admin_password
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_LOG_LEVEL: warn
+    ports:
+      - "127.0.0.1:${GRAFANA_HOST_PORT:-13000}:3000"
+    volumes:
+      - football_grafana_data:/var/lib/grafana
+      - football_grafana_secrets:/run/grafana-secrets:ro
+      - ./infrastructure/grafana/entrypoint.sh:/etc/grafana/entrypoint.sh:ro
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/etc/grafana/dashboards:ro
+    networks: [football-network]
+    depends_on:
+      football-grafana-bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
   football-airflow-bootstrap:
     <<: *football-airflow
     user: "0:0"
@@ -377,6 +434,10 @@ networks:
     driver: bridge
 
 volumes:
+  football_grafana_data:
+    name: football_grafana_data
+  football_grafana_secrets:
+    name: football_grafana_secrets
   football_airflow_db_data:
     name: football_airflow_db_data
   football_airflow_secrets:
