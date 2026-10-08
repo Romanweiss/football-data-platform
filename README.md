@@ -1,5 +1,17 @@
 # Football Data Platform
 
+## Stage 7C — conservative scheduling and platform alerts
+
+The manual 60-task context pipeline stays unchanged. Two new, initially paused
+DAGs separate weekly source discovery (Sunday 04:00 UTC) from read-only registered
+context DQ (05:00 UTC), without S3 publication or automatic ETL replay.
+Platform PostgreSQL stores deterministic incident dedup/resolution and delivery
+history. Only ERROR/FAIL opens incidents; intentional SKIP never alerts.
+Automatic alerts default to **off**; the only shipped transport is local/log.
+Grafana remains a read-only DQ viewer, not alert authority.
+Migration, enable/pause commands, dry-run, tests and limitations:
+[docs/stage7c.md](docs/stage7c.md).
+
 ## Stage 7B — Grafana Data Quality observability
 
 Optional Grafana at `http://127.0.0.1:13000` reads approved platform PostgreSQL

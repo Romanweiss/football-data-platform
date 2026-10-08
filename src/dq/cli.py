@@ -76,6 +76,9 @@ def execute(ctx, *, suite='full', layer=None, dataset=None, build_id=None, expec
             report['persisted'] = True
         except Exception:
             report['persistence_error'] = 'DQ history write failed; no successful persistence claimed'
+    if report['persisted']:
+        from src.alerts.store import after_persistence
+        report['alerts'] = after_persistence(report['execution_id'])
     return report
 
 

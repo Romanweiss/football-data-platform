@@ -25,7 +25,17 @@ class DagTests(unittest.TestCase):
             with patch("socket.socket.connect", side_effect=AssertionError("DAG parse attempted network IO")):
                 bag = DagBag(dag_folder="/opt/airflow/dags", include_examples=False)
         self.assertEqual(bag.import_errors, {})
-        self.assertEqual(set(bag.dags), {"statsbomb_context_pipeline"})
+        self.assertEqual(set(bag.dags), {"statsbomb_context_pipeline",'platform_dq_validation','statsbomb_source_discovery'})
+        for name,cron in [('platform_dq_validation','0 5 * * 0'),('statsbomb_source_discovery','0 4 * * 0')]:
+            scheduled=bag.dags[name]
+            self.assertEqual(scheduled.schedule,cron)
+            self.assertFalse(scheduled.catchup)
+            self.assertTrue(scheduled.is_paused_upon_creation)
+            self.assertEqual(scheduled.max_active_runs,1)
+            self.assertEqual(scheduled.max_active_tasks,1)
+            self.assertEqual(str(scheduled.timezone),'UTC')
+            self.assertEqual(scheduled.start_date.isoformat(),'2026-10-09T00:00:00+00:00')
+            self.assertTrue(all(t.retries==0 for t in scheduled.tasks))
         dag = bag.dags["statsbomb_context_pipeline"]
         self.assertIsNone(dag.schedule)
         self.assertEqual(dag.max_active_runs, 1)

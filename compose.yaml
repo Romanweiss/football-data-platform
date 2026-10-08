@@ -169,6 +169,9 @@ services:
     restart: unless-stopped
     environment:
       <<: *airflow-environment
+      PLATFORM_ALERTS_ENABLED: ${PLATFORM_ALERTS_ENABLED:-false}
+      PLATFORM_ALERT_PROVIDER: ${PLATFORM_ALERT_PROVIDER:-log}
+      PLATFORM_DQ_EXCLUDED_CONTEXTS: ${PLATFORM_DQ_EXCLUDED_CONTEXTS:-}
       POSTGRES_HOST: football-postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB}
@@ -382,6 +385,9 @@ services:
     working_dir: /app
     command: ["python", "--version"]
     environment:
+      PLATFORM_ALERTS_ENABLED: ${PLATFORM_ALERTS_ENABLED:-false}
+      PLATFORM_ALERT_PROVIDER: ${PLATFORM_ALERT_PROVIDER:-log}
+      PLATFORM_DQ_EXCLUDED_CONTEXTS: ${PLATFORM_DQ_EXCLUDED_CONTEXTS:-}
       CLICKHOUSE_HOST: football-clickhouse
       CLICKHOUSE_HTTP_PORT: "8123"
       CLICKHOUSE_DB: ${CLICKHOUSE_DB}

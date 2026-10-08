@@ -63,6 +63,19 @@ def registered(layer, dataset, c, build_id):
 
 def execute(request):
     step = request["step"]
+    if step == 'registered_contexts':
+        from src.common.postgres import create_postgres_connection
+        from src.orchestration.monitoring import registered_contexts
+        with create_postgres_connection() as connection:
+            return {'contexts':registered_contexts(connection)}
+    if step == 'source_discovery':
+        from src.common.postgres import create_postgres_connection
+        from src.statsbomb.discovery import discover
+        with create_postgres_connection() as connection:
+            return discover(connection,dry_run=request.get('dry_run',False),airflow=request.get('airflow'))
+    if step == 'scheduled_dq':
+        from src.orchestration.monitoring import scheduled_dq
+        return scheduled_dq(request['context'],request.get('airflow'))
     c = context(request["context"])
     snapshot = request.get("snapshot") or c
     if context(snapshot) != c:
