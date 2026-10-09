@@ -1,0 +1,5 @@
+# Development/CI only; application images retain their existing dependencies.
+-r tools.txt
+-r api.txt
+PyYAML==6.0.3
+ruff==0.14.14

@@ -1,0 +1,88 @@
+name: CI fast
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  python:
+    name: Python, API and BI contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PLATFORM_ALERTS_ENABLED: 'false'
+      AWS_EC2_METADATA_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.14'
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - run: python -m pip install -r requirements/ci.txt
+      - name: Compile and correctness lint
+        run: |
+          python -m compileall -q src application scripts infrastructure dags tests ci
+          ruff check .
+      - name: Offline pipeline, DQ, alerts, Grafana and Superset contracts
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Django API offline contracts
+        run: python -m unittest discover -s tests/application -p 'test_*.py'
+      - name: CI and repository safety contracts
+        run: |
+          python -m unittest discover -s tests/ci -p 'test_*.py'
+          python ci/check_repository.py
+  config:
+    name: Workflows and Compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: GitHub Actions syntax and expressions
+        run: docker run --rm --network none -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.11 -color
+      - name: Compose with public placeholders only
+        run: |
+          docker compose --env-file .env.example config -q
+          docker compose --env-file .env.example --profile airflow --profile grafana config -q
+          docker compose --env-file ci/empty.env -f ci/compose.yaml config -q
+          git diff --check HEAD^ HEAD
+  frontend:
+    name: Frontend unit, TypeScript, build and fixture browser
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.13.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - name: TypeScript and production build
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ci-browser
+      - name: Fixture browser failure artifacts only
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-browser-failures
+          path: frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore

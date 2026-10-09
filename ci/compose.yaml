@@ -1,0 +1,58 @@
+# Separate project, private network, no published ports, no developer env/volumes.
+name: football-ci-stage8a
+services:
+  ci-postgres:
+    image: postgres:17.6-alpine3.22
+    environment:
+      POSTGRES_DB: football_ci
+      POSTGRES_USER: ci
+      POSTGRES_PASSWORD: ci-synthetic-only
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U ci -d football_ci"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    networks: [isolated]
+  ci-clickhouse:
+    image: clickhouse/clickhouse-server:25.8.23.13-alpine
+    environment:
+      CLICKHOUSE_DB: football
+      CLICKHOUSE_USER: ci
+      CLICKHOUSE_PASSWORD: ci-synthetic-only
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    tmpfs:
+      - /var/lib/clickhouse
+      - /var/log/clickhouse-server
+    healthcheck:
+      test: [CMD-SHELL, "wget -q --spider http://127.0.0.1:8123/ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    networks: [isolated]
+  checks:
+    image: football-ci-checks:8a
+    build:
+      context: ..
+      dockerfile: ci/Dockerfile
+    environment:
+      PLATFORM_CI_EPHEMERAL: "true"
+      PLATFORM_ALERTS_ENABLED: "false"
+      PLATFORM_DQ_EXCLUDED_CONTEXTS: ""
+      POSTGRES_HOST: ci-postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: football_ci
+      POSTGRES_USER: ci
+      POSTGRES_PASSWORD: ci-synthetic-only
+      CLICKHOUSE_HOST: ci-clickhouse
+      CLICKHOUSE_HTTP_PORT: "8123"
+      CLICKHOUSE_DB: football
+      CLICKHOUSE_USER: ci
+      CLICKHOUSE_PASSWORD: ci-synthetic-only
+    tmpfs:
+      - /run/grafana-secrets
+    networks: [isolated]
+networks:
+  isolated:
+    internal: true

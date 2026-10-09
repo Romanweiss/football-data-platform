@@ -1,0 +1,133 @@
+name: CI integration
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      superset_image:
+        description: Also build the large Superset image and test its actual Jinja/dialects
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  databases:
+    name: Ephemeral PostgreSQL and ClickHouse
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ci/Dockerfile
+          tags: football-ci-checks:8a
+          load: true
+          push: false
+          cache-from: type=gha,scope=ci-checks
+          cache-to: type=gha,mode=max,scope=ci-checks
+      - name: Isolated databases (tmpfs, no developer ports/volumes)
+        run: docker compose --env-file ci/empty.env -f ci/compose.yaml up -d --wait ci-postgres ci-clickhouse
+      - name: PostgreSQL ordered migrations, replay and DQ/alert/reader integration
+        run: docker compose --env-file ci/empty.env -f ci/compose.yaml run --rm --no-deps checks python ci/databases.py postgres
+      - name: ClickHouse migrations, rollback/cutover and synthetic SQL tests
+        run: docker compose --env-file ci/empty.env -f ci/compose.yaml run --rm --no-deps checks python ci/databases.py clickhouse
+      - name: Stop only the ephemeral CI services
+        if: always()
+        run: docker compose --env-file ci/empty.env -f ci/compose.yaml stop
+  spark-airflow:
+    name: Pinned Spark synthetic and Airflow DAGs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Docker driver lets the second build resolve the first local image without a registry push.
+      - uses: docker/setup-docker-action@v4
+        with:
+          version: v29.7.2
+          daemon-config: '{"features":{"containerd-snapshotter":true}}'
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+      - name: Build existing Spark runtime (cache includes pinned S3A JARs)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/spark/Dockerfile
+          tags: football-ci-spark:8a
+          load: true
+          push: false
+          cache-from: type=gha,scope=ci-spark
+          cache-to: type=gha,mode=max,scope=ci-spark
+      - name: Synthetic Spark only, network disabled
+        run: |
+          for suite in test_event_core test_s3a_event_core test_event_domains test_lineup_domains test_matches test_gold_match_stats test_match_results test_context; do
+            docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 \
+              --mount "type=bind,source=$PWD,target=/app,readonly" --tmpfs /app/data/work:mode=1777 \
+              football-ci-spark:8a spark-submit "tests/spark/$suite.py"
+          done
+      - name: Build existing Airflow image against this run's Spark image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/airflow/Dockerfile
+          build-contexts: project_spark=docker-image://football-ci-spark:8a
+          tags: football-ci-airflow:8a
+          load: true
+          push: false
+          cache-from: type=gha,scope=ci-airflow
+          cache-to: type=gha,mode=max,scope=ci-airflow
+      - name: DAG graph, parameters, schedules and no import-time IO
+        run: docker run --rm --network none football-ci-airflow:8a python /app/tests/airflow/test_dag.py
+  application-images:
+    name: Application Docker builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/${{ matrix.image }}/Dockerfile
+          push: false
+          cache-from: type=gha,scope=ci-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=ci-${{ matrix.image }}
+  superset-image:
+    name: Optional actual Superset image contracts
+    if: github.event_name == 'workflow_dispatch' && inputs.superset_image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/superset/Dockerfile
+          tags: football-ci-superset:8a
+          load: true
+          push: false
+          cache-from: type=gha,scope=ci-superset
+          cache-to: type=gha,mode=max,scope=ci-superset
+      - name: Image dependencies and actual safe Jinja rendering
+        run: |
+          docker run --rm --network none --mount "type=bind,source=$PWD,target=/workspace,readonly" --entrypoint python football-ci-superset:8a /workspace/tests/superset/test_image.py
+          docker run --rm --network none --mount "type=bind,source=$PWD,target=/workspace,readonly" --entrypoint python football-ci-superset:8a /workspace/tests/superset/test_semantic_safety.py

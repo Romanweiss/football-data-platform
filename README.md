@@ -1,5 +1,16 @@
 # Football Data Platform
 
+## Stage 8A — repository CI
+
+GitHub Actions definitions separate fast Python/API/BI/frontend checks from
+synthetic Spark/Airflow and ephemeral PostgreSQL/ClickHouse integration gates.
+Pull requests and pushes to `master` require no real S3 credentials, developer
+`.env`, live football datasets or deployment. Fixture browser tests use a separate
+preview server; live regression checks remain manual. Workflows are locally
+validated; the first remote GitHub run is still pending.
+Inventory, runtime pins, local PowerShell commands and limitations:
+[docs/stage8a.md](docs/stage8a.md).
+
 ## Stage 7C — conservative scheduling and platform alerts
 
 The manual 60-task context pipeline stays unchanged. Two new, initially paused

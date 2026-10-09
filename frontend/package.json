@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && vite build",
     "test": "vitest run",
-    "test:smoke": "playwright test"
+    "test:smoke": "playwright test",
+    "test:ci-browser": "playwright test --config playwright.ci.config.ts"
   },
   "dependencies": { "react": "19.3.0", "react-dom": "19.3.0" },
   "devDependencies": {
