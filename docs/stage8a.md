@@ -255,6 +255,7 @@ Docker build and Spark/Airflow parity (no registry publication):
 docker build -f docker/api/Dockerfile -t football-ci-api:8a .
 docker build -f docker/web/Dockerfile -t football-ci-web:8a .
 docker build -f docker/spark/Dockerfile -t football-ci-spark:8a .
+New-Item -ItemType Directory -Force -Path data/work | Out-Null
 foreach ($ciSuite in @('test_event_core','test_s3a_event_core','test_event_domains','test_lineup_domains','test_matches','test_gold_match_stats','test_match_results','test_context')) {
   docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 --mount "type=bind,source=${PWD},target=/app,readonly" --tmpfs /app/data/work:mode=1777 football-ci-spark:8a spark-submit "tests/spark/$ciSuite.py"
   if ($LASTEXITCODE -ne 0) { throw "Spark suite failed: $ciSuite" }
@@ -441,3 +442,36 @@ Recommended master policy: require a PR, require those proven checks, prevent
 force pushes, and optionally require an up-to-date branch. No repository settings
 were changed. Remote baseline results will be recorded below after the real
 workflow runs; local success alone does not establish remote acceptance.
+
+### First hosted run and targeted fix
+
+First pushed commit: `060f322127396d077e11b6e67c5373a18146ebbd`.
+An initial git push was rejected with HTTP 403 because local Credential Manager
+selected `romanweizen`; the user completed browser login as `Romanweiss`, then
+the non-force push succeeded. A repository-local credential username now selects
+the correct account. No token was placed in the remote URL or workflow.
+
+- [First fast run 37951915302](https://github.com/Romanweiss/football-data-platform/actions/runs/37951915302):
+  **SUCCESS**, including both exact Python versions, 525 offline + 26 API + 9 CI
+  tests per version, frontend unit/type/build and both fixture Chromium viewports.
+  Job times: Python 3.10.12 27s, Python 3.12.14 24s, config 18s, frontend 47s.
+- [First integration run 37951915062](https://github.com/Romanweiss/football-data-platform/actions/runs/37951915062):
+  **FAILURE**, solely at Spark container startup. API build (40s), web build (56s),
+  database job (81s), ordered/replayed migrations, 10 PostgreSQL and 32 ClickHouse
+  tests passed. Spark **cold build passed in 182s**, without the previous apt 502.
+  Spark/Airflow job failed after 210s because the fresh checkout lacked ignored
+  `data/work`, and Docker could not create its tmpfs target under `/app:ro`.
+
+The fix creates only the empty runner `data/work` directory before the read-only
+repository bind and writable tmpfs mount. A local Git archive reproducing the
+clean checkout (no ignored directory) passed all 16 event-core Spark tests after
+the same directory initialization, Docker exit code 0. No tests were removed,
+disabled, made non-blocking, or changed analytically.
+
+Artifact inspection also revealed build-push-action's default automatic
+`.dockerbuild` uploads (four first-run records). Future builds set
+`DOCKER_BUILD_RECORD_UPLOAD=false`, retaining job summaries and cache while
+restricting artifacts to the explicitly configured fixture-browser failure path.
+See the action's [documented artifact control](https://github.com/docker/build-push-action#environment-variables).
+The first fast run produced no artifacts. Subsequent-run cache behavior and full
+integration acceptance are pending the corrected workflow's execution.

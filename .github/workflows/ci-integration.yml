@@ -11,6 +11,9 @@ on:
         default: false
 permissions:
   contents: read
+env:
+  # Keep artifacts limited to explicitly configured fixture-browser failures.
+  DOCKER_BUILD_RECORD_UPLOAD: 'false'
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -70,6 +73,9 @@ jobs:
           cache-to: type=gha,mode=max,scope=ci-spark
       - name: Synthetic Spark only, network disabled
         run: |
+          # Ignored data/work exists locally but not in a fresh Git checkout.
+          # The tmpfs mount needs an existing target inside the read-only bind.
+          mkdir -p data/work
           for suite in test_event_core test_s3a_event_core test_event_domains test_lineup_domains test_matches test_gold_match_stats test_match_results test_context; do
             docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 \
               --mount "type=bind,source=$PWD,target=/app,readonly" --tmpfs /app/data/work:mode=1777 \
