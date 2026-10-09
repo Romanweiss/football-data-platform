@@ -1,7 +1,7 @@
 # Stage 8A — CI architecture and automated quality gates
 
-The repository now has secret-free GitHub Actions definitions, tested locally.
-**No workflow has been pushed or run on GitHub. Remote CI success is not claimed.**
+Stage 8A added secret-free GitHub Actions definitions and local verification.
+Stage 8A-R's actual hosted-run evidence and acceptance status are recorded below.
 There is no deployment, image publication, cloud provisioning or release step.
 
 ## Inspection and workflow boundaries
@@ -298,16 +298,17 @@ the already validated `football-spark-runtime:6c1-0b540b6bee67` image, tagged lo
 as `football-ci-spark:8a`; Airflow was built against that same existing image.
 This is not evidence of a successful fresh Spark download/build on GitHub.
 
-The first actual GitHub run must still prove hosted-runner runtime downloads,
-cold Spark/S3A asset availability, Docker local named-context/cache compatibility,
-cache read/write permissions and quotas on forks, browser Linux dependencies,
-job timeouts/resources and artifact behavior. No remote SUCCESS badge/status or
-branch-protection configuration is claimed. Exact image tags and top-level Python
+At the end of local Stage 8A, hosted downloads, cold Spark/S3A assets, Docker
+named-context/cache compatibility, Linux browsers, budgets and artifact behavior
+were unproven. Stage 8A-R's evidence below supersedes those first-run assumptions
+for same-repository push runs; fork execution/cache quotas remain untested.
+Branch protection is still a recommendation, not an applied setting.
+Exact image tags and top-level Python
 pins are intentional, but Python transitive dependencies/base-image tags and
 hosted-runner patch releases are not a complete immutable lock.
 
-Recommended Stage 8B: run the workflows remotely through the normal reviewed
-Git process, tune budgets from measured runs, add required-check policy, strengthen
+Recommended Stage 8B: adopt the proven required-check policy through the normal
+reviewed Git process, tune budgets from measured runs, strengthen
 action SHA/dependency locking and secret scanning, and consider non-blocking
 coverage reporting. Deployment/CD requires its own design and authorization.
 
@@ -405,38 +406,37 @@ network access; fixture Chromium uses its own preview port. Artifact upload is
 limited to fixture-browser failure results. These are static observations; actual
 hosted execution, cache behavior and artifact contents remain unverified.
 
-### Required manual prerequisite and subsequent acceptance
+### Remote execution procedure
 
-Create or identify the correct GitHub repository under your own account or
-organization. For a new repository, create it empty (without a generated README,
-license or gitignore) so existing history can be pushed without a merge or rewrite.
-Provide its URL, or substitute its actual owner/name in this local command:
+The user created the empty repository under `Romanweiss`, without generated files.
+After verification, the remote was configured with:
 
 ```powershell
-git remote add origin https://github.com/<OWNER>/<REPOSITORY>.git
+git remote add origin https://github.com/Romanweiss/football-data-platform.git
 ```
 
-That command is preparation only, not a push. Do not put tokens in the URL.
-After verifying the owner/repository, completing the parity matrix and committing
-the reviewed changes, the first non-force push is:
+The reviewed matrix changes were committed and pushed without force:
 
 ```powershell
 git push -u origin master
 ```
 
-No commit has been tested remotely. Both workflow results, run IDs/links, job
-durations, hosted-only failures/fixes, cold Spark build results, cache hits and
-artifact contents are **not available**. The earlier Ubuntu apt HTTP 502 remains
-an unresolved cold-download risk; do not add mirror changes or hide the failure
-without observing it on the hosted runner. If reproduced as a transient package
-download failure, assess a bounded apt retry while preserving signature checks.
+Commands use Git Credential Manager; no token belongs in the remote URL or
+repository. Actual run IDs, outcomes and timings appear below. The earlier local
+Ubuntu apt 502 did not recur in the first hosted cold build. No mirror, package
+signature checking, TLS verification or apt retry settings were changed.
 
-Provisional required checks after successful remote acceptance are the two fast
-Python matrix jobs, `Workflows and Compose`,
-`Frontend unit, TypeScript, build and fixture browser`,
-`Ephemeral PostgreSQL and ClickHouse`, `Pinned Spark synthetic and Airflow DAGs`,
-and both `Application Docker builds` matrix entries (api/web). Confirm their
-exact check-run names from GitHub after the final matrix is implemented.
+The exact check-run names were verified through GitHub's commit checks API:
+
+- `Python 3.10.12, API and BI contracts`
+- `Python 3.12.14, API and BI contracts`
+- `Workflows and Compose`
+- `Frontend unit, TypeScript, build and fixture browser`
+- `Ephemeral PostgreSQL and ClickHouse`
+- `Pinned Spark synthetic and Airflow DAGs`
+- `Application Docker builds (api)`
+- `Application Docker builds (web)`
+
 The optional Superset dispatch-only job should not be a required PR check.
 Recommended master policy: require a PR, require those proven checks, prevent
 force pushes, and optionally require an up-to-date branch. No repository settings
@@ -473,5 +473,70 @@ Artifact inspection also revealed build-push-action's default automatic
 `DOCKER_BUILD_RECORD_UPLOAD=false`, retaining job summaries and cache while
 restricting artifacts to the explicitly configured fixture-browser failure path.
 See the action's [documented artifact control](https://github.com/docker/build-push-action#environment-variables).
-The first fast run produced no artifacts. Subsequent-run cache behavior and full
-integration acceptance are pending the corrected workflow's execution.
+The first fast run produced no artifacts. All four first-run build records were
+downloaded and checked: only OCI/BuildKit metadata/log/provenance records were
+listed, with no supported high-confidence secret signatures. This is the same
+limited signature audit, not a claim of detecting every arbitrary secret.
+
+The corrected commit `413d8bc` started
+[fast run 37952829774](https://github.com/Romanweiss/football-data-platform/actions/runs/37952829774)
+and [integration run 37952829652](https://github.com/Romanweiss/football-data-platform/actions/runs/37952829652).
+Both completed with **SUCCESS** for the same commit
+`413d8bcfe278980d7bb12d1bbdfe312f05cf9d4c`. API/web/database logs confirm restored pip cache
+for both Python versions, npm cache and Docker layer `CACHED` hits. Cached Spark
+build took 64s versus the first cold build's 182s. Spark logs confirm all eight
+suites (16 + 9 + 21 + 25 + 8 + 10 + 6 + 2 = **97** tests); the actual Airflow
+image then built against this run's local Spark image and passed **2** DAG tests.
+The same ephemeral migration/test gates passed again, without real platform IO.
+
+### Accepted remote baseline and measured budget
+
+| Check / step | Observed second-run duration |
+| --- | --- |
+| CI fast workflow (wall, including scheduling/cleanup) | 49s |
+| Python 3.10.12 / Python 3.12.14 jobs | 27s / 23s |
+| Workflows/Compose job | 14s |
+| Frontend unit/type/build/fixture browser job | 45s |
+| CI integration workflow (wall) | 519s (8m39s) |
+| Ephemeral PostgreSQL/ClickHouse job | 58s |
+| API / web Docker jobs | 17s / 17s (build steps 4s each) |
+| Spark/Airflow job | 515s (8m35s) |
+| Cached Spark build | 64s |
+| All Spark synthetic suites | 344s (5m44s) |
+| First Airflow build in this CI baseline | 78s |
+| Airflow DAG test step | 3s |
+
+Times are timestamps from GitHub run/job/step APIs, rounded to seconds, not an
+SLA. Spark synthetic execution dominates; layer caching saves download/build
+time but does not skip tests. Current 10–45 minute job limits have headroom; no
+resource optimization or test reduction was introduced to get green.
+
+Both accepted run artifact lists are **empty** after disabling automatic Docker
+records. Browser failure uploads remain explicitly scoped to synthetic screenshots
+and results, with seven-day retention; no failure screenshot/trace was produced
+by the passing fixture tests, so an actual failure-artifact contents test remains
+unexercised. There are no real credentials, database dumps or full football
+datasets in uploaded artifacts for the accepted baseline.
+
+Local post-fix gates passed: actionlint 1.7.11, repository secret-signature/policy
+checks, nine CI contracts, the clean-checkout Spark reproduction and
+`git diff --check`. The earlier full Python compatibility matrix remains green;
+YAML/artifact/documentation edits required no additional application changes.
+
+Stage 8A-R now establishes a remote baseline: both intended workflows passed on
+the same corrected commit, with a real cold Spark build and subsequent cache
+restore evidence. The optional large Superset image job remains deliberately
+dispatch-only; fast Superset safety/config contracts passed on each matrix run.
+PR/fork execution, optional dispatch, artifact-on-failure, runner variability and
+future upstream availability are remaining acceptance scopes, not claimed as
+tested. No failing test was skipped or made non-blocking. No CD, registry push,
+real service mutation, branch-protection change or history rewrite occurred.
+
+Stage 8B can proceed from these verified check names and timings: consider the
+recommended master policy, exercise normal PR/fork CI, strengthen action/dependency
+locking and evaluate non-blocking coverage. Any repository-policy write or CD
+still requires explicit scope/authorization.
+
+Stage 8A-R tracked changes: `.github/workflows/ci-fast.yml`,
+`.github/workflows/ci-integration.yml`, `ci/Dockerfile`, new `ci/run_unittest.py`,
+`tests/ci/test_contract.py`, `tests/test_etl_context.py`, and this runbook.
