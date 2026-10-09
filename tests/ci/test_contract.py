@@ -8,11 +8,56 @@ from unittest.mock import patch
 import yaml
 from ci.check_repository import workflow_contract, secret_findings
 from ci.databases import guard
+from ci.run_unittest import enter_context, install_compatibility
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class CIContractTests(unittest.TestCase):
+    def test_context_compatibility_retains_return_value_and_deferred_cleanup(self):
+        calls = []
+        class Context:
+            def __enter__(self):
+                calls.append('enter')
+                return 'value'
+            def __exit__(self, *args):
+                calls.append(args)
+        case = unittest.TestCase()
+        self.assertEqual(enter_context(case, Context()), 'value')
+        self.assertEqual(calls, ['enter'])
+        case.doCleanups()
+        self.assertEqual(calls, ['enter', (None, None, None)])
+
+    def test_context_cleanup_runs_after_failed_test_without_hiding_failure(self):
+        calls = []
+        class Context:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                calls.append(args)
+                return True
+        class FailingCase(unittest.TestCase):
+            def runTest(self):
+                enter_context(self, Context())
+                self.fail('synthetic failure')
+        result = FailingCase().run()
+        self.assertEqual(len(result.failures), 1)
+        self.assertEqual(calls, [(None, None, None)])
+
+    def test_context_compatibility_preserves_native_method_when_available(self):
+        original = getattr(unittest.TestCase, 'enterContext', None)
+        install_compatibility()
+        self.assertIs(unittest.TestCase.enterContext, original or enter_context)
+
+    def test_fast_python_gate_covers_both_actual_runtime_versions(self):
+        document = yaml.load((ROOT / '.github/workflows/ci-fast.yml').read_text(), Loader=yaml.BaseLoader)
+        job = document['jobs']['python']
+        self.assertEqual(job['strategy']['matrix']['python-version'], ['3.10.12', '3.12.14'])
+        self.assertEqual(job['strategy']['fail-fast'], 'false')
+        setup = next(step for step in job['steps'] if step.get('uses', '').startswith('actions/setup-python@'))
+        self.assertEqual(setup['with']['python-version'], '${{ matrix.python-version }}')
+        self.assertIn('${{ matrix.python-version }}', job['name'])
+
     def test_workflows_are_read_only_and_secret_free(self):
         for path in (ROOT / '.github/workflows').glob('*.yml'):
             document = yaml.load(path.read_text(), Loader=yaml.BaseLoader)

@@ -11,9 +11,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   python:
-    name: Python, API and BI contracts
+    name: Python ${{ matrix.python-version }}, API and BI contracts
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10.12', '3.12.14']
     env:
       PLATFORM_ALERTS_ENABLED: 'false'
       AWS_EC2_METADATA_DISABLED: 'true'
@@ -23,7 +27,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.12.14'
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: requirements/*.txt
       - run: python -m pip install -r requirements/ci.txt
@@ -32,12 +36,12 @@ jobs:
           python -m compileall -q src application scripts infrastructure dags tests ci
           ruff check .
       - name: Offline pipeline, DQ, alerts, Grafana and Superset contracts
-        run: python -m unittest discover -s tests -p 'test_*.py'
+        run: python ci/run_unittest.py discover -s tests -p 'test_*.py'
       - name: Django API offline contracts
-        run: python -m unittest discover -s tests/application -p 'test_*.py'
+        run: python ci/run_unittest.py discover -s tests/application -p 'test_*.py'
       - name: CI and repository safety contracts
         run: |
-          python -m unittest discover -s tests/ci -p 'test_*.py'
+          python ci/run_unittest.py discover -s tests/ci -p 'test_*.py'
           python ci/check_repository.py
   config:
     name: Workflows and Compose

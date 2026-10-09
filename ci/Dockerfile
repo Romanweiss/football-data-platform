@@ -1,4 +1,5 @@
-FROM python:3.12.14-slim-bookworm
+ARG PYTHON_VERSION=3.12.14
+FROM python:${PYTHON_VERSION}-slim-bookworm
 WORKDIR /workspace
 COPY requirements/ /workspace/requirements/
 RUN python -m pip install --no-cache-dir -r requirements/ci.txt

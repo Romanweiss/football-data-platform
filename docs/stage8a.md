@@ -322,3 +322,122 @@ offline suite's local Docker command mounts the repository read-only so existing
 tests can also inspect Git-ignored-from-build configuration such as `.gitignore`.
 Application code, analytical/DQ semantics, runtime Dockerfiles and migrations
 remain unchanged.
+
+## Stage 8A-R — remote acceptance
+
+Inspection on 2026-10-09 started from committed Stage 8A:
+`ee29e6cf17bb6947b348a94c8077d16fc11f78da` (`ci: add automated quality gates`),
+branch `master`, initially clean working tree. The initial preflight stopped
+because no Git remote was configured. The user subsequently created the empty
+public repository `Romanweiss/football-data-platform` and explicitly authorized
+the first push and remote validation. Its owner/name, empty refs, and push access
+were verified; `origin` now points to
+`https://github.com/Romanweiss/football-data-platform.git` for both fetch and push.
+The existing `master` convention is retained, consistent with workflow triggers;
+the GitHub example's `main` rename is not needed for this existing project.
+GitHub CLI is not installed; Actions are inspected through the API.
+
+### Actual runtime parity
+
+Version commands were executed in the existing images with `--network none`,
+without developer environment injection, mounts or service connections:
+
+| Existing image / interpreter | Observed version | Current CI coverage |
+| --- | --- | --- |
+| `football-python-tools:3.12` / `python` | Python 3.12.14 | fast Python job and CI runner |
+| `football-api:5a` / `python` | Python 3.12.14 | fast API tests and API Docker build |
+| `football-spark-runtime:6c1-0b540b6bee67` / `/usr/bin/python3` | Python 3.10.12 | synthetic Spark job uses this runtime family |
+| `football-airflow:3.2.2` / `/usr/bin/python3` | Python 3.10.12 | Airflow project runtime and DAG integration |
+| `football-web:5b` / `node` | Node 24.13.0 | frontend job pins 24.13.0 |
+
+Stage 6C's Python 3.10.12 project interpreter is still authoritative for Airflow
+project subprocesses and Spark. The 3.12.14 tools/API runtime is also intentional;
+there is no single Python version shared by all deployed components.
+
+**Parity decision: option B**, a small Python 3.10.12 / 3.12.14 compatibility
+matrix for the fast Python gate, preserving existing Spark/Airflow image tests
+and Node 24.13.0. This exercises shared orchestration/loader/DQ code on the actual
+project interpreter as well as the tools/API interpreter. It does not change
+application runtimes or add a broad OS/runtime matrix. The matrix is implemented
+in `ci-fast.yml`, with independent version-labelled jobs and `fail-fast: false`.
+Both exact versions have Linux x64 Ubuntu 24.04 entries in the official
+[setup-python version manifest](https://github.com/actions/python-versions/blob/main/versions-manifest.json).
+`ci/Dockerfile` accepts `--build-arg PYTHON_VERSION=3.10.12` for local reproduction;
+its default remains 3.12.14. A CI-contract regression verifies both runtime pins
+and that the setup action actually receives the matrix version.
+
+Local matrix verification passed on both Python 3.10.12 and 3.12.14: 525 offline,
+26 API and 9 CI-contract tests per interpreter, plus compile checks. Python 3.10
+initially exposed test-harness incompatibilities: `TestCase.enterContext` is absent
+and argparse exits with code 2 for missing required arguments. `ci/run_unittest.py`
+adds only the missing context cleanup method, then invokes standard unittest
+discovery. Native implementations are preserved, cleanup after a failing test is
+verified, and failures remain failures. The snapshot-argument test accepts each
+stdlib's documented error form while checking exit code 2 and all four missing
+option names. No application/analytical behavior or test selection changed.
+
+For local matrix reproduction, build `ci/Dockerfile` with `PYTHON_VERSION` set to
+each exact version and mount the repository read-only, then run:
+
+```powershell
+python ci/run_unittest.py discover -s tests -p 'test_*.py'
+python ci/run_unittest.py discover -s tests/application -p 'test_*.py'
+python ci/run_unittest.py discover -s tests/ci -p 'test_*.py'
+```
+
+These are the same stdlib tests as before; the wrapper is needed for Python 3.10.
+
+### Safety and static review
+
+`git check-ignore .env keys.txt`, `python ci/check_repository.py`, and actionlint
+1.7.11 passed. Ignored credential files were not opened. The tracked-file scan
+reported no supported high-confidence secret signatures; this is the limited
+scanner described above, not a full historical or arbitrary-secret audit.
+Workflow credentials are only explicit disposable CI database values.
+
+Both workflows retain `contents: read`, public PR execution, no project Secrets,
+no persisted checkout credential, and no registry publication. Hosted steps use
+bash syntax, repository-relative build paths, an explicit frontend directory,
+lockfile/requirements cache paths, and isolated CI service names. Database state
+is tmpfs with no developer mounts or published ports. Spark/Airflow tests disable
+network access; fixture Chromium uses its own preview port. Artifact upload is
+limited to fixture-browser failure results. These are static observations; actual
+hosted execution, cache behavior and artifact contents remain unverified.
+
+### Required manual prerequisite and subsequent acceptance
+
+Create or identify the correct GitHub repository under your own account or
+organization. For a new repository, create it empty (without a generated README,
+license or gitignore) so existing history can be pushed without a merge or rewrite.
+Provide its URL, or substitute its actual owner/name in this local command:
+
+```powershell
+git remote add origin https://github.com/<OWNER>/<REPOSITORY>.git
+```
+
+That command is preparation only, not a push. Do not put tokens in the URL.
+After verifying the owner/repository, completing the parity matrix and committing
+the reviewed changes, the first non-force push is:
+
+```powershell
+git push -u origin master
+```
+
+No commit has been tested remotely. Both workflow results, run IDs/links, job
+durations, hosted-only failures/fixes, cold Spark build results, cache hits and
+artifact contents are **not available**. The earlier Ubuntu apt HTTP 502 remains
+an unresolved cold-download risk; do not add mirror changes or hide the failure
+without observing it on the hosted runner. If reproduced as a transient package
+download failure, assess a bounded apt retry while preserving signature checks.
+
+Provisional required checks after successful remote acceptance are the two fast
+Python matrix jobs, `Workflows and Compose`,
+`Frontend unit, TypeScript, build and fixture browser`,
+`Ephemeral PostgreSQL and ClickHouse`, `Pinned Spark synthetic and Airflow DAGs`,
+and both `Application Docker builds` matrix entries (api/web). Confirm their
+exact check-run names from GitHub after the final matrix is implemented.
+The optional Superset dispatch-only job should not be a required PR check.
+Recommended master policy: require a PR, require those proven checks, prevent
+force pushes, and optionally require an up-to-date branch. No repository settings
+were changed. Remote baseline results will be recorded below after the real
+workflow runs; local success alone does not establish remote acceptance.

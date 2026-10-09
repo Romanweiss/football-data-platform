@@ -4,7 +4,7 @@ import io
 import json
 import os
 import unittest
-from contextlib import ExitStack, redirect_stdout
+from contextlib import ExitStack, redirect_stdout, redirect_stderr
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -52,7 +52,18 @@ class SourceContextTests(unittest.TestCase):
         args = parser.parse_args(["--competition-id", "7", "--season-id", "9", "--parent-sha256", "a" * 64,
                                   "--bronze-max-id", "123"])
         self.assertEqual((args.competition_id, args.season_id, args.bronze_max_id), (7, 9, 123))
-        with self.assertRaises(argparse.ArgumentError): parser.parse_args([])
+        # Python 3.10 exits for missing required args even with exit_on_error=False;
+        # newer argparse raises ArgumentError. Both must reject the missing snapshot.
+        errors = io.StringIO()
+        with redirect_stderr(errors), self.assertRaises((argparse.ArgumentError, SystemExit)) as raised:
+            parser.parse_args([])
+        if isinstance(raised.exception, SystemExit):
+            self.assertEqual(raised.exception.code, 2)
+            detail = errors.getvalue()
+        else:
+            detail = str(raised.exception)
+        for option in ('--competition-id', '--season-id', '--parent-sha256', '--bronze-max-id'):
+            self.assertIn(option, detail)
 
     def test_parent_sql_binds_context_url_and_exact_hash_and_children_cutoff(self):
         connection = MagicMock()
