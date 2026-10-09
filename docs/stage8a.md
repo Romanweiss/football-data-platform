@@ -540,3 +540,4 @@ still requires explicit scope/authorization.
 Stage 8A-R tracked changes: `.github/workflows/ci-fast.yml`,
 `.github/workflows/ci-integration.yml`, `ci/Dockerfile`, new `ci/run_unittest.py`,
 `tests/ci/test_contract.py`, `tests/test_etl_context.py`, and this runbook.
+README's concise CI introduction now points to the proven hosted baseline.
