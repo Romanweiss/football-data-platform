@@ -339,6 +339,7 @@ services:
     build:
       context: .
       dockerfile: docker/web/Dockerfile
+      target: dev
     environment:
       API_PROXY_TARGET: http://football-api:8000
     ports:
@@ -357,6 +358,7 @@ services:
     build:
       context: .
       dockerfile: docker/api/Dockerfile
+      target: dev
     working_dir: /app
     environment:
       CLICKHOUSE_HOST: football-clickhouse
@@ -368,6 +370,52 @@ services:
       API_ALLOWED_HOSTS: localhost,127.0.0.1,football-api
     ports:
       - "127.0.0.1:${API_HOST_PORT:-18000}:8000"
+    networks:
+      - football-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; r = urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4); assert r.status == 200"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  football-web-prod:
+    profiles: [app-prod]
+    image: football-web:8b
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+      target: production
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-18090}:8080"
+    depends_on:
+      football-api-prod:
+        condition: service_healthy
+    networks:
+      - football-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  football-api-prod:
+    profiles: [app-prod]
+    image: football-api:8b
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: production
+    environment:
+      API_SERVING_MODE: production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-}
+      API_ALLOWED_HOSTS: localhost,127.0.0.1,football-api-prod
+      CLICKHOUSE_HOST: football-clickhouse
+      CLICKHOUSE_HTTP_PORT: "8123"
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${SUPERSET_CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${SUPERSET_CLICKHOUSE_PASSWORD}
     networks:
       - football-network
     healthcheck:

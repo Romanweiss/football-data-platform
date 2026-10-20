@@ -49,7 +49,7 @@ def main():
     findings = []
     for name in filter(None, tracked):
         path = Path(name)
-        assert path.name not in ('.env', 'keys.txt'), 'Credential file is tracked'
+        assert path.name not in ('.env', '.passes', 'keys.txt'), 'Credential file is tracked'
         if path.suffix.lower() in ('.png', '.jpg', '.jpeg', '.ico', '.woff2', '.parquet'):
             continue
         content = (ROOT / path).read_text(encoding='utf-8', errors='replace')
@@ -57,8 +57,8 @@ def main():
     for path, line, kind in findings:
         print(f'{path}:{line}: suspected {kind}; value suppressed')
     assert not findings, 'Review suspected committed credential signatures privately'
-    result = subprocess.run(['git', 'check-ignore', '.env', 'keys.txt'], cwd=ROOT, capture_output=True, text=True)
-    assert result.returncode == 0 and set(result.stdout.splitlines()) == {'.env', 'keys.txt'}, 'Local secrets must stay ignored'
+    result = subprocess.run(['git', 'check-ignore', '.env', '.passes', 'keys.txt'], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0 and set(result.stdout.splitlines()) == {'.env', '.passes', 'keys.txt'}, 'Local secrets must stay ignored'
     print('Workflow, environment-template and tracked-file secret-signature checks passed')
 
 

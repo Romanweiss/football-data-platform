@@ -1,5 +1,6 @@
 # Local environment and credentials
 .env
+.passes
 
 # Python cache and tooling
 __pycache__/

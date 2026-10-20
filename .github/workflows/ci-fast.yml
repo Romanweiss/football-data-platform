@@ -57,6 +57,7 @@ jobs:
       - name: Compose with public placeholders only
         run: |
           docker compose --env-file .env.example config -q
+          docker compose --env-file .env.example --profile app-prod config -q
           docker compose --env-file .env.example --profile airflow --profile grafana config -q
           docker compose --env-file ci/empty.env -f ci/compose.yaml config -q
           git diff --check HEAD^ HEAD

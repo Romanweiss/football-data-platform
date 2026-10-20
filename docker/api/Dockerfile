@@ -1,4 +1,4 @@
-FROM python:3.12.14-slim-bookworm
+FROM python:3.12.14-slim-bookworm AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -13,4 +13,11 @@ COPY manage.py /app/manage.py
 COPY scripts/check_application_api.py /app/scripts/check_application_api.py
 USER api
 EXPOSE 8000
+
+FROM base AS dev
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000", "--noreload"]
+
+FROM base AS production
+ENV API_SERVING_MODE=production
+COPY docker/api/gunicorn.conf.py /app/gunicorn.conf.py
+CMD ["gunicorn", "--config", "gunicorn.conf.py", "application.wsgi:application"]

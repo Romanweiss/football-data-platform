@@ -111,9 +111,14 @@ jobs:
         with:
           context: .
           file: docker/${{ matrix.image }}/Dockerfile
+          target: production
+          tags: football-ci-${{ matrix.image }}:8b
+          load: true
           push: false
           cache-from: type=gha,scope=ci-${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=ci-${{ matrix.image }}
+      - name: Non-root production image, configuration and shipped-content audit
+        run: python ci/check_delivery.py --audit-image football-ci-${{ matrix.image }}:8b --kind ${{ matrix.image }}
   superset-image:
     name: Optional actual Superset image contracts
     if: github.event_name == 'workflow_dispatch' && inputs.superset_image

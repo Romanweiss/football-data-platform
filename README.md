@@ -1,5 +1,18 @@
 # Football Data Platform
 
+## Stage 8B — local production-like application serving
+
+Opt-in `app-prod` serves compiled React through non-root Nginx at
+`http://127.0.0.1:18090`, with same-origin `/api/` forwarded to an internal
+Gunicorn/Django API. Existing Vite/Django development services remain available.
+No public deployment, ETL or data/BI changes. Production settings require a
+runtime Django secret; the API reuses the existing SELECT-only ClickHouse reader.
+Local live acceptance passed for WC2022 and Bundesliga on desktop/mobile,
+including dev regression, canonical navigation/localization and application
+restart/recovery. Private runtime credentials were reconciled by the operator.
+Architecture, exact PowerShell operations, verification evidence and limitations:
+[docs/stage8b.md](docs/stage8b.md).
+
 ## Stage 8A — repository CI
 
 GitHub Actions definitions separate fast Python/API/BI/frontend checks from
