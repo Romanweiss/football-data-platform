@@ -22,6 +22,11 @@ jobs:
     name: Synthetic S3 recovery and real Windows ACLs
     runs-on: windows-2022
     timeout-minutes: 25
+    defaults:
+      run:
+        # ACL helpers spawn Windows PowerShell through Python. Avoid inheriting
+        # PowerShell 7 module paths, which break Windows PowerShell autoloading.
+        shell: powershell
     env:
       AWS_EC2_METADATA_DISABLED: 'true'
       PLATFORM_ALERTS_ENABLED: 'false'

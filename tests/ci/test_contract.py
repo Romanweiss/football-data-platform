@@ -35,6 +35,7 @@ class CIContractTests(unittest.TestCase):
         integration = yaml.load((ROOT / '.github/workflows/ci-integration.yml').read_text(), Loader=yaml.BaseLoader)
         job = integration['jobs']['s3-recovery-windows']
         self.assertEqual(job['runs-on'], 'windows-2022')
+        self.assertEqual(job['defaults']['run']['shell'], 'powershell')
         self.assertGreaterEqual(int(job['timeout-minutes']), 20)
         setup = next(s for s in job['steps'] if s.get('uses', '').startswith('actions/setup-python@'))
         self.assertEqual(setup['with']['python-version'], '3.12.10')
