@@ -40,6 +40,24 @@ jobs:
           # Synthetic ACL coverage only; Linux/production pins remain unchanged.
           python-version: '3.12.10'
       - run: python -m pip install -r requirements/recovery-s3.txt
+      - name: Non-secret Windows token and disposable-directory ownership diagnostics
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+          $probe = Join-Path $env:RUNNER_TEMP ('football-ci-acl-probe-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $probe | Out-Null
+          try {
+            $owner = (Get-Acl -LiteralPath $probe).GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+            @{
+              token_owner_is_user = ($identity.Owner.Value -eq $identity.User.Value)
+              token_owner_is_administrators = ($identity.Owner.Value -eq 'S-1-5-32-544')
+              new_directory_owner_is_user = ($owner -eq $identity.User.Value)
+              new_directory_owner_is_administrators = ($owner -eq 'S-1-5-32-544')
+            } | ConvertTo-Json -Compress
+          } finally {
+            # Only the new empty probe directory; never recursive cleanup.
+            Remove-Item -LiteralPath $probe -Force
+          }
       - name: Fake transport only; network guard; real temporary-directory ACL checks
         run: python ci/check_s3_recovery.py
   recovery:
