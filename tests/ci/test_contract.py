@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 import yaml
-from ci.check_repository import workflow_contract, secret_findings
+from ci.check_repository import PUBLICATION_REQUIRED, publication_contract, workflow_contract, secret_findings
 from ci.databases import guard
 from ci.run_unittest import enter_context, install_compatibility
 
@@ -14,6 +14,19 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CIContractTests(unittest.TestCase):
+    def test_publication_requires_all_delivery_and_recovery_sources_in_git(self):
+        publication_contract(PUBLICATION_REQUIRED)
+        for missing in PUBLICATION_REQUIRED:
+            with self.subTest(missing=missing), self.assertRaisesRegex(AssertionError, 'missing from Git index'):
+                publication_contract(PUBLICATION_REQUIRED - {missing})
+
+    def test_publication_rejects_private_artifacts_before_content_reads(self):
+        for name in ('.env', '.passes', 'keys.txt', 'backups/manifest.json', 'backups/production.dump.enc',
+                     '.recovery-keys/recovery.key', 'data/work/state.json', 'restore.sql.dump',
+                     'frontend/node_modules/package.json', 'frontend/test-results/report.json'):
+            with self.subTest(name=name), self.assertRaises(AssertionError):
+                publication_contract(PUBLICATION_REQUIRED | {name})
+
     def test_context_compatibility_retains_return_value_and_deferred_cleanup(self):
         calls = []
         class Context:

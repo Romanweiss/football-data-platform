@@ -1,0 +1,2 @@
+# Host-side optional backup CLI only; no application/runtime dependency changes.
+cryptography==50.0.2

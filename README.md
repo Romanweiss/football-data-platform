@@ -1,5 +1,20 @@
 # Football Data Platform
 
+## Stage 8C — encrypted backups and isolated restore drills
+
+The opt-in host CLI `python scripts/backup.py` creates encrypted PostgreSQL,
+ClickHouse Native and Grafana SQLite backups, authenticates their manifest and
+restores them into new networkless, disposable targets. Real local restore passed
+for WC2022 (64 matches), Bundesliga (34 matches), 22 build identities, Airflow and
+Superset metadata. Source services/data remain unchanged.
+
+Overall DR status is **PARTIAL**: S3 inventory is not an independent object backup;
+remote S3 recovery, off-machine storage and runtime-secret recovery were not drilled.
+Stage 8B's published commit also omits required untracked files and its integration
+CI is red. Nothing was committed/pushed or scheduled by Stage 8C.
+Inventory, measured recovery, safe PowerShell commands and limits:
+[docs/stage8c.md](docs/stage8c.md).
+
 ## Stage 8B — local production-like application serving
 
 Opt-in `app-prod` serves compiled React through non-root Nginx at

@@ -7,6 +7,34 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# A working-tree file is not sufficient: checkout-based CI must receive it too.
+PUBLICATION_REQUIRED = frozenset({
+    'compose.yaml', 'docker/api/Dockerfile', 'docker/api/gunicorn.conf.py',
+    'docker/web/Dockerfile', 'docker/web/nginx.conf', 'application/settings.py',
+    'requirements/api.txt', 'frontend/package.json', 'frontend/package-lock.json',
+    'frontend/playwright.delivery.config.ts', 'frontend/tests/smoke/delivery.spec.ts',
+    'ci/check_delivery.py', 'tests/application/test_delivery.py', 'tests/ci/test_delivery.py',
+    'docs/stage8b.md', 'src/recovery/__init__.py', 'src/recovery/archive.py',
+    'src/recovery/operations.py', 'src/recovery/runtime.py', 'src/recovery/s3_inventory.py',
+    'scripts/backup.py', 'ci/check_recovery.py', 'requirements/recovery.txt',
+    'requirements/ci.txt', 'tests/test_recovery.py', 'docs/stage8c.md',
+    '.gitignore', '.dockerignore', '.github/workflows/ci-fast.yml',
+    '.github/workflows/ci-integration.yml',
+})
+
+
+def publication_contract(tracked):
+    paths = set(filter(None, tracked))
+    missing = PUBLICATION_REQUIRED - paths
+    assert not missing, 'Required source files missing from Git index: ' + ', '.join(sorted(missing))
+    for name in paths:
+        path = Path(name)
+        assert path.name not in ('.env', '.passes', 'keys.txt'), 'Credential file is tracked'
+        assert not ({'backups', '.recovery-keys', 'node_modules', '__pycache__', '.venv',
+                     'test-results', 'playwright-report'} & set(path.parts)), 'Private/generated directory is tracked'
+        assert path.parts[:2] != ('data', 'work'), 'Runtime state is tracked'
+        assert path.suffix.lower() not in ('.enc', '.dump', '.sqlite', '.key', '.pem', '.p12'), 'Private backup/key artifact is tracked'
+
 
 def workflow_contract(document):
     assert document['permissions'] == {'contents': 'read'}, 'Workflow permissions must be read-only'
@@ -46,6 +74,8 @@ def main():
     assert required <= names, 'Required Compose variable names missing in .env.example'
     # Only tracked paths: ignored .env/keys.txt are not read, even for scanning.
     tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
+    # Reject private paths before opening any tracked file, including accidental staging.
+    publication_contract(tracked)
     findings = []
     for name in filter(None, tracked):
         path = Path(name)
@@ -57,9 +87,12 @@ def main():
     for path, line, kind in findings:
         print(f'{path}:{line}: suspected {kind}; value suppressed')
     assert not findings, 'Review suspected committed credential signatures privately'
-    result = subprocess.run(['git', 'check-ignore', '.env', '.passes', 'keys.txt'], cwd=ROOT, capture_output=True, text=True)
-    assert result.returncode == 0 and set(result.stdout.splitlines()) == {'.env', '.passes', 'keys.txt'}, 'Local secrets must stay ignored'
-    print('Workflow, environment-template and tracked-file secret-signature checks passed')
+    excluded = {'.env', '.passes', 'keys.txt', 'backups/audit.enc', '.recovery-keys/audit.key'}
+    result = subprocess.run(['git', 'check-ignore', *sorted(excluded)], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0 and set(result.stdout.splitlines()) == excluded, 'Local secrets/backups must stay ignored'
+    docker_exclusions = set((ROOT / '.dockerignore').read_text(encoding='utf-8').splitlines())
+    assert {'.env', '.passes', 'keys.txt', 'backups/', '.recovery-keys/'} <= docker_exclusions, 'Private Docker context boundary missing'
+    print('Workflow, publication completeness, private-artifact exclusion and tracked-file secret-signature checks passed')
 
 
 if __name__ == '__main__':

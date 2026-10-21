@@ -18,6 +18,22 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  recovery:
+    name: Synthetic isolated backup and restore
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12.14'
+      - run: python -m pip install -r requirements/recovery.txt
+      - run: docker pull postgres:17.6-alpine3.22
+      - run: docker pull clickhouse/clickhouse-server:25.8.23.13-alpine
+      - name: Synthetic only; networkless tmpfs targets; no backup artifacts uploaded
+        run: python ci/check_recovery.py
   databases:
     name: Ephemeral PostgreSQL and ClickHouse
     runs-on: ubuntu-24.04

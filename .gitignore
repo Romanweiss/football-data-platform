@@ -1,6 +1,8 @@
 # Local environment and credentials
 .env
 .passes
+backups/
+.recovery-keys/
 
 # Python cache and tooling
 __pycache__/

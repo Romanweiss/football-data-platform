@@ -1,5 +1,7 @@
 .env
 .passes
+backups/
+.recovery-keys/
 .git
 .gitignore
 **pycache**/
