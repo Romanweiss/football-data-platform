@@ -31,7 +31,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.12.14'
+          # Exact Windows x64 build available in actions/python-versions.
+          # Synthetic ACL coverage only; Linux/production pins remain unchanged.
+          python-version: '3.12.10'
       - run: python -m pip install -r requirements/recovery-s3.txt
       - name: Fake transport only; network guard; real temporary-directory ACL checks
         run: python ci/check_s3_recovery.py

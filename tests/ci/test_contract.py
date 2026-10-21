@@ -36,7 +36,11 @@ class CIContractTests(unittest.TestCase):
         job = integration['jobs']['s3-recovery-windows']
         self.assertEqual(job['runs-on'], 'windows-2022')
         self.assertGreaterEqual(int(job['timeout-minutes']), 20)
-        self.assertTrue(any(s.get('with', {}).get('python-version') == '3.12.14' for s in job['steps']))
+        setup = next(s for s in job['steps'] if s.get('uses', '').startswith('actions/setup-python@'))
+        self.assertEqual(setup['with']['python-version'], '3.12.10')
+        linux_setup = next(s for s in integration['jobs']['recovery']['steps']
+                           if s.get('uses', '').startswith('actions/setup-python@'))
+        self.assertEqual(linux_setup['with']['python-version'], '3.12.14')
         self.assertIn('python ci/check_s3_recovery.py', [s.get('run') for s in job['steps']])
         self.assertFalse(any('upload-artifact' in s.get('uses', '') for s in job['steps']))
         invalid = deepcopy(integration)
