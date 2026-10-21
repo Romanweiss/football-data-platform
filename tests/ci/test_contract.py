@@ -42,7 +42,15 @@ class CIContractTests(unittest.TestCase):
         linux_setup = next(s for s in integration['jobs']['recovery']['steps']
                            if s.get('uses', '').startswith('actions/setup-python@'))
         self.assertEqual(linux_setup['with']['python-version'], '3.12.14')
-        self.assertIn('python ci/check_s3_recovery.py', [s.get('run') for s in job['steps']])
+        recovery_run = next(s['run'] for s in job['steps'] if 'python ci/check_s3_recovery.py' in s.get('run', ''))
+        self.assertIn('SetTokenInformation(identity.Token, 4,', recovery_run)
+        self.assertIn('Assign(identity.User)', recovery_run)
+        self.assertIn('Assign(previous)', recovery_run)
+        self.assertIn('} finally {', recovery_run)
+        self.assertIn('$scope.Dispose()', recovery_run)
+        self.assertIn('exit $testExit', recovery_run)
+        self.assertNotIn('continue-on-error', job)
+        self.assertNotIn('if', job)
         self.assertFalse(any('upload-artifact' in s.get('uses', '') for s in job['steps']))
         invalid = deepcopy(integration)
         invalid['jobs']['recovery']['runs-on'] = 'windows-2022'

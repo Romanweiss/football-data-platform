@@ -59,7 +59,60 @@ jobs:
             Remove-Item -LiteralPath $probe -Force
           }
       - name: Fake transport only; network guard; real temporary-directory ACL checks
-        run: python ci/check_s3_recovery.py
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Hosted elevated tokens default new object ownership to Administrators.
+          # Use the actual current user for newly created synthetic fixtures only.
+          # Do not relax the production owner/DACL checks or repair existing files.
+          Add-Type @'
+          using System;
+          using System.ComponentModel;
+          using System.Runtime.InteropServices;
+          using System.Security.Principal;
+          public sealed class SyntheticOwnerScope : IDisposable {
+              [StructLayout(LayoutKind.Sequential)]
+              private struct TokenOwner { public IntPtr Owner; }
+              [DllImport("advapi32.dll", SetLastError = true)]
+              private static extern bool SetTokenInformation(
+                  IntPtr token, int kind, ref TokenOwner owner, int length);
+              private readonly WindowsIdentity identity;
+              private readonly SecurityIdentifier previous;
+              public SyntheticOwnerScope() {
+                  identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query | TokenAccessLevels.AdjustDefault);
+                  previous = identity.Owner;
+                  try { Assign(identity.User); }
+                  catch { identity.Dispose(); throw; }
+              }
+              private void Assign(SecurityIdentifier sid) {
+                  byte[] raw = new byte[sid.BinaryLength];
+                  sid.GetBinaryForm(raw, 0);
+                  IntPtr buffer = Marshal.AllocHGlobal(raw.Length);
+                  try {
+                      Marshal.Copy(raw, 0, buffer, raw.Length);
+                      TokenOwner owner = new TokenOwner { Owner = buffer };
+                      // TokenOwner = 4: no identity, privileges or DACL changes.
+                      if (!SetTokenInformation(identity.Token, 4, ref owner, Marshal.SizeOf(owner)))
+                          throw new Win32Exception(Marshal.GetLastWin32Error());
+                  } finally { Marshal.FreeHGlobal(buffer); }
+              }
+              public void Dispose() {
+                  try { Assign(previous); }
+                  finally { identity.Dispose(); }
+              }
+          }
+          '@
+          $scope = [SyntheticOwnerScope]::new()
+          try {
+            if ([System.Security.Principal.WindowsIdentity]::GetCurrent().Owner.Value -ne
+                [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value) {
+              throw 'CI_CURRENT_USER_DEFAULT_OWNER_REQUIRED'
+            }
+            python ci/check_s3_recovery.py
+            $testExit = $LASTEXITCODE
+          } finally {
+            $scope.Dispose()
+          }
+          exit $testExit
   recovery:
     name: Synthetic isolated backup and restore
     runs-on: ubuntu-24.04
