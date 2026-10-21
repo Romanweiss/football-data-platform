@@ -9,12 +9,30 @@ restore, password rotation, product changes, commit or push were performed.
 
 Recovery scope remains explicit:
 
+Stage 8C-R2.3-A adds a separate [synthetic encrypted S3 archive profile](stage8c-r2-3a.md).
+It does not establish a real independent S3 backup or remote restore; the overall
+PARTIAL verdict and database-profile compatibility remain unchanged.
+
+Stage 8C-R2.3-B adds [synthetic storage, consistency fences and lineage](stage8c-r2-3b.md)
+over that profile. It likewise provides no live Selectel adapter or remote recovery proof.
+
+Stage 8C-R2.3-C adds [read-only adapters and a bounded live dry-run](stage8c-r2-3c.md).
+Inventory/lineage and conditional GET pass; no real encrypted S3 backup or remote
+restore has been created. The overall disaster-recovery verdict remains PARTIAL.
+
+Stage 8C-R2.3-D prepares the [operator CLI and live-backup safety gates](stage8c-r2-3d.md),
+verified only against synthetic sources. No full real S3 download, archive or key
+was created. Execution still requires operator prerequisites and separate approval.
+
 | Check | Status |
 | --- | --- |
 | Local metadata restore | PASS |
 | ClickHouse restore | PASS |
 | Grafana SQLite restore | PASS |
 | S3 registered-object inventory | PASS |
+| R2.3-A/B/D synthetic S3 recovery | PASS |
+| R2.3-C live read-only dry-run | PASS |
+| Live encrypted S3 backup | NOT EXECUTED |
 | Independent S3 byte backup | NOT VERIFIED |
 | Remote S3 restore | NOT VERIFIED |
 | Complete machine-loss recovery | NOT VERIFIED |
@@ -23,14 +41,19 @@ Recovery scope remains explicit:
 Publication follow-up: `ci/check_repository.py` now requires the delivery/recovery
 sources in the Git index and rejects private backup/key/runtime paths before reading
 file contents. A staged source set is not yet a published commit or a new green remote CI.
+The full [A/B/C/D publication audit](stage8c-r2-3-publication.md) records the staged
+inventory and isolated Git-snapshot checks. HEAD/origin/master is now `8e934a5f65eeb768de1546b03a1a965b91be959a`;
+the Stage 8B omission repair and Stage 8C sources were published previously with
+fast/integration CI confirmed green. A/B/C/D remain pending publication until approved.
 
 ## Git/CI preflight
 
 Branch `master`, origin `https://github.com/Romanweiss/football-data-platform.git`.
-Local HEAD and published `origin/master`: `a1449fd425ee36c74af4d4e8eb2b1572df4bf2b3`
+Historical audit baseline (before the publication repair below), not current HEAD:
+`a1449fd425ee36c74af4d4e8eb2b1572df4bf2b3`
 (`feat: add production-like application delivery`). Stage 8B was **partially** committed:
 13 previously tracked files are in that commit, while these eight files were untracked
-at the start of Stage 8C and remain preserved:
+at the start of Stage 8C and were preserved, then published by the subsequent repair:
 
 ```text
 ci/check_delivery.py
@@ -69,7 +92,7 @@ inspected or printed by the backup CLI.
 | Grafana 13.0.1, `football_grafana_data:/var/lib/grafana` | Provisioning YAML/dashboard JSON in Git; users/preferences and non-provisioned state in `grafana.db`. | SQLite Online Backup API, never an unlocked file copy. Original encryption/configuration secrets may be needed for application startup; drill validates SQLite only. |
 | `football_airflow_logs:/opt/airflow/logs` | Operational forensic detail, not authoritative published dataset state. | Not in this database backup. Loss loses task log detail, not the DB task history. Propose separate encrypted retention. |
 | Selectel S3 `football/bronze/`, `football/silver/`, `football/gold/` | Bronze exact acquired source bytes are authoritative. Silver/Gold are derived immutable artifacts, reproducible only with exact source bytes, code/runtime, configuration and identities. Upstream latest JSON is not a substitute. | Inventory and manifest checks only here; no independent byte backup or restore of real S3. Bucket loss is **not covered** by database copies. |
-| Git + local Docker images | Source, migrations, DAGs, provisioning and serving configuration. Images are derived but registry availability is a dependency. | Commit hash + configuration hashes + source image IDs recorded. No Git bundle or image export created; untracked 8B files are a publication gap. |
+| Git + local Docker images | Source, migrations, DAGs, provisioning and serving configuration. Images are derived but registry availability is a dependency. | Commit hash + configuration hashes + source image IDs recorded. No Git bundle or image export created; the historical 8B omission is repaired, while new S3 sources require the audited publication below. |
 | `.env`, `.passes`, `keys.txt` | Runtime passwords/keys; cannot be reconstructed from Git. | Never opened, copied or printed by this CLI. Separate encrypted operator-managed recovery. |
 | `football_airflow_secrets` | `db_password`, Fernet, JWT/API keys, SimpleAuthManager password state. | Not mounted into restore targets. Requires separately protected recovery; losing Fernet can make encrypted metadata unusable. |
 | `football_grafana_secrets` | Reader/admin passwords used by provisioning/bootstrap. | Separate protected recovery; do not rerun bootstrap to rotate passwords as a backup substitute. |

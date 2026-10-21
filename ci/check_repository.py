@@ -20,6 +20,14 @@ PUBLICATION_REQUIRED = frozenset({
     'requirements/ci.txt', 'tests/test_recovery.py', 'docs/stage8c.md',
     '.gitignore', '.dockerignore', '.github/workflows/ci-fast.yml',
     '.github/workflows/ci-integration.yml',
+    'src/recovery/s3_archive.py', 'src/recovery/s3_storage.py', 'src/recovery/s3_lineage.py',
+    'src/recovery/s3_workflow.py', 'src/recovery/s3_readonly.py', 'src/recovery/s3_metadata.py',
+    'src/recovery/s3_dry_run.py', 'src/recovery/s3_operator.py', 'src/recovery/s3_safety.py',
+    'scripts/check_s3_recovery_dry_run.py', 'scripts/s3_backup.py', 'requirements/recovery-s3.txt',
+    'tests/test_s3_archive.py', 'tests/test_s3_workflow.py', 'tests/test_s3_readonly.py',
+    'tests/test_s3_operator.py', 'tests/test_s3_windows_acl.py', 'ci/check_s3_recovery.py',
+    'docs/stage8c-r2-3a.md', 'docs/stage8c-r2-3b.md', 'docs/stage8c-r2-3c.md',
+    'docs/stage8c-r2-3d.md', 'docs/stage8c-r2-3-publication.md',
 })
 
 
@@ -32,8 +40,10 @@ def publication_contract(tracked):
         assert path.name not in ('.env', '.passes', 'keys.txt'), 'Credential file is tracked'
         assert not ({'backups', '.recovery-keys', 'node_modules', '__pycache__', '.venv',
                      'test-results', 'playwright-report'} & set(path.parts)), 'Private/generated directory is tracked'
-        assert path.parts[:2] != ('data', 'work'), 'Runtime state is tracked'
-        assert path.suffix.lower() not in ('.enc', '.dump', '.sqlite', '.key', '.pem', '.p12'), 'Private backup/key artifact is tracked'
+        assert not ({'tmp', '.tmp'} & set(path.parts)), 'Temporary state is tracked'
+        assert path.parts[0] != 'data' or name == 'data/samples/sample_match.json', 'Non-synthetic data is tracked'
+        assert path.suffix.lower() not in ('.enc', '.dump', '.backup', '.sqlite', '.sqlite3', '.db',
+                                           '.key', '.pem', '.p12', '.pfx'), 'Private backup/key artifact is tracked'
 
 
 def workflow_contract(document):
@@ -42,9 +52,9 @@ def workflow_contract(document):
     assert set(events) <= {'push', 'pull_request', 'workflow_dispatch'}, 'Unsafe workflow trigger'
     assert 'pull_request' in events and events['push']['branches'] == ['master'], 'Missing normal branch/PR gates'
     assert 'github.workflow' in document['concurrency']['group'] and 'github.ref' in document['concurrency']['group']
-    for job in document['jobs'].values():
+    for name, job in document['jobs'].items():
         assert 1 <= int(job['timeout-minutes']) <= 60, 'Missing/bad timeout'
-        assert job['runs-on'] == 'ubuntu-24.04', 'Runner must be intentional'
+        assert job['runs-on'] == ('windows-2022' if name == 's3-recovery-windows' else 'ubuntu-24.04'), 'Runner must be intentional'
         for step in job['steps']:
             if 'uses' in step:
                 assert re.fullmatch(r'[\w-]+/[\w-]+@(v\d+|[a-f0-9]{40})', step['uses']), 'Unpinned action'
@@ -87,11 +97,19 @@ def main():
     for path, line, kind in findings:
         print(f'{path}:{line}: suspected {kind}; value suppressed')
     assert not findings, 'Review suspected committed credential signatures privately'
-    excluded = {'.env', '.passes', 'keys.txt', 'backups/audit.enc', '.recovery-keys/audit.key'}
+    excluded = {'.env', '.passes', 'keys.txt', 'backups/audit.enc', '.recovery-keys/audit.key',
+                'outside-backups/audit.enc', 'outside-backups/audit.key', 'restore.dump',
+                'restore.sqlite3', 'runtime.db', 'data/work/runtime.json', '.tmp/state.json'}
     result = subprocess.run(['git', 'check-ignore', *sorted(excluded)], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 0 and set(result.stdout.splitlines()) == excluded, 'Local secrets/backups must stay ignored'
     docker_exclusions = set((ROOT / '.dockerignore').read_text(encoding='utf-8').splitlines())
     assert {'.env', '.passes', 'keys.txt', 'backups/', '.recovery-keys/'} <= docker_exclusions, 'Private Docker context boundary missing'
+    assert {'*.enc', '*.key', '*.pem', '*.dump', '*.sqlite3', '*.db', 'tmp/', '.tmp/',
+            'data/*', '!data/samples/', 'data/samples/*', '!data/samples/sample_match.json'} <= docker_exclusions, 'Runtime/payload Docker context boundary missing'
+    assert {'**/*.enc', '**/*.key', '**/*.pem', '**/*.dump', '**/*.sqlite3', '**/*.db',
+            '**/.env', '**/.passes', '**/keys.txt'} <= docker_exclusions, 'Nested Docker credential/artifact boundary missing'
+    sample = subprocess.run(['git', 'check-ignore', 'data/samples/sample_match.json'], cwd=ROOT, capture_output=True)
+    assert sample.returncode == 1, 'The committed synthetic sample must remain publishable'
     print('Workflow, publication completeness, private-artifact exclusion and tracked-file secret-signature checks passed')
 
 

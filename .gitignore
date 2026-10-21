@@ -3,6 +3,16 @@
 .passes
 backups/
 .recovery-keys/
+*.enc
+*.key
+*.pem
+*.p12
+*.pfx
+*.dump
+*.backup
+*.sqlite
+*.sqlite3
+*.db
 
 # Python cache and tooling
 __pycache__/

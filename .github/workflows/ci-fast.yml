@@ -37,6 +37,8 @@ jobs:
           ruff check .
       - name: Offline pipeline, DQ, alerts, Grafana and Superset contracts
         run: python ci/run_unittest.py discover -s tests -p 'test_*.py'
+      - name: Explicit synthetic S3 archive, adapters, operator and database compatibility
+        run: python ci/check_s3_recovery.py
       - name: Django API offline contracts
         run: python ci/run_unittest.py discover -s tests/application -p 'test_*.py'
       - name: CI and repository safety contracts

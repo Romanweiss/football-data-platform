@@ -23,9 +23,42 @@ class CIContractTests(unittest.TestCase):
     def test_publication_rejects_private_artifacts_before_content_reads(self):
         for name in ('.env', '.passes', 'keys.txt', 'backups/manifest.json', 'backups/production.dump.enc',
                      '.recovery-keys/recovery.key', 'data/work/state.json', 'restore.sql.dump',
-                     'frontend/node_modules/package.json', 'frontend/test-results/report.json'):
+                     'frontend/node_modules/package.json', 'frontend/test-results/report.json',
+                     'data/raw/object.json', '.tmp/runtime.json', 'tmp/key-material.json',
+                     'restore.sqlite3', 'archive.backup', 'private.pfx'):
             with self.subTest(name=name), self.assertRaises(AssertionError):
                 publication_contract(PUBLICATION_REQUIRED | {name})
+
+    def test_s3_recovery_is_explicit_on_both_linux_versions_and_windows(self):
+        fast = yaml.load((ROOT / '.github/workflows/ci-fast.yml').read_text(), Loader=yaml.BaseLoader)
+        self.assertIn('python ci/check_s3_recovery.py', [s.get('run') for s in fast['jobs']['python']['steps']])
+        integration = yaml.load((ROOT / '.github/workflows/ci-integration.yml').read_text(), Loader=yaml.BaseLoader)
+        job = integration['jobs']['s3-recovery-windows']
+        self.assertEqual(job['runs-on'], 'windows-2022')
+        self.assertGreaterEqual(int(job['timeout-minutes']), 20)
+        self.assertTrue(any(s.get('with', {}).get('python-version') == '3.12.14' for s in job['steps']))
+        self.assertIn('python ci/check_s3_recovery.py', [s.get('run') for s in job['steps']])
+        self.assertFalse(any('upload-artifact' in s.get('uses', '') for s in job['steps']))
+        invalid = deepcopy(integration)
+        invalid['jobs']['recovery']['runs-on'] = 'windows-2022'
+        with self.assertRaises(AssertionError):
+            workflow_contract(invalid)
+
+    def test_s3_sources_cannot_be_omitted_from_publication(self):
+        for name in ('src/recovery/s3_archive.py', 'src/recovery/s3_safety.py', 'requirements/recovery-s3.txt',
+                     'ci/check_s3_recovery.py', 'tests/test_s3_windows_acl.py'):
+            self.assertIn(name, PUBLICATION_REQUIRED)
+
+    def test_s3_gate_forbids_network_and_does_not_invoke_operator(self):
+        source = (ROOT / 'ci/check_s3_recovery.py').read_text()
+        self.assertIn("patch('socket.socket'", source)
+        self.assertIn("patch('socket.create_connection'", source)
+        self.assertIn("pattern='test_s3_*.py'", source)
+        self.assertIn("pattern='test_recovery.py'", source)
+        self.assertIn('importlib.util.find_spec', source)
+        self.assertIn('install_compatibility()', source)
+        self.assertNotIn('build_sources(', source)
+        self.assertNotIn('s3_backup.py create', source)
 
     def test_context_compatibility_retains_return_value_and_deferred_cleanup(self):
         calls = []
