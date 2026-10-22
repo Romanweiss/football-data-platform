@@ -72,10 +72,22 @@ file contents. A staged source set is not yet a published commit or a new green 
 The full [A/B/C/D publication audit](stage8c-r2-3-publication.md) records the staged
 inventory and isolated Git-snapshot checks. That audit was followed by publication
 and Windows CI fixes: A1 starts from published `bea3d8dd94f87f1e3f683c13541d77db361fc423`,
-with fast/integration CI confirmed green for that exact commit. New A1–A1.7 changes remain
-local and uncommitted; earlier green remote CI does not certify them.
+with fast/integration CI confirmed green for that exact commit. A1–A1.7 were then
+published as `8ec15a2b60907b5639dabe9a1a2d4fad6ff1c273`; fast/integration CI passed,
+including 194 recovery tests on Windows 3.12.10 without skips.
 See the [A1–A1.7 publication audit](stage8c-r2-4a1-publication.md) for the complete
 source inventory, isolated staged-tree checks and remaining live-backup boundary.
+
+R2.4-A2.1 now separately authorizes [production key preparation and manual
+Bitwarden escrow](stage8c-r2-4a2-1.md), not collection. One actual 32-byte key and
+its non-secret private register have been prepared with owner-only protected ACLs.
+The operator confirmed production-note save/phone visibility and closure of the
+viewer. [A2.2](stage8c-r2-4a2-2.md) then passed the in-memory production-key
+comparison with an operator-attested PHONE MATCH receipt, followed by fresh bounded
+source/lineage acceptance (315 objects, 22 builds) and current K/path/ACL/space checks.
+A2.2 is READY; live collection remains BLOCKED pending separate explicit approval
+and a quiet window. No real S3 archive, remote restore, all-device vault/MFA recovery
+or full DR PASS is claimed.
 
 ## Git/CI preflight
 

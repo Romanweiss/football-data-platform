@@ -34,6 +34,9 @@ PUBLICATION_REQUIRED = frozenset({
     'tests/test_s3_diagnostics.py', 'tests/test_s3_escrow.py', 'tests/test_s3_manual_drill.py',
     'docs/stage8c-r2-4a1.md', 'docs/stage8c-r2-4a1-5.md', 'docs/stage8c-r2-4a1-6.md',
     'docs/stage8c-r2-4a1-7.md', 'docs/stage8c-r2-4a1-publication.md',
+    'src/recovery/s3_key_escrow.py', 'scripts/show_s3_recovery_key.py',
+    'scripts/receive_s3_recovery_key.py', 'tests/test_s3_key_escrow.py',
+    'tests/test_s3_key_recovery.py', 'docs/stage8c-r2-4a2-1.md', 'docs/stage8c-r2-4a2-2.md',
 })
 
 

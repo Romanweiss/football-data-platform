@@ -88,6 +88,21 @@ class CIContractTests(unittest.TestCase):
         self.assertNotIn('build_sources(', source)
         self.assertNotIn('s3_backup.py create', source)
 
+    def test_production_key_helpers_are_publishable_but_private_state_is_not(self):
+        for name in ('src/recovery/s3_key_escrow.py', 'scripts/show_s3_recovery_key.py',
+                     'scripts/receive_s3_recovery_key.py', 'tests/test_s3_key_escrow.py',
+                     'tests/test_s3_key_recovery.py', 'docs/stage8c-r2-4a2-1.md',
+                     'docs/stage8c-r2-4a2-2.md'):
+            self.assertIn(name, PUBLICATION_REQUIRED)
+        for name in ('FootballRecoveryVault/s3/key.recovery-attempt.json',
+                     'FootballRecoveryVault/s3/key.json', 'FootballRecoveryVault/s3/key.key'):
+            with self.subTest(name=name), self.assertRaises(AssertionError):
+                publication_contract(PUBLICATION_REQUIRED | {name})
+        gate = (ROOT / 'ci/check_s3_recovery.py').read_text()
+        self.assertIn("pattern='test_s3_*.py'", gate)
+        for name in ('test_s3_key_escrow.py', 'test_s3_key_recovery.py'):
+            self.assertIn(ROOT / 'tests' / name, list((ROOT / 'tests').glob('test_s3_*.py')))
+
     def test_context_compatibility_retains_return_value_and_deferred_cleanup(self):
         calls = []
         class Context:
