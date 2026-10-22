@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 
 from src.recovery.runtime import RecoveryError, digest, encoded, require
 from src.recovery.s3_archive import _metadata
+from src.recovery.s3_diagnostics import read_error
 from src.recovery.s3_storage import Head, ListEntry, Page, ReadResult, StorageIdentity
 from src.recovery.s3_workflow import guarded
 
@@ -99,9 +100,9 @@ class _BoundedBody:
         except RecoveryError:
             self.close()
             raise
-        except Exception:
+        except Exception as exc:
             self.close()
-            raise RecoveryError('S3_STREAM_READ_FAILED') from None
+            raise read_error(exc, 'read_body', stream=True) from None
 
     def close(self):
         if not self.closed:
@@ -147,9 +148,7 @@ class S3ReadOnly:
         try:
             return getattr(self._client, operation)(Bucket=self.identity.bucket, **kwargs)
         except Exception as exc:
-            status = getattr(exc, 'response', {}).get('ResponseMetadata', {}).get('HTTPStatusCode')
-            code = str(status) if type(status) is int and status in (403, 404, 412) else 'FAILED'
-            raise RecoveryError('S3_READ_HTTP_' + code) from None
+            raise read_error(exc, operation) from None
 
     @guarded
     def list_page(self, token=None):

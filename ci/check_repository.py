@@ -28,6 +28,12 @@ PUBLICATION_REQUIRED = frozenset({
     'tests/test_s3_operator.py', 'tests/test_s3_windows_acl.py', 'ci/check_s3_recovery.py',
     'docs/stage8c-r2-3a.md', 'docs/stage8c-r2-3b.md', 'docs/stage8c-r2-3c.md',
     'docs/stage8c-r2-3d.md', 'docs/stage8c-r2-3-publication.md',
+    'src/recovery/s3_host.py', 'src/recovery/s3_diagnostics.py', 'src/recovery/s3_manual_drill.py',
+    'scripts/check_s3_host_readiness.py', 'scripts/show_synthetic_escrow_key.py',
+    'scripts/receive_synthetic_escrow_key.py', 'tests/test_s3_host.py',
+    'tests/test_s3_diagnostics.py', 'tests/test_s3_escrow.py', 'tests/test_s3_manual_drill.py',
+    'docs/stage8c-r2-4a1.md', 'docs/stage8c-r2-4a1-5.md', 'docs/stage8c-r2-4a1-6.md',
+    'docs/stage8c-r2-4a1-7.md', 'docs/stage8c-r2-4a1-publication.md',
 })
 
 
@@ -41,9 +47,11 @@ def publication_contract(tracked):
         assert not ({'backups', '.recovery-keys', 'node_modules', '__pycache__', '.venv',
                      'test-results', 'playwright-report'} & set(path.parts)), 'Private/generated directory is tracked'
         assert not ({'tmp', '.tmp'} & set(path.parts)), 'Temporary state is tracked'
+        assert not ({'footballrecoveryvault', 'footballplatformbackups'}
+                    & {part.casefold() for part in path.parts}), 'Operator recovery state is tracked'
         assert path.parts[0] != 'data' or name == 'data/samples/sample_match.json', 'Non-synthetic data is tracked'
         assert path.suffix.lower() not in ('.enc', '.dump', '.backup', '.sqlite', '.sqlite3', '.db',
-                                           '.key', '.pem', '.p12', '.pfx'), 'Private backup/key artifact is tracked'
+                                           '.key', '.pem', '.p12', '.pfx', '.crt', '.cer'), 'Private backup/key/CA artifact is tracked'
 
 
 def workflow_contract(document):
@@ -99,14 +107,16 @@ def main():
     assert not findings, 'Review suspected committed credential signatures privately'
     excluded = {'.env', '.passes', 'keys.txt', 'backups/audit.enc', '.recovery-keys/audit.key',
                 'outside-backups/audit.enc', 'outside-backups/audit.key', 'restore.dump',
-                'restore.sqlite3', 'runtime.db', 'data/work/runtime.json', '.tmp/state.json'}
+                'restore.sqlite3', 'runtime.db', 'data/work/runtime.json', '.tmp/state.json',
+                'host-ca.crt', 'outside-certs/host-ca.cer', '.venv/s3-recovery/certs/host-ca.pem'}
     result = subprocess.run(['git', 'check-ignore', *sorted(excluded)], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 0 and set(result.stdout.splitlines()) == excluded, 'Local secrets/backups must stay ignored'
     docker_exclusions = set((ROOT / '.dockerignore').read_text(encoding='utf-8').splitlines())
     assert {'.env', '.passes', 'keys.txt', 'backups/', '.recovery-keys/'} <= docker_exclusions, 'Private Docker context boundary missing'
     assert {'*.enc', '*.key', '*.pem', '*.dump', '*.sqlite3', '*.db', 'tmp/', '.tmp/',
             'data/*', '!data/samples/', 'data/samples/*', '!data/samples/sample_match.json'} <= docker_exclusions, 'Runtime/payload Docker context boundary missing'
-    assert {'**/*.enc', '**/*.key', '**/*.pem', '**/*.dump', '**/*.sqlite3', '**/*.db',
+    assert {'*.crt', '*.cer', '**/*.crt', '**/*.cer',
+            '**/*.enc', '**/*.key', '**/*.pem', '**/*.dump', '**/*.sqlite3', '**/*.db',
             '**/.env', '**/.passes', '**/keys.txt'} <= docker_exclusions, 'Nested Docker credential/artifact boundary missing'
     sample = subprocess.run(['git', 'check-ignore', 'data/samples/sample_match.json'], cwd=ROOT, capture_output=True)
     assert sample.returncode == 1, 'The committed synthetic sample must remain publishable'

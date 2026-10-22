@@ -6,6 +6,8 @@ backups/
 *.enc
 *.key
 *.pem
+*.crt
+*.cer
 *.p12
 *.pfx
 *.dump

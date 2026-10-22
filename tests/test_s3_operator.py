@@ -356,7 +356,7 @@ class S3OperatorTests(unittest.TestCase):
     def test_runtime_guard_not_any_matrix_python_and_sqlite_not_required(self):
         unsupported = SUPPORTED | {'live_python_supported': False, 'python': '3.10.12'}
         with patch.object(operator, 'runtime_report', return_value=unsupported):
-            with self.assertRaisesRegex(RecoveryError, 'S3_LIVE_REQUIRES_PYTHON_3_12_14'):
+            with self.assertRaisesRegex(RecoveryError, 'S3_LIVE_PYTHON_UNSUPPORTED'):
                 self.create()
         self.assertEqual(list(self.parent.iterdir()), [])
         self.assertFalse(operator.runtime_report()['sqlite_required_for_s3'])
@@ -372,3 +372,55 @@ class S3OperatorTests(unittest.TestCase):
             self.assertIn('CONFIRMATION', err.getvalue())
             self.assertNotIn(str(self.key_path), out.getvalue() + err.getvalue())
         self.assert_no_seal()
+
+
+class S3RuntimePolicyTests(unittest.TestCase):
+    """Exact host policy; no SDK, Docker, key or directory setup is required."""
+
+    def test_exact_platform_patch_and_architecture_allowlist(self):
+        versions = ((3, 10, 12), (3, 11, 9), (3, 12, 9), (3, 12, 10),
+                    (3, 12, 11), (3, 12, 14), (3, 12, 15), (3, 13, 7), (3, 14, 3))
+        for system in ('win32', 'linux', 'darwin'):
+            for machine, pointer_size in (('AMD64', 8), ('x86_64', 8), ('AMD64', 4), ('ARM64', 8), ('x86', 4)):
+                for version in versions:
+                    with self.subTest(system=system, machine=machine, version=version), \
+                         patch.object(operator.sys, 'platform', system), \
+                         patch.object(operator.sys, 'version_info', version), \
+                         patch.object(operator.platform, 'machine', return_value=machine), \
+                         patch.object(operator.struct, 'calcsize', return_value=pointer_size), \
+                         patch.object(operator.shutil, 'which', return_value='synthetic-docker'):
+                        expected = version == (3, 12, 14) or (
+                            system == 'win32' and machine in ('AMD64', 'x86_64')
+                            and pointer_size == 8 and version == (3, 12, 10))
+                        report = operator.runtime_report()
+                        self.assertEqual(report['live_python_supported'], expected)
+                        self.assertFalse(report['sqlite_required_for_s3'])
+                        if system != 'win32':
+                            self.assertEqual(report['required_live_python'], '3.12.14')
+
+    def test_non_cpython_is_not_supported(self):
+        with patch.object(operator.sys.implementation, 'name', 'pypy'), \
+             patch.object(operator.sys, 'version_info', (3, 12, 14)):
+            self.assertFalse(operator.runtime_report()['live_python_supported'])
+
+    def test_unsupported_runtime_blocks_source_io_and_reports_same_error(self):
+        report = SUPPORTED | {'python': '3.14.3', 'live_python_supported': False}
+        with patch.object(operator, 'runtime_report', return_value=report), \
+             patch.object(operator, 'build_sources', side_effect=AssertionError('NO SOURCE IO')) as source:
+            estimate = operator.preflight()
+            self.assertIn('S3_LIVE_PYTHON_UNSUPPORTED', estimate['blockers'])
+            with self.assertRaisesRegex(RecoveryError, 'S3_LIVE_PYTHON_UNSUPPORTED'):
+                operator.preflight(check_source=True)
+            source.assert_not_called()
+
+    def test_supported_version_does_not_bypass_host_or_dependency_gates(self):
+        for change, error in (
+            ({'host_runtime': False}, 'S3_OPERATOR_HOST_RUNTIME_REQUIRED'),
+            ({'docker_cli': False}, 'S3_LIVE_DEPENDENCIES_MISSING'),
+            ({'dependencies': {'boto3': False, 'cryptography': True}}, 'S3_LIVE_DEPENDENCIES_MISSING'),
+            ({'dependencies': {'boto3': True, 'cryptography': False}}, 'S3_LIVE_DEPENDENCIES_MISSING'),
+        ):
+            with self.subTest(change=change), \
+                 patch.object(operator, 'runtime_report', return_value=SUPPORTED | change):
+                with self.assertRaisesRegex(RecoveryError, error):
+                    operator.require_live_runtime()

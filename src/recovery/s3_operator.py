@@ -3,18 +3,27 @@ import hmac
 import importlib.util
 import os
 from pathlib import Path
+import platform
 import shutil
+import struct
 import sys
 
 from src.recovery.runtime import RecoveryError, digest, encoded, require, source_container
+
+LIVE_PYTHON_ERROR = 'S3_LIVE_PYTHON_UNSUPPORTED'
 
 
 def runtime_report():
     # An explicit tested live policy, not an assumption that all CI interpreters
     # support all profiles. Unlike database/Grafana recovery, S3 does not use SQLite.
+    windows_x64 = (sys.platform == 'win32' and struct.calcsize('P') == 8
+                   and platform.machine().casefold() in ('amd64', 'x86_64'))
+    supported = (sys.implementation.name == 'cpython'
+                 and (sys.version_info[:3] == (3, 12, 14)
+                      or (windows_x64 and sys.version_info[:3] == (3, 12, 10))))
     return {'python': '.'.join(map(str, sys.version_info[:3])),
-            'live_python_supported': sys.version_info[:3] == (3, 12, 14),
-            'required_live_python': '3.12.14',
+            'live_python_supported': supported,
+            'required_live_python': '3.12.14 or 3.12.10 (Windows x64)' if windows_x64 else '3.12.14',
             'dependencies': {n: importlib.util.find_spec(n) is not None for n in ('cryptography', 'boto3')},
             'docker_cli': shutil.which('docker') is not None, 'sqlite_required_for_s3': False,
             'host_runtime': not Path('/.dockerenv').exists() and not Path('/run/.containerenv').exists()}
@@ -27,7 +36,7 @@ def require_operator_host():
 def require_live_runtime():
     report = runtime_report()
     require_operator_host()
-    require(report['live_python_supported'], 'S3_LIVE_REQUIRES_PYTHON_3_12_14')
+    require(report['live_python_supported'], LIVE_PYTHON_ERROR)
     require(all(report['dependencies'].values()) and report['docker_cli'], 'S3_LIVE_DEPENDENCIES_MISSING')
     return report
 
@@ -51,7 +60,7 @@ def preflight(*, destination=None, key_file=None, check_source=False, source_byt
               'live_backup_executed': False, 'independent_storage_verified': False, 'blockers': []}
     runtime = report['runtime']
     if not runtime['live_python_supported']:
-        report['blockers'].append('S3_LIVE_REQUIRES_PYTHON_3_12_14')
+        report['blockers'].append(LIVE_PYTHON_ERROR)
     if not runtime['host_runtime']:
         report['blockers'].append('S3_OPERATOR_HOST_RUNTIME_REQUIRED')
     if not all(runtime['dependencies'].values()) or not runtime['docker_cli']:

@@ -424,6 +424,10 @@ def restore_synthetic(directory, master_key, destination):
     _directory(destination.parent)
     destination.mkdir(mode=0o700)
     private_directory(destination)
+    # Windows mkdir/private_directory may retain explicit non-user grants.
+    # Initialize/audit ONLY this newly created empty synthetic destination.
+    from src.recovery.s3_safety import session_permissions
+    session_permissions(destination, initialize=True)
     mapping = []
     for item in archive.index['objects']:
         name = f"object-{item['object_id']:08d}.bin"

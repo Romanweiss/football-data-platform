@@ -24,6 +24,32 @@ Stage 8C-R2.3-D prepares the [operator CLI and live-backup safety gates](stage8c
 verified only against synthetic sources. No full real S3 download, archive or key
 was created. Execution still requires operator prerequisites and separate approval.
 
+Stage 8C-R2.4-A1 prepares the [Windows S3 venv and private destination/key
+directories](stage8c-r2-4a1.md). Its narrowly tested Windows x64 CPython 3.12.10
+exception does not change Linux pins, database recovery or analytical data. Host
+source environment/CA setup was still absent at A1; actual key escrow and a fresh
+bounded preflight still block live collection. No real S3 archive/key was created.
+
+Stage 8C-R2.4-A1.5 verifies [Windows host process-only credentials, public CA and a
+bounded source audit](stage8c-r2-4a1-5.md). TLS, current 315-object inventory and
+22-build PostgreSQL/ClickHouse reconciliation pass. No persistent host credentials,
+full payload collection, real key or archive was created. Key escrow and separate
+authorization still block live backup; overall status remains PARTIAL.
+
+Stage 8C-R2.4-A1.6 documents [key lifecycle, independent escrow prerequisites and
+local synthetic recovery](stage8c-r2-4a1-6.md), with allowlisted host error diagnostics.
+Local synthetic retrieval/restore passes; external escrow remains BLOCKED pending an
+operator-selected independent recovery route. No real key or backup was created.
+
+Stage 8C-R2.4-A1.7 prepares a [manual Bitwarden synthetic session](stage8c-r2-4a1-7.md).
+The operator selected Bitwarden and manually retrieved this session's key from the
+phone after original-key exclusion. Recovered-key verification, restore/SHA-256 and
+negative tests PASS, with operator-attested device provenance. A Windows ACL defect
+in new synthetic restore destinations was fixed and verified. After automated
+cleanup was execution-policy-blocked, the operator removed the exact test folder;
+the agent's read-only absence check confirmed cleanup. A1.7 is PASS for this bounded
+synthetic route only. No real key/backup, cold account/MFA recovery or full DR PASS is claimed.
+
 | Check | Status |
 | --- | --- |
 | Local metadata restore | PASS |
@@ -32,6 +58,8 @@ was created. Execution still requires operator prerequisites and separate approv
 | S3 registered-object inventory | PASS |
 | R2.3-A/B/D synthetic S3 recovery | PASS |
 | R2.3-C live read-only dry-run | PASS |
+| R2.4-A1.5 Windows host read-only credentials/TLS audit | PASS |
+| R2.4-A1.7 manual phone synthetic key recovery and local cleanup | PASS (operator-attested route) |
 | Live encrypted S3 backup | NOT EXECUTED |
 | Independent S3 byte backup | NOT VERIFIED |
 | Remote S3 restore | NOT VERIFIED |
@@ -42,9 +70,12 @@ Publication follow-up: `ci/check_repository.py` now requires the delivery/recove
 sources in the Git index and rejects private backup/key/runtime paths before reading
 file contents. A staged source set is not yet a published commit or a new green remote CI.
 The full [A/B/C/D publication audit](stage8c-r2-3-publication.md) records the staged
-inventory and isolated Git-snapshot checks. HEAD/origin/master is now `8e934a5f65eeb768de1546b03a1a965b91be959a`;
-the Stage 8B omission repair and Stage 8C sources were published previously with
-fast/integration CI confirmed green. A/B/C/D remain pending publication until approved.
+inventory and isolated Git-snapshot checks. That audit was followed by publication
+and Windows CI fixes: A1 starts from published `bea3d8dd94f87f1e3f683c13541d77db361fc423`,
+with fast/integration CI confirmed green for that exact commit. New A1–A1.7 changes remain
+local and uncommitted; earlier green remote CI does not certify them.
+See the [A1–A1.7 publication audit](stage8c-r2-4a1-publication.md) for the complete
+source inventory, isolated staged-tree checks and remaining live-backup boundary.
 
 ## Git/CI preflight
 

@@ -25,7 +25,8 @@ class CIContractTests(unittest.TestCase):
                      '.recovery-keys/recovery.key', 'data/work/state.json', 'restore.sql.dump',
                      'frontend/node_modules/package.json', 'frontend/test-results/report.json',
                      'data/raw/object.json', '.tmp/runtime.json', 'tmp/key-material.json',
-                     'restore.sqlite3', 'archive.backup', 'private.pfx'):
+                     'restore.sqlite3', 'archive.backup', 'private.pfx', 'host-ca.crt', 'host-ca.cer',
+                     'FootballRecoveryVault/s3/receipt.json', 'FootballPlatformBackups/s3/manifest.json'):
             with self.subTest(name=name), self.assertRaises(AssertionError):
                 publication_contract(PUBLICATION_REQUIRED | {name})
 
@@ -61,6 +62,20 @@ class CIContractTests(unittest.TestCase):
         for name in ('src/recovery/s3_archive.py', 'src/recovery/s3_safety.py', 'requirements/recovery-s3.txt',
                      'ci/check_s3_recovery.py', 'tests/test_s3_windows_acl.py'):
             self.assertIn(name, PUBLICATION_REQUIRED)
+
+    def test_windows_host_and_manual_escrow_sources_are_required_and_discovered(self):
+        sources = ('s3_host', 's3_diagnostics', 's3_manual_drill')
+        scripts = ('check_s3_host_readiness', 'show_synthetic_escrow_key', 'receive_synthetic_escrow_key')
+        for name in sources:
+            self.assertIn(f'src/recovery/{name}.py', PUBLICATION_REQUIRED)
+        for name in scripts:
+            self.assertIn(f'scripts/{name}.py', PUBLICATION_REQUIRED)
+        for name in (*sources, 's3_escrow'):
+            path = f'tests/test_{name}.py'
+            self.assertIn(path, PUBLICATION_REQUIRED)
+            self.assertIn(ROOT / path, list((ROOT / 'tests').glob('test_s3_*.py')))
+        for suffix in ('', '-5', '-6', '-7', '-publication'):
+            self.assertIn(f'docs/stage8c-r2-4a1{suffix}.md', PUBLICATION_REQUIRED)
 
     def test_s3_gate_forbids_network_and_does_not_invoke_operator(self):
         source = (ROOT / 'ci/check_s3_recovery.py').read_text()

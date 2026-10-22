@@ -4,6 +4,12 @@ This document records stage D evidence. For current isolated-snapshot and public
 checks, see the [publication audit](stage8c-r2-3-publication.md). Its future operator
 procedure remains unexecuted; publication approval is not live-backup approval.
 
+The subsequent [R2.4-A1 Windows environment preparation](stage8c-r2-4a1.md)
+records the narrow Windows Python availability exception and current local paths.
+The later [A1.5 host credentials/TLS acceptance](stage8c-r2-4a1-5.md) adds a separate,
+explicit read-only launcher with allowlisted captured-pipe credentials. The original
+backup CLI and its key/backup confirmations remain unchanged.
+
 Implementation date: **2026-10-21**. This stage implements a future full collection
 path and tests it with **synthetic objects/fake SDK only**. No Selectel request,
 real archive, real recovery key, database recovery, IAM/data/volume change or
@@ -153,9 +159,15 @@ check and must leave the session unusable, never trigger cleanup.
 
 ## Runtime and secret sources
 
-Live operator policy is deliberately pinned to **host CPython 3.12.14**, the tested
-project matrix member. CI Python 3.10.12 proves offline/synthetic compatibility,
-not permission to run the live operator. Python 3.14 is not silently accepted.
+The original D live policy pinned **host CPython 3.12.14**. R2.4-A1 additionally
+accepts exactly **CPython 3.12.10 on Windows x64**, after compatibility checks on
+the signed official Windows runtime; 3.12.14 remains accepted. Non-Windows hosts
+still require 3.12.14. This is not an arbitrary 3.12.x range, a production-image
+change or a claim that 3.12.10 contains later source-only security fixes. See the
+[A1 rationale, limitations and checks](stage8c-r2-4a1.md). CI Python 3.10.12 proves
+only offline/synthetic compatibility; Python 3.13/3.14 remain unsupported for live
+collection. Unsupported runtimes report `S3_LIVE_PYTHON_UNSUPPORTED`, with the exact
+host-specific requirement in `runtime.required_live_python`.
 
 S3 archive operations do **not** need SQLite. The existing database/Grafana backup
 still separately requires `serialize`/`deserialize` support; this implementation does
@@ -214,13 +226,15 @@ generation, escrow copy or recovery proof was performed here.
 
 ## Future PowerShell procedure — NOT executed by this task
 
-Install/locate CPython **3.12.14** first; `py -3.12` must resolve to that exact version.
+Locate a verified, explicitly supported host CPython first: 3.12.14, or 3.12.10 on
+Windows x64 only. Do not assume `py -3.12` selects an approved patch release.
 These are operator instructions, not authorization to execute the real collection now.
 Choose actual independent drives/paths; examples below intentionally use placeholders.
 
 ```powershell
 Set-Location F:\Learning_projects\football-data-platform
-py -3.12 -m venv .venv\s3-recovery
+$runtime = '<absolute path to verified supported python.exe>'
+& $runtime -m venv .venv\s3-recovery
 $python = '.\.venv\s3-recovery\Scripts\python.exe'
 & $python -m pip install -r requirements/recovery-s3.txt
 & $python scripts/s3_backup.py preflight
