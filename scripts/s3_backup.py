@@ -17,6 +17,8 @@ def main(argv=None):
     parser.add_argument('--destination', type=Path)
     parser.add_argument('--key-file', type=Path)
     parser.add_argument('--archive', type=Path)
+    parser.add_argument('--host-ca-bundle', type=Path,
+                        help='create only: existing scheduler credentials in memory; public Windows PEM bundle')
     parser.add_argument('--check-source', action='store_true')
     parser.add_argument('--source-bytes', type=int)
     parser.add_argument('--source-objects', type=int)
@@ -30,6 +32,8 @@ def main(argv=None):
     parser.add_argument('--confirm-key-generation', action='store_true')
     args = parser.parse_args(argv)
     try:
+        if args.host_ca_bundle is not None and args.action != 'create':
+            raise RecoveryError('S3_HOST_HANDOFF_CREATE_ONLY')
         if args.action == 'preflight':
             result = operator.preflight(destination=args.destination, key_file=args.key_file, check_source=args.check_source,
                                         source_bytes=args.source_bytes, source_objects=args.source_objects)
@@ -38,7 +42,8 @@ def main(argv=None):
                                      expected_source_id=args.expect_source_id,
                                      expected_inventory_sha256=args.expect_inventory_sha256,
                                      confirmed=args.confirm_live_backup, key_recoverable=args.confirm_key_recoverable,
-                                     independent_media=args.confirm_independent_media, quiet_window=args.confirm_quiet_window)
+                                     independent_media=args.confirm_independent_media, quiet_window=args.confirm_quiet_window,
+                                     host_ca_bundle=args.host_ca_bundle)
         elif args.action in ('verify', 'inspect'):
             result = operator.verify(args.archive, args.key_file)
         else:

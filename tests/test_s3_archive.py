@@ -153,7 +153,8 @@ class S3ArchiveTests(unittest.TestCase):
 
     def test_gcm_detects_corruption_even_with_authenticated_updated_hash(self):
         directory = self.create()
-        path = next(directory.glob('object-*.enc'))
+        # Directory enumeration order is not the authenticated index order.
+        path = directory / self.reader(directory).index['objects'][0]['chunks'][0]['file']
         raw = bytearray(path.read_bytes())
         raw[-1] ^= 1
         path.write_bytes(raw)

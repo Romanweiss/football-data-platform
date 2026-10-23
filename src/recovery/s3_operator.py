@@ -1,4 +1,5 @@
 """Operator entry points; defaults are read-only, imports do not require crypto/SDK."""
+from contextlib import nullcontext
 import hmac
 import importlib.util
 import os
@@ -107,7 +108,8 @@ def preflight(*, destination=None, key_file=None, check_source=False, source_byt
 
 
 def create(*, destination, key_file, expected_source_id, expected_inventory_sha256,
-           confirmed=False, key_recoverable=False, independent_media=False, quiet_window=False):
+           confirmed=False, key_recoverable=False, independent_media=False, quiet_window=False,
+           host_ca_bundle=None):
     # These gates precede imports, key reads, SDK construction, Docker and all source IO.
     require(confirmed is True and key_recoverable is True and independent_media is True
             and quiet_window is True, 'S3_OPERATOR_CONFIRMATIONS_REQUIRED')
@@ -115,23 +117,31 @@ def create(*, destination, key_file, expected_source_id, expected_inventory_sha2
             and len(expected_inventory_sha256) == 64
             and all(c in '0123456789abcdef' for c in expected_inventory_sha256), 'S3_EXPECTED_SOURCE_AND_INVENTORY_REQUIRED')
     require_live_runtime()
+    if host_ca_bundle is not None:
+        from src.recovery.s3_host import require_clean_environment
+        require_clean_environment()
     from src.recovery.s3_safety import check_space, docker_volume_roots, load_key, locations, session_permissions, space_plan
     from src.recovery.s3_workflow import backup_live
     roots = docker_volume_roots()
     parent, key_path = locations(destination, key_file, forbidden_roots=roots)
     master_key = load_key(key_path)
-    source, metadata = build_sources()
-    require(source.identity.resource_id == expected_source_id, 'S3_SOURCE_IDENTITY_MISMATCH')
+    if host_ca_bundle is None:
+        context = nullcontext(build_sources())  # Existing explicit-environment API.
+    else:
+        from src.recovery.s3_host import scheduler_sources
+        context = scheduler_sources(host_ca_bundle)
+    with context as (source, metadata):
+        require(source.identity.resource_id == expected_source_id, 'S3_SOURCE_IDENTITY_MISMATCH')
 
-    def gates(initial, baseline, *, stage):
-        locations(parent, key_path, forbidden_roots=roots)
-        require(hmac.compare_digest(master_key, load_key(key_path)), 'S3_KEY_CHANGED_DURING_BACKUP')
-        require(digest(encoded(initial)) == expected_inventory_sha256, 'S3_PREFLIGHT_INVENTORY_CHANGED')
-        check_space(parent, space_plan(sum(v['head']['size_bytes'] for v in initial.values()), len(initial)),
-                    sealing=stage == 'seal')
+        def gates(initial, baseline, *, stage):
+            locations(parent, key_path, forbidden_roots=roots)
+            require(hmac.compare_digest(master_key, load_key(key_path)), 'S3_KEY_CHANGED_DURING_BACKUP')
+            require(digest(encoded(initial)) == expected_inventory_sha256, 'S3_PREFLIGHT_INVENTORY_CHANGED')
+            check_space(parent, space_plan(sum(v['head']['size_bytes'] for v in initial.values()), len(initial)),
+                        sealing=stage == 'seal')
 
-    return backup_live(source, metadata, parent, master_key, confirmed=True, before_write=gates,
-                       permission_guard=session_permissions)
+        return backup_live(source, metadata, parent, master_key, confirmed=True, before_write=gates,
+                           permission_guard=session_permissions)
 
 
 def verify(directory, key_file):

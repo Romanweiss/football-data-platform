@@ -322,3 +322,9 @@ was not supplied to a test/archive. The local commit contains public source/docs
 not the real key, private creation record, receipt, source credentials, CA bundle,
 venv, S3 payloads, backup archives or database dumps. The existing requirements and
 CI workflow gates remain unchanged; a new remote verdict requires a later push.
+
+## Subsequent A2.3-F1 implementation
+
+The missing process-only create bridge described above is addressed, with synthetic
+tests only, in [A2.3-F1](stage8c-r2-4a2-3-f1.md). It adds an opt-in host route, not
+backup authorization or a new live acceptance result. Stage 8C remains PARTIAL.

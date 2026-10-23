@@ -13,6 +13,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from botocore.httpsession import get_cert_path
+from botocore.credentials import Credentials
 
 from scripts import check_s3_host_readiness as cli
 from src.common.s3 import create_s3_client
@@ -131,6 +132,7 @@ class HostReadinessTests(unittest.TestCase):
 
     def test_audit_removes_temporary_environment_before_metadata_subprocesses(self):
         client = Mock()
+        client._request_signer._credentials = Credentials('synthetic-access', 'synthetic-secret')
         client._endpoint.http_session._verify = str(self.ca.resolve())
         metadata = Mock()
         metadata.snapshot.return_value = {'catalog': {}, 'serving': {}}
@@ -161,6 +163,7 @@ class HostReadinessTests(unittest.TestCase):
 
     def test_metadata_fence_failure_does_not_pass_and_closes_sdk(self):
         client = Mock()
+        client._request_signer._credentials = Credentials('synthetic-access', 'synthetic-secret')
         client._endpoint.http_session._verify = str(self.ca.resolve())
         metadata = Mock()
         metadata.snapshot.side_effect = [{'catalog': {}, 'serving': {}},

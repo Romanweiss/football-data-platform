@@ -1,10 +1,11 @@
-"""Opt-in host read-only audit using captured, process-local container credentials.
+"""Opt-in host SDK sessions using captured, process-local scheduler credentials.
 
 Single-threaded operator process only. This is not a secret store or a backup
-launcher. Docker access already grants access to the source runtime credentials.
+authorizer. Docker access already grants access to the source runtime credentials.
 """
 from contextlib import contextmanager
 import hashlib
+import hmac
 import json
 import logging
 import os
@@ -19,6 +20,8 @@ from src.recovery.s3_workflow import guarded
 
 NAMES = ('S3_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY', 'S3_SECRET_KEY')
 ENVIRONMENT = NAMES + ('AWS_CA_BUNDLE',)
+INHERITED_CREDENTIALS = ENVIRONMENT + ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY',
+                                      'AWS_SESSION_TOKEN', 'AWS_SECURITY_TOKEN')
 PUBLIC_CA = '/etc/ssl/certs/ca-certificates.crt'
 # Mozilla inclusion record: https://bugzilla.mozilla.org/show_bug.cgi?id=1478476
 R6_SHA256 = '2cabeafe37d06ca22aba7391c0033d25982952c453647349763a3ab5ad6ccf69'
@@ -106,29 +109,87 @@ def process_environment(container, ca_bundle, *, transport=runtime):
         logging.disable(previous_logging)
 
 
-def readonly_preflight(container, ca_bundle):
-    """Reuse the operator's bounded audit/fences, without a backup/key operation.
+@contextmanager
+def client_source(container, ca_bundle):
+    """Resolve and validate a static SDK signer, then leave the environment scope.
 
-    Remove temporary variables BEFORE metadata Docker subprocesses. The SDK holds
-    resolved credentials and the host CA path only in its own in-memory session.
+    Logging stays disabled until the client is closed. Credentials may remain in
+    SDK/Python memory; this is not secure erasure or protection from host admins.
+    Refreshable/deferred/default-chain credentials are deliberately unsupported.
     """
+    from botocore.credentials import Credentials
     from src.common.s3 import create_s3_client
-    from src.recovery.s3_dry_run import audit_source
-    from src.recovery.s3_lineage import snapshot_digest
-    from src.recovery.s3_metadata import DockerMetadataSource
-    from src.recovery.s3_operator import require_live_runtime
+    from src.recovery.s3_diagnostics import read_error
     from src.recovery.s3_readonly import S3ReadOnly
-    from src.recovery.s3_safety import space_plan
-    require_live_runtime()
     previous_logging = logging.root.manager.disable
     client = None
+    credentials = frozen = source = None
     try:
         logging.disable(logging.CRITICAL)
         with process_environment(container, ca_bundle):
             client = create_s3_client()
             require(client._endpoint.http_session._verify == str(Path(ca_bundle).resolve()),
                     'S3_HOST_TLS_REQUIRED')
+            credentials = client._request_signer._credentials
+            require(type(credentials) is Credentials and credentials.method == 'explicit',
+                    'S3_HOST_STATIC_CREDENTIALS_REQUIRED')
+            frozen = credentials.get_frozen_credentials()
+            require(frozen.token is None
+                    and hmac.compare_digest(frozen.access_key.encode(), os.environ['S3_ACCESS_KEY'].strip().encode())
+                    and hmac.compare_digest(frozen.secret_key.encode(), os.environ['S3_SECRET_KEY'].strip().encode()),
+                    'S3_HOST_CREDENTIAL_BINDING_FAILED')
             source = S3ReadOnly(client, os.environ['S3_BUCKET'].strip())
+            del frozen, credentials
+        yield source  # No temporary variables during SDK reads or subprocesses.
+    except runtime.RecoveryError:
+        raise
+    except Exception as exc:
+        raise read_error(exc, 'unknown') from None
+    finally:
+        try:
+            if client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    raise runtime.RecoveryError('S3_HOST_CLIENT_CLOSE_FAILED') from None
+        finally:
+            credentials = frozen = source = client = None
+            logging.disable(previous_logging)
+
+
+@contextmanager
+def scheduler_sources(ca_bundle):
+    """Explicit create route; no fallback to ambient credentials or arbitrary IDs.
+
+    Reject preexisting source/AWS credential variables rather than restore secrets
+    into the environment inherited by subsequent metadata subprocesses.
+    """
+    from src.recovery.s3_metadata import DockerMetadataSource
+    from src.recovery.s3_operator import require_live_runtime
+    require_clean_environment()
+    require_live_runtime()
+    container = runtime.source_container('football-airflow-scheduler')
+    with client_source(container, ca_bundle) as source:
+        metadata = DockerMetadataSource(runtime.source_container('football-postgres'),
+                                        runtime.source_container('football-clickhouse'))
+        yield source, metadata
+
+
+def require_clean_environment():
+    """Call before ANY operator subprocess, including destination mount discovery."""
+    require(not any(name in os.environ for name in INHERITED_CREDENTIALS),
+            'S3_HOST_CLEAN_ENVIRONMENT_REQUIRED')
+
+
+def readonly_preflight(container, ca_bundle):
+    """Existing bounded audit, sharing the same static-client lifecycle as create."""
+    from src.recovery.s3_dry_run import audit_source
+    from src.recovery.s3_lineage import snapshot_digest
+    from src.recovery.s3_metadata import DockerMetadataSource
+    from src.recovery.s3_operator import require_live_runtime
+    from src.recovery.s3_safety import space_plan
+    require_live_runtime()
+    with client_source(container, ca_bundle) as source:
         metadata = DockerMetadataSource(runtime.source_container('football-postgres'),
                                         runtime.source_container('football-clickhouse'))
         baseline = metadata.snapshot()
@@ -140,9 +201,3 @@ def readonly_preflight(container, ca_bundle):
                 'credential_handoff': 'CAPTURED_PIPE_PROCESS_ONLY_FROM_EXISTING_SCHEDULER',
                 'live_backup_executed': False, 'recovery_key_created': False,
                 'backup_authorization': 'BLOCKED_SEPARATE_KEY_ESCROW_AND_APPROVAL_REQUIRED'}
-    finally:
-        try:
-            if client is not None:
-                client.close()
-        finally:
-            logging.disable(previous_logging)
