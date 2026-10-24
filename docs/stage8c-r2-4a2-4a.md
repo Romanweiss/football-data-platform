@@ -232,3 +232,11 @@ candidate Git tree, not a working directory overlay. Final local/remote acceptan
 results are reported against the actual published commit. Publication does not
 authorize creation of the private F: parent or a production restore. Those remain
 separate operator checkpoints; Stage 8C remains PARTIAL.
+
+The first publication's Linux root tests exposed a nondeterministic negative-test
+fixture: an arbitrary `glob` entry could be a zero-byte directory-marker payload,
+so overwriting it with zero bytes did not corrupt anything. The follow-up test
+selects a nonempty object from the authenticated map, flips its first bit and
+requires the exact SHA-256 mismatch code (other variants require exact map/set
+error codes). This is a test-only correction, not relaxed production validation.
+It is published as a normal follow-up commit without rewriting the first commit.

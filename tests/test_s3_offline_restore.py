@@ -244,15 +244,21 @@ class OfflineRestoreTests(unittest.TestCase):
             dest = self.targets / (self._testMethodName + variant)
             def damage(target, archive, records, mapping):
                 if variant == 'payload':
-                    p = next(target.glob('object-*.bin'))
-                    p.write_bytes(bytes([0]) * p.stat().st_size)
+                    # Filesystem/glob order is unspecified. Empty directory-marker
+                    # objects must not turn a corruption test into a no-op.
+                    mapped = next(item for item in mapping['objects'] if item['size_bytes'] > 0)
+                    p = target / mapped['file']
+                    original = p.read_bytes()
+                    p.write_bytes(bytes([original[0] ^ 1]) + original[1:])
                 elif variant == 'extra':
                     (target / 'extra').write_bytes(b'synthetic')
                 else:
                     (target / 'object-map.json').write_bytes(b'{}')
                 validate(target, archive, records, mapping)
             with self.subTest(variant=variant), patch.object(restore, '_validate_plaintext', side_effect=damage):
-                with self.assertRaisesRegex(RecoveryError, 'S3_RESTORE_'):
+                codes = {'payload': 'S3_RESTORE_SHA256_MISMATCH', 'extra': 'S3_RESTORE_OUTPUT_SET_MISMATCH',
+                         'metadata': 'S3_RESTORE_MAP_MISMATCH'}
+                with self.assertRaisesRegex(RecoveryError, codes[variant]):
                     restore.restore_local(self.archive, self.key, dest, expected_session=self.sid,
                               confirmed=True, phone_attested=True, independent_media_confirmed=True)
             self.assertFalse((dest / 'restore-report.json').exists())
