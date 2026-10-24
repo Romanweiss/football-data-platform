@@ -37,6 +37,8 @@ PUBLICATION_REQUIRED = frozenset({
     'src/recovery/s3_key_escrow.py', 'scripts/show_s3_recovery_key.py',
     'scripts/receive_s3_recovery_key.py', 'tests/test_s3_key_escrow.py',
     'tests/test_s3_key_recovery.py', 'docs/stage8c-r2-4a2-1.md', 'docs/stage8c-r2-4a2-2.md',
+    'src/recovery/s3_offline_restore.py', 'scripts/restore_s3_offline.py',
+    'tests/test_s3_offline_restore.py', 'docs/stage8c-r2-4a2-4a.md',
 })
 
 

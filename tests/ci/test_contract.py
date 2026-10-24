@@ -63,6 +63,17 @@ class CIContractTests(unittest.TestCase):
                      'ci/check_s3_recovery.py', 'tests/test_s3_windows_acl.py'):
             self.assertIn(name, PUBLICATION_REQUIRED)
 
+    def test_offline_restore_sources_required_and_discovered_without_operator_execution(self):
+        paths = {'src/recovery/s3_offline_restore.py', 'scripts/restore_s3_offline.py',
+                 'tests/test_s3_offline_restore.py', 'docs/stage8c-r2-4a2-4a.md'}
+        for path in paths:
+            self.assertIn(path, PUBLICATION_REQUIRED)
+            with self.assertRaises(AssertionError):
+                publication_contract(PUBLICATION_REQUIRED - {path})
+        self.assertIn(ROOT / 'tests/test_s3_offline_restore.py', list((ROOT / 'tests').glob('test_s3_*.py')))
+        gate = (ROOT / 'ci/check_s3_recovery.py').read_text()
+        self.assertNotIn('restore_s3_offline.py', gate)
+
     def test_windows_host_and_manual_escrow_sources_are_required_and_discovered(self):
         sources = ('s3_host', 's3_diagnostics', 's3_manual_drill')
         scripts = ('check_s3_host_readiness', 'show_synthetic_escrow_key', 'receive_synthetic_escrow_key')

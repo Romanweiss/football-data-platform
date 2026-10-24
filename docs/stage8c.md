@@ -1,5 +1,10 @@
 # Stage 8C — backup, restore and disaster recovery
 
+Current checkpoint (2026-10-24): first live current-object encrypted S3 backup on
+K: and separate offline verification PASS; production isolated restore has NOT
+EXECUTED. See [A2.4-A readiness](stage8c-r2-4a2-4a.md). Earlier stage paragraphs
+below preserve their historical evidence, not the current backup status.
+
 Live backup/drill evidence: **2026-10-20 UTC**; final review completed **2026-10-21**
 (Europe/Moscow). Overall status: **PARTIAL**, not full disaster-recovery closure.
 Real local database backup/restore acceptance is **PASS**. Independent S3 byte
@@ -60,8 +65,9 @@ synthetic route only. No real key/backup, cold account/MFA recovery or full DR P
 | R2.3-C live read-only dry-run | PASS |
 | R2.4-A1.5 Windows host read-only credentials/TLS audit | PASS |
 | R2.4-A1.7 manual phone synthetic key recovery and local cleanup | PASS (operator-attested route) |
-| Live encrypted S3 backup | NOT EXECUTED |
-| Independent S3 byte backup | NOT VERIFIED |
+| Live encrypted S3 current-object backup | PASS (315 objects; separate offline verification) |
+| Independent K: encrypted current-object copy | VERIFIED; does not prove restore |
+| Production offline local S3 restore | NOT EXECUTED |
 | Remote S3 restore | NOT VERIFIED |
 | Complete machine-loss recovery | NOT VERIFIED |
 | Secret escrow/restore | NOT VERIFIED |
@@ -424,6 +430,20 @@ byte/versions protection and separate vault recovery, then drill recovery on ano
 host with restored API/BI and original encryption-key compatibility. Retain the
 explicit PARTIAL verdict until those unverified scenarios are addressed. No claimed
 HA, failover, cross-region restore, PITR/WAL recovery or whole-host-loss recovery.
+
+## Later checkpoint: first S3 backup and offline restore readiness
+
+The first live current-object S3 encrypted backup was collected once and verified
+offline: session `20261024T110123Z-ac8cfb544a2e46688b406d2dcc168509`, 315 source
+objects / 356383409 bytes, 22 build identities, SHA-256 and final fences PASS.
+The operator recorded its session in the production Bitwarden note.
+See [A2.4-A isolated restore readiness](stage8c-r2-4a2-4a.md) for the new offline
+restore route, real read-only media/archive findings and the future manual PHONE
+procedure. Production restore is **NOT EXECUTED**; the destination was not created
+and the original production key was not read during readiness. Historical stage
+reports above retain their original evidence/time boundaries. Stage 8C remains
+**PARTIAL**: independent local recovery, remote bucket restore, cold vault recovery
+and complete machine-loss recovery are not established by a verified backup alone.
 
 ## References
 
