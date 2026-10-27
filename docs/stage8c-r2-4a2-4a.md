@@ -1,6 +1,9 @@
 # Stage 8C-R2.4-A2.4-A: independent offline restore readiness
 
 Date: 2026-10-24. **Stage 8C remains PARTIAL. Real restore NOT EXECUTED.**
+This is the historical A readiness checkpoint. The later B1/B2 execution and
+[A2.4-C evidence review](stage8c-r2-4a2-4c.md) establish one successful production
+isolated local restore; the current overall Stage 8C verdict is still PARTIAL.
 The operator confirmed that the successful backup session is recorded in the
 production Bitwarden note. This stage does not access Bitwarden or the original
 production key, create a real destination, or contact any source service.

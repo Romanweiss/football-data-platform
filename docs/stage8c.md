@@ -1,9 +1,11 @@
 # Stage 8C — backup, restore and disaster recovery
 
-Current checkpoint (2026-10-24): first live current-object encrypted S3 backup on
-K: and separate offline verification PASS; production isolated restore has NOT
-EXECUTED. See [A2.4-A readiness](stage8c-r2-4a2-4a.md). Earlier stage paragraphs
-below preserve their historical evidence, not the current backup status.
+Current checkpoint (2026-10-28): **S3 recovery VERIFIED** for the first encrypted
+current-object backup on K: and isolated offline restore to F: using a manually
+recovered PHONE key: 315 objects, 356383409 bytes, 315/315 SHA-256 PASS. See
+[A2.4-C evidence and operator runbook](stage8c-r2-4a2-4c.md). **Stage 8C remains
+PARTIAL**: offsite/remote recovery, cold vault and complete machine-loss recovery
+are not established. Earlier stage paragraphs preserve their historical evidence.
 
 Live backup/drill evidence: **2026-10-20 UTC**; final review completed **2026-10-21**
 (Europe/Moscow). Overall status: **PARTIAL**, not full disaster-recovery closure.
@@ -66,11 +68,16 @@ synthetic route only. No real key/backup, cold account/MFA recovery or full DR P
 | R2.4-A1.5 Windows host read-only credentials/TLS audit | PASS |
 | R2.4-A1.7 manual phone synthetic key recovery and local cleanup | PASS (operator-attested route) |
 | Live encrypted S3 current-object backup | PASS (315 objects; separate offline verification) |
-| Independent K: encrypted current-object copy | VERIFIED; does not prove restore |
-| Production offline local S3 restore | NOT EXECUTED |
+| Independent K: encrypted current-object copy | VERIFIED; offsite custody not verified |
+| Production offline isolated local S3 restore | VERIFIED (315/315 SHA-256; zero missing/extra) |
+| Production S3 key manual PHONE recovery | VERIFIED (operator-attested route) |
+| Current-object S3 backup/isolated local recovery scenario | VERIFIED |
+| Independent offsite archive copy | NOT VERIFIED |
 | Remote S3 restore | NOT VERIFIED |
+| Historical versions / versioning / Object Lock | UNKNOWN (prior HTTP 403); not backed up |
+| Cold Bitwarden/MFA recovery after loss of devices | NOT VERIFIED |
 | Complete machine-loss recovery | NOT VERIFIED |
-| Secret escrow/restore | NOT VERIFIED |
+| Full runtime-secret escrow/restore | NOT VERIFIED |
 
 Publication follow-up: `ci/check_repository.py` now requires the delivery/recovery
 sources in the Git index and rejects private backup/key/runtime paths before reading
@@ -431,19 +438,22 @@ host with restored API/BI and original encryption-key compatibility. Retain the
 explicit PARTIAL verdict until those unverified scenarios are addressed. No claimed
 HA, failover, cross-region restore, PITR/WAL recovery or whole-host-loss recovery.
 
-## Later checkpoint: first S3 backup and offline restore readiness
+## Later checkpoint: S3 backup and isolated local recovery verified
 
 The first live current-object S3 encrypted backup was collected once and verified
 offline: session `20261024T110123Z-ac8cfb544a2e46688b406d2dcc168509`, 315 source
 objects / 356383409 bytes, 22 build identities, SHA-256 and final fences PASS.
 The operator recorded its session in the production Bitwarden note.
-See [A2.4-A isolated restore readiness](stage8c-r2-4a2-4a.md) for the new offline
-restore route, real read-only media/archive findings and the future manual PHONE
-procedure. Production restore is **NOT EXECUTED**; the destination was not created
-and the original production key was not read during readiness. Historical stage
-reports above retain their original evidence/time boundaries. Stage 8C remains
-**PARTIAL**: independent local recovery, remote bucket restore, cold vault recovery
-and complete machine-loss recovery are not established by a verified backup alone.
+The [A2.4-A readiness report](stage8c-r2-4a2-4a.md) preserves the pre-restore
+checkpoint. B1 then prepared the private F: parent; B2 completed one real restore
+with operator-attested PHONE key input and no source-service/original-key fallback.
+All 315 payloads / 356383409 bytes passed readback; mapping, metadata, completion
+and owner-only protected ACLs passed. The [A2.4-C closure audit](stage8c-r2-4a2-4c.md)
+reconciles private receipts without publishing their contents and defines safe USB
+custody, generation retention, future plaintext cleanup and remaining tests.
+No cleanup/ejection or second backup/restore occurs in C. Stage 8C stays **PARTIAL**:
+local recovery is verified, but remote bucket recovery, cold vault/MFA recovery and
+complete machine-loss recovery remain unverified.
 
 ## References
 
