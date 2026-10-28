@@ -1,5 +1,12 @@
 # Stage 9B.1 — interactive match pass map
 
+Publication update: [`fd6212d5972150e11ca0161efe0e5fa32cce4992`](https://github.com/Romanweiss/football-data-platform/commit/fd6212d5972150e11ca0161efe0e5fa32cce4992)
+contains all 23 reviewed files. [CI fast](https://github.com/Romanweiss/football-data-platform/actions/runs/40764227972)
+and [CI integration](https://github.com/Romanweiss/football-data-platform/actions/runs/40764227888)
+passed for that commit, including Windows recovery/ACL. Pass Map is still not
+deployed at production origin 18090. Pre-publication wording below records the
+earlier implementation/review checkpoints, not the current publication status.
+
 Baseline: `913feba6597bbe5c9db023e5ae11c015751a3310`. Local implementation;
 no commit/push or production deployment. Stage 8C remains PARTIAL.
 
