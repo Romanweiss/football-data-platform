@@ -15,6 +15,8 @@ import { ErrorState, LoadingState } from './components/States';
 import { I18nProvider, LanguageSwitcher, useI18n } from './i18n';
 import { useShotInteraction } from './shotInteraction';
 import { ShotDetails } from './components/ShotDetails';
+import { PassMap } from './components/PassMap';
+import { competitionLabel, seasonLabel } from './contextLabels';
 export { readRoute } from './routes';
 
 export default function App() { return <I18nProvider><Page /></I18nProvider>; }
@@ -58,13 +60,14 @@ function Page() {
   const contextFailed = catalog.state.status === 'error' || seasons.state.status === 'error' || list.state.status === 'error';
   return <div className="app-shell"><a className="skip-link" href="#analysis">{t('skip')}</a>
     <header className="app-header"><a className="brand" href="/"><span className="brand-mark">T/</span>touchline<span className="brand-sub">{t('intelligence')}</span></a>
-      <div className="tournament"><span className="status-dot" />{competitionId === null ? t('competition') : t('competitionId', { id: competitionId })}
-        {seasonId !== null && <span>{t('seasonId', { id: seasonId })}</span>}<span className="tag">{t('lab')}</span></div><LanguageSwitcher /></header>
+      <div className="tournament"><span className="status-dot" />{competitionId === null ? t('competition') : competitionLabel(competitionId, t)}
+        {seasonId !== null && <span>{seasonLabel(competitionId, seasonId, t)}</span>}<span className="tag">{t('lab')}</span></div><LanguageSwitcher /></header>
     <main><div className="page-heading"><div><span className="eyebrow">{t('eyebrow')}</span><h1>{t('title')}<span className="accent">.</span></h1>
       <p>{t('subtitle')}</p></div><div className="source-note">{t('source')}<br /><span>{list.state.status === 'ready' ? t('matchCount', { count: count(list.state.data.length) }) : t('platformContext')}</span></div></div>
       <ContextSelector competitions={competitions} seasons={seasonRows} competitionId={competitionId} seasonId={seasonId}
         onCompetition={id => navigate(`/competitions/${id}`)}
         onSeason={id => { if (competitionId !== null) navigate(contextPath({ competitionId, seasonId: id })); }} />
+      {competitionId === 9 && seasonId === 281 && <p className="coverage-note" data-testid="coverage-note">{t('partialCoverage')}</p>}
       {catalog.state.status === 'error' ? <ErrorState error={catalog.state.error} retry={catalog.retry} />
         : catalog.state.status === 'loading' ? <LoadingState label={t('loadingCatalog')} />
         : !competitions.length ? <p className="state-panel">{t('noCompetitions')}</p>
@@ -90,5 +93,6 @@ export function Analysis({ data }: { data: MatchAnalysisResponse }) {
   return <div onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) interaction.clear(); }}><MatchHeader match={data.match} /><TeamComparison teams={data.teams} />
     <div className="visual-grid"><XgRace points={data.xg_race} teams={data.teams} shots={data.shots} interaction={interaction} /><ShotMap shots={data.shots} match={data.match} interaction={interaction} /></div>
     <ShotDetails shots={data.shots} points={data.xg_race} interaction={interaction} />
+    <PassMap analysis={data} />
     <PlayerTable players={data.players} teams={data.teams} /><ShootoutPanel shootout={data.shootout} match={data.match} /></div>;
 }

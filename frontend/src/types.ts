@@ -43,3 +43,22 @@ export interface MatchAnalysisResponse {
   shots: Shot[]; xg_race: XgRacePoint[]; shootout: Shootout;
 }
 export interface ApiError { error: { code: string; message: string } }
+
+export type PassStatus = 'completed' | 'failed' | 'unknown';
+export interface PassEvent {
+  event_id: string; event_index: number; team_id: number; team_name: string;
+  player_id: number | null; player_name: string | null; recipient_id: number | null; recipient_name: string | null;
+  period: number; minute: number; second: number; start_x: number; start_y: number; end_x: number; end_y: number;
+  outcome_id: number | null; outcome_name: string | null; completion_status: PassStatus;
+}
+export interface PassFilters { team_id?: number; player_id?: number; period?: number }
+export interface PassMapResponse {
+  competition_id: number; season_id: number; match_id: number;
+  filters: { team_id: number | null; player_id: number | null; period: number | null };
+  coordinate_system: { name: string; length: number; width: number; origin: string; x_direction: string;
+    y_direction: string; orientation: string; units: string; tracking: boolean };
+  response_limit: number; total_count: number; returned_count: number;
+  outcome_counts: Record<PassStatus, number>;
+  excluded: { count: number; reasons: { missing_coordinates: number; non_finite_coordinates: number; out_of_bounds_coordinates: number } };
+  passes: PassEvent[];
+}

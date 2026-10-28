@@ -1,9 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiFailure, fetchAnalysis, fetchMatches, fetchCompetitions, fetchSeasons, parseAnalysis, parseMatches } from '../src/api';
-import { analysis, match } from './fixtures';
+import { ApiFailure, fetchAnalysis, fetchMatches, fetchCompetitions, fetchSeasons, parseAnalysis, parseMatches, fetchPasses } from '../src/api';
+import { analysis, match, passMap } from './fixtures';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('runtime API boundary', () => {
+  it('binds pass filters to one same-origin request, rejects mismatched context and passes cancellation', async () => {
+    const mock = vi.fn().mockResolvedValue({ ok: true, json: async () => passMap });
+    vi.stubGlobal('fetch', mock);
+    const signal = new AbortController().signal;
+    expect(await fetchPasses({ competitionId: 11, seasonId: 22 }, 7, { team_id: 10, period: 1 }, signal)).toEqual(passMap);
+    expect(mock).toHaveBeenCalledWith('/api/v1/competitions/11/seasons/22/matches/7/passes?team_id=10&period=1', expect.objectContaining({ signal }));
+    await expect(fetchPasses({ competitionId: 90, seasonId: 22 }, 7, { team_id: 10, period: 1 }, signal)).rejects.toMatchObject({ code: 'invalid_response' });
+    await expect(fetchPasses({ competitionId: 11, seasonId: 22 }, 7, { team_id: 10, player_id: 1, period: 1 }, signal)).rejects.toMatchObject({ code: 'invalid_response' });
+    const before = mock.mock.calls.length;
+    await expect(fetchPasses({ competitionId: 11, seasonId: 22 }, 7, { period: 6 }, signal)).rejects.toMatchObject({ code: 'invalid_request' });
+    expect(mock).toHaveBeenCalledTimes(before);
+  });
   it('accepts the exact API shape and preserves nullable fields and numeric precision', () => {
     const data = structuredClone(analysis);
     data.shots[0].player_id = null;

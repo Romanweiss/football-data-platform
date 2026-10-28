@@ -1,5 +1,6 @@
 import type { ApiError, MatchAnalysisResponse, MatchOverview, Metrics, PlayerMatchStats, Shot, Shootout, ShootoutAttempt, TeamMatchStats, XgRacePoint } from './types';
 import type { Competition, Season, Context } from './types';
+import type { PassEvent, PassFilters, PassMapResponse, PassStatus } from './types';
 
 type Guard<T> = (value: unknown) => value is T;
 type Schema<T> = { [K in keyof T]: Guard<T[K]> };
@@ -100,5 +101,53 @@ export async function fetchAnalysis(context: Context, matchId: number, signal: A
   if (!Number.isSafeInteger(matchId) || matchId <= 0) throw new ApiFailure(404);
   const data = parseAnalysis(await get(`${contextPath(context)}/matches/${matchId}/analysis`, signal));
   if (data.match.match_id !== matchId || data.match.competition_id !== context.competitionId || data.match.season_id !== context.seasonId) throw new ApiFailure(500, 'invalid_response');
+  return data;
+}
+
+const passStatus: Guard<PassStatus> = (v): v is PassStatus => v === 'completed' || v === 'failed' || v === 'unknown';
+const nonnegative: Guard<number> = (v): v is number => integer(v) && v >= 0;
+const passGuard = shape<PassEvent>({ ...timing, ...player, team_id: integer, team_name: string,
+  recipient_id: nullable(integer), recipient_name: nullable(string), start_x: number, start_y: number,
+  end_x: number, end_y: number, outcome_id: nullable(integer), outcome_name: nullable(string), completion_status: passStatus });
+const passMapGuard = shape<PassMapResponse>({ competition_id: integer, season_id: integer, match_id: integer,
+  filters: shape({ team_id: nullable(integer), player_id: nullable(integer), period: nullable(integer) }),
+  coordinate_system: shape({ name: string, length: number, width: number, origin: string, x_direction: string,
+    y_direction: string, orientation: string, units: string, tracking: boolean }),
+  response_limit: integer, total_count: nonnegative, returned_count: nonnegative,
+  outcome_counts: shape({ completed: nonnegative, failed: nonnegative, unknown: nonnegative }),
+  excluded: shape({ count: nonnegative, reasons: shape({ missing_coordinates: nonnegative,
+    non_finite_coordinates: nonnegative, out_of_bounds_coordinates: nonnegative }) }), passes: array(passGuard) });
+export function parsePasses(data: unknown): PassMapResponse {
+  if (!passMapGuard(data)) throw new ApiFailure(500, 'invalid_response');
+  const c = data.coordinate_system;
+  if (c.name !== 'StatsBomb' || c.length !== 120 || c.width !== 80 || c.origin !== 'top-left'
+      || c.x_direction !== 'right' || c.y_direction !== 'down' || c.orientation !== 'source_preserved'
+      || c.units !== 'statsbomb' || c.tracking || data.response_limit !== 5000
+      || data.returned_count !== data.passes.length || data.returned_count > data.response_limit
+      || data.total_count !== data.returned_count + data.excluded.count
+      || Object.values(data.outcome_counts).reduce((sum, n) => sum + n, 0) !== data.total_count
+      || Object.values(data.excluded.reasons).reduce((sum, n) => sum + n, 0) !== data.excluded.count
+      || new Set(data.passes.map(p => p.event_id)).size !== data.passes.length
+      || data.passes.some(p => p.start_x < 0 || p.start_x > 120 || p.end_x < 0 || p.end_x > 120
+        || p.start_y < 0 || p.start_y > 80 || p.end_y < 0 || p.end_y > 80 || p.period < 1 || p.period > 5))
+    throw new ApiFailure(500, 'invalid_response');
+  return data;
+}
+export async function fetchPasses(context: Context, matchId: number, filters: PassFilters, signal: AbortSignal) {
+  if (!positive(matchId)) throw new ApiFailure(400, 'invalid_request');
+  const query = new URLSearchParams();
+  for (const key of ['team_id', 'player_id', 'period'] as const) {
+    const value = filters[key];
+    if (value !== undefined) {
+      if (!positive(value) || value >= (key === 'period' ? 6 : 2 ** 32)) throw new ApiFailure(400, 'invalid_request');
+      query.set(key, String(value));
+    }
+  }
+  const data = parsePasses(await get(`${contextPath(context)}/matches/${matchId}/passes${query.size ? '?' + query : ''}`, signal));
+  if (data.competition_id !== context.competitionId || data.season_id !== context.seasonId || data.match_id !== matchId
+      || (['team_id', 'player_id', 'period'] as const).some(key => data.filters[key] !== (filters[key] ?? null))
+      || data.passes.some(p => (filters.team_id !== undefined && p.team_id !== filters.team_id)
+        || (filters.player_id !== undefined && p.player_id !== filters.player_id)
+        || (filters.period !== undefined && p.period !== filters.period))) throw new ApiFailure(500, 'invalid_response');
   return data;
 }

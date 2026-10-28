@@ -51,3 +51,9 @@ class FootballService:
         return {"match": match,
                 **{name: self._section(name, match) for name in ("teams", "players", "shots", "xg_race")},
                 "shootout": self._shootout(match)}
+
+    def passes(self, match_id, context, filters):
+        from application.passes import read_passes
+
+        self.match(match_id, context)  # Wrong context/unknown match never exposes child rows.
+        return read_passes(self.repository, context=context, match_id=match_id, filters=filters)

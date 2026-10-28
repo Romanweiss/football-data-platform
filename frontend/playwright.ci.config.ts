@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests/smoke', testMatch: '**/context.spec.ts',
+  testDir: './tests/smoke', testMatch: ['**/context.spec.ts', '**/pass-map.spec.ts'],
   grep: /synthetic contexts:/,
   workers: 1, retries: 0, timeout: 30_000,
   use: { baseURL: 'http://127.0.0.1:15174', browserName: 'chromium', screenshot: 'only-on-failure' },

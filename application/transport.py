@@ -53,6 +53,16 @@ def parameters(request, *, allow_team=False):
     return uint(request.GET["team_id"], "team_id", 32) if "team_id" in request.GET else None
 
 
+def pass_parameters(request):
+    allowed = {'team_id', 'player_id', 'period'}
+    if set(request.GET) - allowed or any(len(request.GET.getlist(key)) != 1 for key in request.GET):
+        raise ApiError('invalid_request', 'Unsupported or repeated query parameter', 400)
+    result = {name: uint(request.GET[name], name, 8 if name == 'period' else 32) for name in request.GET}
+    if result.get('period', 1) > 5:
+        raise ApiError('invalid_request', 'period must be between 1 and 5', 400)
+    return result
+
+
 def not_found(request, exception=None):
     return error_response("not_found", "Endpoint was not found", 404)
 

@@ -1,5 +1,17 @@
 # Football Data Platform
 
+## Match Lab — interactive pass map (Stage 9B.1)
+
+The local development Match Lab now supports full-pitch, event-based passes with
+team/player/period filters, completion outcomes, explicit exclusion counts and
+keyboard-accessible details. Example: Granit Xhaka, first half of Leverkusen–Leipzig
+(`9/281/3895052`): 31 passes, 27 completed / 4 failed. Load the map explicitly;
+the existing shots/xG/shootout analysis is unchanged. Bundesliga 2023/24 is clearly
+marked as the 34-match Leverkusen subset, not full-league coverage.
+
+[API contract, local verification and limitations](docs/stage9b1.md).
+This is local implementation, not a new published release/production deployment.
+
 ## Stage 8C — encrypted backups and isolated restore drills
 
 The opt-in host CLI `python scripts/backup.py` creates encrypted PostgreSQL,

@@ -1,4 +1,4 @@
-import type { MatchAnalysisResponse, MatchOverview, Shot } from '../src/types';
+import type { MatchAnalysisResponse, MatchOverview, Shot, PassMapResponse } from '../src/types';
 
 // Small synthetic fixture using the inspected Stage 5A shape, not a full match.
 export const match: MatchOverview = {
@@ -38,3 +38,24 @@ export const analysis: MatchAnalysisResponse = {
 };
 export const otherAnalysis: MatchAnalysisResponse = { ...analysis, match: otherMatch,
   shootout: { match_id: 8, went_to_penalties: false, attempts: [] } };
+
+export const passMap: PassMapResponse = {
+  competition_id: 11, season_id: 22, match_id: 7,
+  filters: { team_id: 10, player_id: null, period: 1 },
+  coordinate_system: { name: 'StatsBomb', length: 120, width: 80, origin: 'top-left', x_direction: 'right',
+    y_direction: 'down', orientation: 'source_preserved', units: 'statsbomb', tracking: false },
+  response_limit: 5000, total_count: 3, returned_count: 3,
+  outcome_counts: { completed: 1, failed: 1, unknown: 1 },
+  excluded: { count: 0, reasons: { missing_coordinates: 0, non_finite_coordinates: 0, out_of_bounds_coordinates: 0 } },
+  passes: [
+    { event_id: 'pass-1', event_index: 1, team_id: 10, team_name: 'Red FC', player_id: 1, player_name: 'Player One',
+      recipient_id: 3, recipient_name: 'Player Three', period: 1, minute: 1, second: 2,
+      start_x: 0, start_y: 80, end_x: 120, end_y: 0, outcome_id: null, outcome_name: null, completion_status: 'completed' },
+    { event_id: 'pass-2', event_index: 2, team_id: 10, team_name: 'Red FC', player_id: 1, player_name: 'Player One',
+      recipient_id: null, recipient_name: null, period: 1, minute: 2, second: 3,
+      start_x: 5.123456789, start_y: 2, end_x: 30, end_y: 50, outcome_id: 9, outcome_name: 'Incomplete', completion_status: 'failed' },
+    { event_id: 'pass-3', event_index: 3, team_id: 10, team_name: 'Red FC', player_id: 1, player_name: 'Player One',
+      recipient_id: 3, recipient_name: 'Player Three', period: 1, minute: 3, second: 4,
+      start_x: 120, start_y: 0, end_x: 0, end_y: 80, outcome_id: 77, outcome_name: 'Unknown', completion_status: 'unknown' },
+  ],
+};

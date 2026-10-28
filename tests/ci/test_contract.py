@@ -14,6 +14,24 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CIContractTests(unittest.TestCase):
+    def test_pass_map_sources_and_synthetic_gates_are_required_for_publication(self):
+        for name in ('application/passes.py', 'tests/application/test_passes.py', 'docs/stage9b1.md',
+                     'frontend/src/components/PassMap.tsx', 'frontend/src/contextLabels.ts',
+                     'frontend/tests/passes.test.tsx', 'frontend/tests/smoke/pass-map.spec.ts',
+                     'frontend/playwright.ci.config.ts'):
+            self.assertIn(name, PUBLICATION_REQUIRED)
+        fast = yaml.load((ROOT / '.github/workflows/ci-fast.yml').read_text(), Loader=yaml.BaseLoader)
+        python_steps = fast['jobs']['python']['steps']
+        self.assertTrue(any('discover -s tests/application' in step.get('run', '') for step in python_steps))
+        browser_steps = fast['jobs']['frontend']['steps']
+        self.assertTrue(any(step.get('run') == 'npm run test:ci-browser' for step in browser_steps))
+        config = (ROOT / 'frontend/playwright.ci.config.ts').read_text()
+        self.assertIn('**/pass-map.spec.ts', config)
+        self.assertIn('**/context.spec.ts', config)
+        self.assertIn('grep: /synthetic contexts:/', config)
+        self.assertIn("name: 'desktop'", config)
+        self.assertIn("name: 'mobile'", config)
+
     def test_publication_requires_all_delivery_and_recovery_sources_in_git(self):
         publication_contract(PUBLICATION_REQUIRED)
         for missing in PUBLICATION_REQUIRED:

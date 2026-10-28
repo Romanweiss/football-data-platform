@@ -39,6 +39,10 @@ PUBLICATION_REQUIRED = frozenset({
     'tests/test_s3_key_recovery.py', 'docs/stage8c-r2-4a2-1.md', 'docs/stage8c-r2-4a2-2.md',
     'src/recovery/s3_offline_restore.py', 'scripts/restore_s3_offline.py',
     'tests/test_s3_offline_restore.py', 'docs/stage8c-r2-4a2-4a.md',
+    'application/passes.py', 'tests/application/test_passes.py', 'docs/stage9b1.md',
+    'frontend/src/components/PassMap.tsx', 'frontend/src/contextLabels.ts',
+    'frontend/tests/passes.test.tsx', 'frontend/tests/smoke/pass-map.spec.ts',
+    'frontend/playwright.ci.config.ts',
 })
 
 
