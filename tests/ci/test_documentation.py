@@ -81,8 +81,10 @@ class DocumentationTests(unittest.TestCase):
         ru = (ROOT / 'README.ru.md').read_text(encoding='utf-8')
         self.assertIn('2026/27 is not integrated', en.replace('**', '').replace('\n', ' '))
         self.assertIn('2026/27 ещё не интегрирован', ru.replace('**', '').replace('\n', ' '))
-        self.assertIn('production 18090 has not been updated', en)
-        self.assertIn('production 18090 ещё не обновлён', ru)
+        self.assertIn('Pass Map is accepted at local production-like 18090', en)
+        self.assertIn('Pass Map принят на локальном production-like 18090', ru)
+        self.assertIn('not published or deployed at 18090', en)
+        self.assertIn('не опубликована и не развёрнута на 18090', ru)
 
     def test_legacy_readme_is_complete_after_documented_link_retargeting(self):
         text = (ROOT / 'docs/archive/README-legacy.md').read_text(encoding='utf-8')

@@ -57,3 +57,10 @@ class FootballService:
 
         self.match(match_id, context)  # Wrong context/unknown match never exposes child rows.
         return read_passes(self.repository, context=context, match_id=match_id, filters=filters)
+
+    def event_heatmap(self, match_id, context, filters, *, coordinates=False):
+        from application.heatmap import read_heatmap, read_pressure_coordinates
+
+        self.match(match_id, context)
+        reader = read_pressure_coordinates if coordinates else read_heatmap
+        return reader(self.repository, context=context, match_id=match_id, filters=filters)

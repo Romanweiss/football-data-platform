@@ -156,6 +156,34 @@ input::placeholder { color: var(--muted); }
 .pass-event[data-selected="true"] .pass-start, .pass-event:focus-visible .pass-start { stroke: white; stroke-width: 0.7; opacity: 1; }
 .pass-details h3 { margin: 0; font-size: 16px; }
 .pass-details { border-top: 1px solid var(--line); padding-top: 18px; }
+.pressure-panel .chart-note { margin: 12px 0; line-height: 1.6; }
+.pressure-filters { display: flex; flex-wrap: wrap; gap: 16px; margin: 18px 0; }
+.pressure-filters label { display: flex; flex: 1 1 180px; flex-direction: column; gap: 8px; font-size: 11px; color: var(--muted); min-width: 0; }
+.pressure-filters select { width: 100%; font-size: 13px; }
+.pressure-counts { display: flex; flex-wrap: wrap; gap: 10px 20px; margin: 18px 0; font-size: 13px; }
+.pressure-legend { display: flex; flex-wrap: wrap; gap: 14px; list-style: none; padding: 0; font-size: 12px; }
+.pressure-legend li { display: flex; align-items: center; gap: 7px; }
+.pressure-swatch { width: 20px; height: 14px; border: 1px solid #829b8d; border-radius: 3px; }
+.pressure-pitch { display: block; width: 100%; max-width: 960px; height: auto; margin: 15px auto; }
+.pressure-cell { stroke: #ffffff16; stroke-width: 0.15; cursor: pointer; outline: none; }
+.pressure-cell:hover, .pressure-cell:focus-visible, .pressure-cell[data-selected="true"] { stroke: white; stroke-width: 0.65; }
+.pressure-markings { fill: none; stroke: #d2dfd0; stroke-width: 0.3; pointer-events: none; }
+.pressure-modes { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--line, #39514b); border-radius: 10px; align-self: end; }
+.pressure-modes button { padding: 8px 12px; background: transparent; color: inherit; border: 0; border-radius: 6px; }
+.pressure-modes button[aria-pressed="true"] { background: #d2e4c2; color: #142c27; }
+.pressure-method { margin: 12px 0; font-size: 13px; }
+.pressure-method summary { cursor: pointer; width: fit-content; }
+.pressure-density-legend { width: min(320px, 100%); font-size: 12px; margin: 16px 0; line-height: 1.6; }
+.pressure-gradient { height: 8px; margin-top: 6px; border-radius: 8px; background: linear-gradient(to right, #142c27, #21a897 10%, #77d175 25%, #f7dd5b 50%, #fa8b3d 75%, #ef4345); }
+.pressure-ticks { position: relative; height: 20px; }
+.pressure-ticks span { position: absolute; transform: translateX(-50%); }
+.pressure-ticks span:first-child { transform: none; }
+.pressure-ticks span:last-child { transform: translateX(-100%); }
+.pressure-smooth { background: #102923; border-radius: 12px; }
+.pressure-smooth .pressure-cell { stroke: none; }
+.pressure-smooth .pressure-cell:hover, .pressure-smooth .pressure-cell:focus, .pressure-smooth .pressure-cell[data-selected="true"] { stroke: #f3f6e8; stroke-width: 0.6; }
+.pressure-smooth .pressure-markings { stroke: #e5edde; stroke-width: 0.35; }
+.pressure-cell-details { font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 @media (max-width: 1100px) { .brand-sub { display: none; } }
 @media (max-width: 900px) { .detail-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 @media (max-width: 600px) {

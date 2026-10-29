@@ -59,3 +59,22 @@ export const passMap: PassMapResponse = {
       start_x: 120, start_y: 0, end_x: 0, end_y: 80, outcome_id: 77, outcome_name: 'Unknown', completion_status: 'unknown' },
   ],
 };
+
+export const pressureMap: import('../src/types').PressureHeatmapResponse = {
+  competition_id: 11, season_id: 22, match_id: 7,
+  filters: { type: 'pressure', team_id: 10, period: 1 },
+  coordinate_system: { ...passMap.coordinate_system },
+  grid: { columns: 12, rows: 8, cell_width: 10, cell_height: 10, boundary_rule: 'left_closed_right_open_outer_inclusive' },
+  metric: { id: 'pressure_event_count', event_type: 'Pressure', type_id: 17,
+    definition: 'Count of registered Pressure events per cell, not tracking movement.', normalization: 'none', smoothing: 'none' },
+  intensity_scale: { kind: 'fixed_absolute_count', lower_bounds: [0, 1, 2, 4, 8, 16], top_bin: '16+' },
+  total_count: 19, eligible_event_total: 19,
+  excluded: { count: 0, reasons: { missing_coordinates: 0, non_finite_coordinates: 0, out_of_bounds_coordinates: 0 } },
+  cells: Array.from({ length: 96 }, (_, i) => ({ column: i % 12, row: Math.floor(i / 12), count: i === 0 ? 1 : i === 13 ? 2 : i === 95 ? 16 : 0 })),
+};
+
+export const pressureCoordinates: import('../src/types').PressureCoordinatesResponse = {
+  ...pressureMap, response_limit: 5000,
+  points: pressureMap.cells.flatMap((cell, i) => Array.from({ length: cell.count }, (_, j) =>
+    ({ event_id: `pressure-${i}-${j}`, x: cell.column * 10 + 5, y: cell.row * 10 + 5 }))),
+};

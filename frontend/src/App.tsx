@@ -16,6 +16,7 @@ import { I18nProvider, LanguageSwitcher, useI18n } from './i18n';
 import { useShotInteraction } from './shotInteraction';
 import { ShotDetails } from './components/ShotDetails';
 import { PassMap } from './components/PassMap';
+import { PressureHeatmap } from './components/PressureHeatmap';
 import { competitionLabel, seasonLabel } from './contextLabels';
 export { readRoute } from './routes';
 
@@ -94,5 +95,6 @@ export function Analysis({ data }: { data: MatchAnalysisResponse }) {
     <div className="visual-grid"><XgRace points={data.xg_race} teams={data.teams} shots={data.shots} interaction={interaction} /><ShotMap shots={data.shots} match={data.match} interaction={interaction} /></div>
     <ShotDetails shots={data.shots} points={data.xg_race} interaction={interaction} />
     <PassMap analysis={data} />
+    <PressureHeatmap analysis={data} />
     <PlayerTable players={data.players} teams={data.teams} /><ShootoutPanel shootout={data.shootout} match={data.match} /></div>;
 }

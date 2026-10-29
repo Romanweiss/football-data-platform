@@ -14,6 +14,6 @@ COPY docs/ docs/
 COPY frontend/ frontend/
 COPY ci/ ci/
 COPY .github/ .github/
-COPY compose.yaml .env.example .dockerignore ruff.toml README.md manage.py ./
+COPY compose.yaml .env.example .dockerignore .gitignore ruff.toml README.md README.ru.md manage.py ./
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PLATFORM_ALERTS_ENABLED=false
 CMD ["python", "-m", "unittest", "discover", "-s", "tests/ci", "-p", "test_*.py"]

@@ -62,3 +62,17 @@ export interface PassMapResponse {
   excluded: { count: number; reasons: { missing_coordinates: number; non_finite_coordinates: number; out_of_bounds_coordinates: number } };
   passes: PassEvent[];
 }
+
+export interface HeatmapFilters { team_id?: number; period?: number }
+export interface PressurePoint { event_id: string; x: number; y: number }
+export interface PressureCoordinatesResponse extends PressureHeatmapResponse { response_limit: number; points: PressurePoint[] }
+export interface HeatmapCell { column: number; row: number; count: number }
+export interface PressureHeatmapResponse {
+  competition_id: number; season_id: number; match_id: number;
+  filters: { type: string; team_id: number | null; period: number | null };
+  coordinate_system: PassMapResponse['coordinate_system'];
+  grid: { columns: number; rows: number; cell_width: number; cell_height: number; boundary_rule: string };
+  metric: { id: string; event_type: string; type_id: number; definition: string; normalization: string; smoothing: string };
+  intensity_scale: { kind: string; lower_bounds: number[]; top_bin: string };
+  total_count: number; eligible_event_total: number; excluded: PassMapResponse['excluded']; cells: HeatmapCell[];
+}

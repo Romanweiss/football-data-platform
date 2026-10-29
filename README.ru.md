@@ -92,7 +92,9 @@ fixtures, но нет настоящего S3-озера и наполненны
 
 Адрес уже настроенного dev-интерфейса — `http://127.0.0.1:15173`.
 Опциональный production-like origin — `http://127.0.0.1:18090`, только локально.
-**Pass Map опубликован и проверен в dev; production 18090 ещё не обновлён.**
+**Pass Map принят на локальном production-like 18090 (Stage 9B.1-D).**
+См. [результаты deployment acceptance](docs/stage9b1-deployment.md). Pressure Heatmap
+(Stage 9B.2-A) — локальная разработка, не опубликована и не развёрнута на 18090.
 
 ## Навигация по документации
 

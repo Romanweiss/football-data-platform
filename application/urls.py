@@ -8,6 +8,8 @@ urlpatterns = [
     path("api/v1/competitions/<str:competition_id>/seasons", views.seasons),
     path("api/v1/competitions/<str:competition_id>/seasons/<str:season_id>/matches", views.matches),
     path("api/v1/competitions/<str:competition_id>/seasons/<str:season_id>/matches/<str:match_id>/passes", views.passes),
+    path("api/v1/competitions/<str:competition_id>/seasons/<str:season_id>/matches/<str:match_id>/event-heatmap", views.event_heatmap),
+    path("api/v1/competitions/<str:competition_id>/seasons/<str:season_id>/matches/<str:match_id>/event-heatmap/coordinates", views.event_heatmap, {"coordinates": True}),
     *[path(prefix, views.match) for prefix in (
         "api/v1/matches/<str:match_id>",
         "api/v1/competitions/<str:competition_id>/seasons/<str:season_id>/matches/<str:match_id>")],

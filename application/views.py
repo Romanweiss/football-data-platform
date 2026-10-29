@@ -1,7 +1,7 @@
 """Thin HTTP controllers; all database access lives in repository/services."""
 from application.repository import open_repository
 from application.services import FootballService
-from application.transport import endpoint, parameters, pass_parameters, uint
+from application.transport import endpoint, heatmap_parameters, parameters, pass_parameters, uint
 
 
 @endpoint
@@ -48,6 +48,16 @@ def passes(request, competition_id, season_id, match_id):
     match_id = uint(match_id, 'match_id')
     with open_repository() as repository:
         return FootballService(repository).passes(match_id, context, filters)
+
+
+@endpoint
+def event_heatmap(request, competition_id, season_id, match_id, coordinates=False):
+    filters = heatmap_parameters(request)
+    context = {'competition_id': uint(competition_id, 'competition_id', 32),
+               'season_id': uint(season_id, 'season_id', 32)}
+    match_id = uint(match_id, 'match_id')
+    with open_repository() as repository:
+        return FootballService(repository).event_heatmap(match_id, context, filters, coordinates=coordinates)
 
 
 @endpoint

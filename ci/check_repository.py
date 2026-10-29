@@ -43,6 +43,13 @@ PUBLICATION_REQUIRED = frozenset({
     'frontend/src/components/PassMap.tsx', 'frontend/src/contextLabels.ts',
     'frontend/tests/passes.test.tsx', 'frontend/tests/smoke/pass-map.spec.ts',
     'frontend/playwright.ci.config.ts',
+    'application/heatmap.py', 'tests/application/test_heatmap.py',
+    'tests/integration/test_clickhouse_heatmap.py', 'tests/ci/test_heatmap.py',
+    'frontend/src/components/PressureHeatmap.tsx', 'frontend/tests/heatmap.test.tsx',
+    'frontend/src/pressureDensity.ts', 'frontend/tests/density.test.tsx',
+    'frontend/tests/smoke/pressure-heatmap.spec.ts', 'docs/stage9b2.md',
+    'docs/stage9b1-deployment.md', 'README.ru.md',
+    'ci/Dockerfile.dockerignore',
 })
 
 

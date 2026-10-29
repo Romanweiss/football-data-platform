@@ -63,6 +63,18 @@ def pass_parameters(request):
     return result
 
 
+def heatmap_parameters(request):
+    if (set(request.GET) - {'type', 'team_id', 'period'}
+            or any(len(request.GET.getlist(key)) != 1 for key in request.GET)
+            or request.GET.get('type') != 'pressure'):
+        raise ApiError('invalid_request', 'Only type=pressure with optional team_id and period is supported', 400)
+    result = {name: uint(request.GET[name], name, 8 if name == 'period' else 32)
+              for name in ('team_id', 'period') if name in request.GET}
+    if result.get('period', 1) > 5:
+        raise ApiError('invalid_request', 'period must be between 1 and 5', 400)
+    return result
+
+
 def not_found(request, exception=None):
     return error_response("not_found", "Endpoint was not found", 404)
 

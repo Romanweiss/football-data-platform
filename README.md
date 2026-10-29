@@ -89,7 +89,9 @@ before starting application containers; do not run historical ingestion commands
 
 With an already configured dev stack, Match Lab is at `http://127.0.0.1:15173`.
 The optional production-like origin is `http://127.0.0.1:18090`, local only.
-**Pass Map is published and dev-verified; production 18090 has not been updated.**
+**Pass Map is accepted at local production-like 18090 (Stage 9B.1-D).**
+See the [deployment acceptance](docs/stage9b1-deployment.md). Pressure Heatmap
+(Stage 9B.2-A) is local development work, not published or deployed at 18090.
 
 ## Documentation
 
