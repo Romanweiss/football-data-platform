@@ -1,0 +1,57 @@
+{
+  "provider": "synthetic",
+  "competition": {
+    "id": "competition:synthetic-ucl",
+    "identity": {"provider": "synthetic", "entity_kind": "competition", "external_id": "cup-1"},
+    "name": "Synthetic Champions Competition", "team_type": "club"
+  },
+  "season": {
+    "id": "season:synthetic-2026-27",
+    "identity": {"provider": "synthetic", "entity_kind": "season", "external_id": "2026"},
+    "competition_id": "competition:synthetic-ucl", "label": "2026/27", "format_version": "synthetic-36-team-v1"
+  },
+  "stages": [
+    {"id": "stage:league", "identity": {"provider": "synthetic", "entity_kind": "stage", "external_id": "league"}, "season_id": "season:synthetic-2026-27", "name": "League phase", "kind": "league_phase"},
+    {"id": "stage:knockout", "identity": {"provider": "synthetic", "entity_kind": "stage", "external_id": "knockout"}, "season_id": "season:synthetic-2026-27", "name": "Knockout", "kind": "knockout"}
+  ],
+  "rounds": [
+    {"id": "round:league-1", "identity": {"provider": "synthetic", "entity_kind": "round", "external_id": "league-1"}, "stage_id": "stage:league", "name": "Matchday 1", "order": 1},
+    {"id": "round:knockout-1", "identity": {"provider": "synthetic", "entity_kind": "round", "external_id": "knockout-1"}, "stage_id": "stage:knockout", "name": "Synthetic knockout round", "order": 1}
+  ],
+  "participants": [
+    {"id": "team:red", "identity": {"provider": "synthetic", "entity_kind": "participant", "external_id": "red"}, "name": "Red Test FC", "team_type": "club"},
+    {"id": "team:blue", "identity": {"provider": "synthetic", "entity_kind": "participant", "external_id": "blue"}, "name": "Blue Test FC", "team_type": "club"},
+    {"id": "team:green", "identity": {"provider": "synthetic", "entity_kind": "participant", "external_id": "green"}, "name": "Green Test FC", "team_type": "club"},
+    {"id": "team:gold", "identity": {"provider": "synthetic", "entity_kind": "participant", "external_id": "gold"}, "name": "Gold Test FC", "team_type": "club"}
+  ],
+  "fixtures": [
+    {"id": "fixture:scheduled", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "scheduled"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:league", "round_id": "round:league-1", "home_id": "team:red", "away_id": "team:blue", "kickoff": "2026-11-10T18:00:00Z", "status": "scheduled", "score": {}, "revision": 1, "updated_at": "2026-10-29T10:00:00Z"},
+    {"id": "fixture:live", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "live"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:league", "round_id": "round:league-1", "home_id": "team:green", "away_id": "team:gold", "kickoff": "2026-10-29T11:30:00Z", "status": "live", "score": {"regulation_home": 1, "regulation_away": 0}, "revision": 1, "updated_at": "2026-10-29T11:55:00Z"},
+    {"id": "fixture:finished", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "finished"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:league", "round_id": "round:league-1", "home_id": "team:red", "away_id": "team:green", "kickoff": "2026-10-20T18:00:00Z", "status": "finished", "score": {"regulation_home": 2, "regulation_away": 1}, "revision": 1, "updated_at": "2026-10-29T10:00:00Z"},
+    {"id": "fixture:postponed", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "postponed"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:league", "round_id": "round:league-1", "home_id": "team:gold", "away_id": "team:blue", "kickoff": null, "status": "postponed", "score": {}, "revision": 1, "updated_at": "2026-10-29T10:00:00Z"},
+    {"id": "fixture:cancelled", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "cancelled"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:league", "round_id": "round:league-1", "home_id": "team:red", "away_id": "team:gold", "kickoff": null, "status": "cancelled", "score": {}, "revision": 1, "updated_at": "2026-10-29T10:00:00Z"},
+    {"id": "fixture:extra", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "extra"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:knockout", "round_id": "round:knockout-1", "home_id": "team:red", "away_id": "team:blue", "kickoff": "2026-10-10T18:00:00Z", "status": "finished", "score": {"regulation_home": 2, "regulation_away": 2, "extra_home": 1, "extra_away": 0}, "revision": 1, "updated_at": "2026-10-29T10:00:00Z"},
+    {"id": "fixture:penalties", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "penalties"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:knockout", "round_id": "round:knockout-1", "home_id": "team:green", "away_id": "team:gold", "kickoff": "2026-10-11T18:00:00Z", "status": "finished", "score": {"regulation_home": 1, "regulation_away": 1, "extra_home": 0, "extra_away": 0, "penalties_home": 4, "penalties_away": 3}, "revision": 1, "updated_at": "2026-10-29T10:00:00Z"},
+    {"id": "fixture:leg-1", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "leg-1"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:knockout", "round_id": "round:knockout-1", "home_id": "team:red", "away_id": "team:blue", "kickoff": "2026-10-01T18:00:00Z", "status": "finished", "score": {"regulation_home": 1, "regulation_away": 0}, "revision": 1, "updated_at": "2026-10-29T10:00:00Z", "tie_id": "tie:red-blue", "leg": 1},
+    {"id": "fixture:leg-2", "identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "leg-2"}, "season_id": "season:synthetic-2026-27", "stage_id": "stage:knockout", "round_id": "round:knockout-1", "home_id": "team:blue", "away_id": "team:red", "kickoff": "2026-10-08T18:00:00Z", "status": "finished", "score": {"regulation_home": 1, "regulation_away": 0, "extra_home": 0, "extra_away": 0, "penalties_home": 4, "penalties_away": 3}, "revision": 1, "updated_at": "2026-10-29T10:00:00Z", "tie_id": "tie:red-blue", "leg": 2}
+  ],
+  "standings": [
+    {"stage_id": "stage:league", "participant_id": "team:red", "rank": 1, "played": 1, "won": 1, "drawn": 0, "lost": 0, "goals_for": 2, "goals_against": 1, "points": 3},
+    {"stage_id": "stage:league", "participant_id": "team:green", "rank": 4, "played": 1, "won": 0, "drawn": 0, "lost": 1, "goals_for": 1, "goals_against": 2, "points": 0},
+    {"stage_id": "stage:league", "participant_id": "team:blue", "rank": 2, "played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0, "goals_against": 0, "points": 0},
+    {"stage_id": "stage:league", "participant_id": "team:gold", "rank": 2, "played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0, "goals_against": 0, "points": 0}
+  ],
+  "ties": [
+    {"id": "tie:red-blue", "identity": {"provider": "synthetic", "entity_kind": "tie", "external_id": "red-blue"}, "stage_id": "stage:knockout", "participant_a_id": "team:red", "participant_b_id": "team:blue", "legs": 2}
+  ],
+  "capabilities": [
+    {"name": "fixtures", "availability": "verified"},
+    {"name": "results", "availability": "verified"},
+    {"name": "standings", "availability": "verified"},
+    {"name": "event_coordinates", "availability": "unavailable"},
+    {"name": "xg", "availability": "unknown"}
+  ],
+  "freshness": {"fetched_at": "2026-10-29T12:00:00Z", "checked_at": "2026-10-29T12:00:00Z", "provider_updated_at": "2026-10-29T11:55:00Z"},
+  "partial": true,
+  "coverage_note": "Synthetic scenarios only; four invented clubs, not real UEFA coverage."
+}

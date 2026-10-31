@@ -1,0 +1,21 @@
+{
+  "synthetic_only": true,
+  "description": "Invented clubs, schedule and scores. Shapes only follow Stage D; no downloaded API payloads.",
+  "metadata": {
+    "id": 2001,
+    "name": "Invented Champions Trial",
+    "type": "CUP",
+    "lastUpdated": "2026-09-01T00:00:00Z",
+    "currentSeason": {
+      "id": 2557,
+      "startDate": "2026-09-01",
+      "endDate": "2027-01-31",
+      "currentMatchday": 3,
+      "winner": null
+    }
+  },
+  "team_id_start": 810001,
+  "fixture_id_start": 910001,
+  "stage": "LEAGUE_STAGE",
+  "duration": "REGULAR"
+}

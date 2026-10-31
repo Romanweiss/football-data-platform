@@ -1,0 +1,7 @@
+{
+  "notice": "Invented contract-test schedules only. Not UEFA/provider payloads or actual 2026/27 matches.",
+  "ucl": {"teams_per_stage": 36, "matches_per_team": 8, "home_games": 4, "groups": 1, "national": false, "partial": false, "expected_fixtures": 144},
+  "uel": {"teams_per_stage": 36, "matches_per_team": 8, "home_games": 4, "groups": 1, "national": false, "partial": false, "expected_fixtures": 144},
+  "conference": {"teams_per_stage": 36, "matches_per_team": 6, "home_games": 3, "groups": 1, "national": false, "partial": false, "expected_fixtures": 108},
+  "nations": {"teams_per_stage": 4, "matches_per_team": 6, "home_games": 3, "groups": 2, "national": true, "partial": true, "expected_fixtures": 24}
+}

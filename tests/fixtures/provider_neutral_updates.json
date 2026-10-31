@@ -1,0 +1,9 @@
+{
+  "rescheduled": {"fixture_id": "fixture:scheduled", "changes": {"kickoff": "2026-11-11T21:00:00+03:00", "revision": 2, "updated_at": "2026-10-29T11:00:00Z"}},
+  "result_correction": {"fixture_id": "fixture:finished", "changes": {"score": {"regulation_home": 3, "regulation_away": 1}, "revision": 2, "updated_at": "2026-10-29T11:00:00Z"}},
+  "duplicate_external_id": {"fixture_id": "fixture:scheduled", "changes": {"identity": {"provider": "synthetic", "entity_kind": "fixture", "external_id": "live"}}},
+  "malformed_timestamp": {"fixture_id": "fixture:scheduled", "changes": {"kickoff": "2026-11-10 18:00:00"}},
+  "invalid_participants": {"fixture_id": "fixture:scheduled", "changes": {"away_id": "team:red"}},
+  "missing_reference": {"fixture_id": "fixture:scheduled", "changes": {"away_id": "team:absent"}},
+  "wrong_round_stage": {"fixture_id": "fixture:scheduled", "changes": {"round_id": "round:knockout-1"}}
+}
