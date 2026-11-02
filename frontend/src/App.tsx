@@ -18,26 +18,37 @@ import { ShotDetails } from './components/ShotDetails';
 import { PassMap } from './components/PassMap';
 import { PressureHeatmap } from './components/PressureHeatmap';
 import { competitionLabel, seasonLabel } from './contextLabels';
+import { CurrentCompetitions, WorkspaceNav } from './current/CurrentCompetitions';
+import { syntheticCurrentSource } from './current/source';
+import type { CurrentSource } from './current/types';
+import { useCurrentText } from './current/messages';
 export { readRoute } from './routes';
 
-export default function App() { return <I18nProvider><Page /></I18nProvider>; }
-function Page() {
-  const { t, count } = useI18n();
+export default function App({ currentSource = syntheticCurrentSource }: { currentSource?: CurrentSource } = {}) {
+  return <I18nProvider><Page currentSource={currentSource} /></I18nProvider>;
+}
+function Page({ currentSource }: { currentSource: CurrentSource }) {
+  const { t, count, language } = useI18n();
+  const { ct } = useCurrentText();
   const [route, setRoute] = useState(() => readRoute(window.location.pathname));
+  const [search, setSearch] = useState(() => window.location.search);
+  const isCurrent = route.kind === 'current-index' || route.kind === 'current-league' || route.kind === 'current-missing';
   const competitionId = 'competitionId' in route ? route.competitionId : null;
   const seasonId = 'seasonId' in route ? route.seasonId : null;
   const selected = route.kind === 'match' ? route.id : null;
   const context = competitionId !== null && seasonId !== null ? { competitionId, seasonId } : null;
   function navigate(path: string, replace = false) {
     window.history[replace ? 'replaceState' : 'pushState']({}, '', path);
-    setRoute(readRoute(path));
+    setRoute(readRoute(window.location.pathname));
+    setSearch(window.location.search);
   }
   useEffect(() => {
-    const listener = () => setRoute(readRoute(window.location.pathname));
+    const listener = () => { setRoute(readRoute(window.location.pathname)); setSearch(window.location.search); };
     window.addEventListener('popstate', listener);
     return () => window.removeEventListener('popstate', listener);
   }, []);
-  const catalog = useResource('competitions', fetchCompetitions);
+  useEffect(() => { document.title = `Touchline — ${isCurrent ? ct('title') : t('title')}`; }, [isCurrent, language]);
+  const catalog = useResource(isCurrent ? null : 'competitions', fetchCompetitions);
   const seasons = useResource(competitionId === null ? null : `seasons:${competitionId}`, signal => fetchSeasons(competitionId!, signal));
   const list = useResource(context === null ? null : contextPath(context), signal => fetchMatches(context!, signal));
   const analysis = useResource(context === null || selected === null ? null : matchPath(context, selected),
@@ -59,10 +70,13 @@ function Page() {
   const competitions = catalog.state.status === 'ready' ? catalog.state.data : [];
   const seasonRows = seasons.state.status === 'ready' ? seasons.state.data : [];
   const contextFailed = catalog.state.status === 'error' || seasons.state.status === 'error' || list.state.status === 'error';
+  if (isCurrent) return <CurrentCompetitions kind={route.kind as 'current-index' | 'current-league' | 'current-missing'}
+    search={search} navigate={navigate} source={currentSource} />;
   return <div className="app-shell"><a className="skip-link" href="#analysis">{t('skip')}</a>
     <header className="app-header"><a className="brand" href="/"><span className="brand-mark">T/</span>touchline<span className="brand-sub">{t('intelligence')}</span></a>
       <div className="tournament"><span className="status-dot" />{competitionId === null ? t('competition') : competitionLabel(competitionId, t)}
         {seasonId !== null && <span>{seasonLabel(competitionId, seasonId, t)}</span>}<span className="tag">{t('lab')}</span></div><LanguageSwitcher /></header>
+    <WorkspaceNav current={false} navigate={navigate} />
     <main><div className="page-heading"><div><span className="eyebrow">{t('eyebrow')}</span><h1>{t('title')}<span className="accent">.</span></h1>
       <p>{t('subtitle')}</p></div><div className="source-note">{t('source')}<br /><span>{list.state.status === 'ready' ? t('matchCount', { count: count(list.state.data.length) }) : t('platformContext')}</span></div></div>
       <ContextSelector competitions={competitions} seasons={seasonRows} competitionId={competitionId} seasonId={seasonId}

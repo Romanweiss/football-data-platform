@@ -41,7 +41,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   });
   useEffect(() => {
     document.documentElement.lang = language;
-    document.title = `Touchline — ${translate(language, 'title')}`;
   }, [language]);
   const value = useMemo(() => ({ ...localeTools(language), setLanguage: (next: Language) => {
     setLanguage(next);

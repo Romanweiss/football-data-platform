@@ -1,0 +1,125 @@
+import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { analysis, match, otherAnalysis, otherMatch } from '../fixtures';
+
+test.use({ locale: 'en-GB' });
+test('synthetic contexts: current competitions, filters, history, locales, accessibility and Match Lab regression', async ({ page }, info) => {
+  const apiCalls: string[] = [];
+  await page.route('**/*', async route => {
+    const url = new URL(route.request().url());
+    expect(url.origin).toBe('http://127.0.0.1:15174');
+    if (!url.pathname.startsWith('/api/')) return route.continue();
+    apiCalls.push(url.pathname);
+    const path = url.pathname.replace('/api/v1', '');
+    let body: unknown;
+    if (path === '/competitions') body = { competitions: [{ competition_id: 11 }] };
+    else if (path === '/competitions/11/seasons') body = { seasons: [{ season_id: 22 }] };
+    else if (path === '/competitions/11/seasons/22/matches') body = { matches: [match, otherMatch] };
+    else if (path === '/competitions/11/seasons/22/matches/7/analysis') body = analysis;
+    else if (path === '/competitions/11/seasons/22/matches/8/analysis') body = otherAnalysis;
+    else throw new Error('Unexpected synthetic API path');
+    await route.fulfill({ json: body });
+  });
+  await page.goto('/competitions/current');
+  await expect(page.getByRole('heading', { name: 'Current competitions.' })).toBeVisible();
+  await expect(page.getByText('DEMO DATA — SYNTHETIC', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: /Open league overview/ }).click();
+  await expect(page).toHaveURL('/competitions/current/uefa-champions-league/2026');
+  await expect(page.getByTestId('current-fixture')).toHaveCount(144);
+  await expect(page.locator('[data-testid="current-fixture"][data-status="FINISHED"]')).toHaveCount(54);
+  await expect(page.locator('[data-testid="current-fixture"][data-status="TIMED"]')).toHaveCount(90);
+  if (info.project.name === 'mobile') {
+    const sizes = await page.locator('.current-shell select,.current-shell input,.current-tabs button,.current-reset,.current-back,.current-shell .workspace-nav a,.current-shell .brand,.current-method summary')
+      .evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
+    expect(sizes.every(height => height >= 44)).toBe(true);
+  }
+  await page.getByRole('combobox', { name: 'Matchday', exact: true }).selectOption('3');
+  await expect(page.getByTestId('current-fixture')).toHaveCount(18);
+  await page.getByRole('combobox', { name: 'Team', exact: true }).selectOption('demo-team-01');
+  await expect(page.getByTestId('current-fixture')).toHaveCount(1);
+  await page.goBack();
+  await expect(page.getByTestId('current-fixture')).toHaveCount(18);
+  await page.goForward();
+  await expect(page.getByTestId('current-fixture')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Reset filters' }).click();
+  await page.getByLabel('From date (UTC)', { exact: true }).fill('2027-01-12');
+  await page.getByLabel('To date (UTC)', { exact: true }).fill('2027-01-13');
+  await expect(page.getByTestId('current-fixture')).toHaveCount(18);
+  await expect(page.locator('[data-testid="current-fixture"][data-status="TIMED"]')).toHaveCount(18);
+  await page.getByRole('combobox', { name: 'Matchday', exact: true }).selectOption('3');
+  await expect(page.getByText('No demo fixtures match these filters.')).toBeVisible();
+  await page.getByRole('button', { name: 'Reset filters' }).click();
+  await page.getByRole('combobox', { name: 'Matchday', exact: true }).selectOption('3');
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: info.outputPath('current-fixtures.png'), fullPage: true });
+  const fixturesTab = page.getByRole('tab', { name: 'Fixtures & results' });
+  await fixturesTab.focus(); await fixturesTab.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: 'Standings' })).toBeFocused();
+  await expect(page.getByTestId('current-standing')).toHaveCount(36);
+  await expect(page.locator('tr[data-zone="top8"]')).toHaveCount(8);
+  await expect(page.locator('tr[data-zone="playoff"]')).toHaveCount(16);
+  await expect(page.locator('tr[data-zone="outside"]')).toHaveCount(12);
+  expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const scroll = page.getByRole('region', { name: 'Synthetic league standings — 36 invented teams', exact: true });
+  await scroll.focus();
+  if (info.project.name === 'mobile') {
+    const visibleStatisticsWidth = await scroll.evaluate(element => {
+      const team = element.querySelector('thead th:nth-child(2)')!.getBoundingClientRect();
+      return element.getBoundingClientRect().right - team.right;
+    });
+    expect(visibleStatisticsWidth).toBeGreaterThanOrEqual(80);
+    await scroll.press('ArrowRight');
+    await expect.poll(() => scroll.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+    await scroll.evaluate(element => { element.scrollLeft = element.scrollWidth - element.clientWidth; });
+    expect(await scroll.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+    await expect(page.getByRole('columnheader', { name: 'Points', exact: true })).toBeInViewport();
+    await scroll.evaluate(element => { element.scrollLeft = 0; });
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: info.outputPath('current-standings.png'), fullPage: true });
+  expect(apiCalls).toEqual([]);
+  await expect(page.locator('img')).toHaveCount(0);
+  await expect(page.getByTestId('shot-count')).toHaveCount(0);
+  await expect(page.getByTestId('shootout-panel')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('current-standing')).toHaveCount(36);
+  await page.getByTestId('language-selector').selectOption('es');
+  await expect(page.getByText('DATOS DEMO — SINTÉTICOS', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('tab', { name: 'Clasificación' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByTestId('language-selector').selectOption('ru');
+  await expect(page.getByText('ДЕМО-ДАННЫЕ — СИНТЕТИЧЕСКИЕ', { exact: true })).toBeVisible();
+  await page.getByRole('combobox', { name: 'Команда', exact: true }).selectOption('demo-team-01');
+  await expect(page.getByTestId('current-standing')).toHaveCount(1);
+  await page.getByRole('link', { name: 'Исторический Match Lab' }).click();
+  await expect(page).toHaveURL('/competitions/11/seasons/22/matches/7');
+  await expect(page.getByTestId('match-header')).toBeVisible();
+  await expect(page.getByTestId('shootout-panel')).toBeVisible();
+  await page.goBack();
+  await expect(page.getByTestId('current-standing')).toHaveCount(1);
+  await expect(page.getByTestId('language-selector')).toHaveValue('ru');
+  await page.goForward();
+  await expect(page.getByTestId('match-header')).toBeVisible();
+});
+
+test('synthetic contexts: current invalid filters and unknown routes remain local and visibly synthetic', async ({ page }) => {
+  const apiCalls: string[] = [];
+  await page.route('**/api/**', route => { apiCalls.push(route.request().url()); return route.abort(); });
+  await page.route('https://**', route => route.abort());
+  await page.goto('/competitions/current/uefa-champions-league/2026?round=99&team=unknown&from=2026-02-30');
+  await expect(page.getByText('Some URL filters were invalid and have been ignored.')).toBeVisible();
+  await expect(page.getByTestId('current-fixture')).toHaveCount(144);
+  await page.getByTestId('language-selector').selectOption('ru');
+  await page.getByRole('combobox', { name: 'Команда', exact: true }).selectOption('demo-team-01');
+  await expect(page.getByTestId('current-fixture')).toHaveCount(8);
+  await expect(page.getByText('ДЕМО-ДАННЫЕ — СИНТЕТИЧЕСКИЕ', { exact: true })).toBeVisible();
+  await page.getByTestId('language-selector').selectOption('es');
+  await expect(page.getByText('DATOS DEMO — SINTÉTICOS', { exact: true })).toBeVisible();
+  await page.goto('/competitions/current/uefa-champions-league/2027');
+  await expect(page.getByRole('heading', { name: 'Esta competición demo no está disponible.' })).toBeVisible();
+  await expect(page.getByText('DATOS DEMO — SINTÉTICOS', { exact: true })).toBeVisible();
+  expect(apiCalls).toEqual([]);
+});
