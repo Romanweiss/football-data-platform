@@ -175,6 +175,8 @@ jobs:
         run: docker compose --env-file ci/empty.env -f ci/compose.yaml run --rm --no-deps checks python ci/databases.py postgres
       - name: ClickHouse migrations, rollback/cutover and synthetic SQL tests
         run: docker compose --env-file ci/empty.env -f ci/compose.yaml run --rm --no-deps checks python ci/databases.py clickhouse
+      - name: Historical Django API on synthetic ephemeral ClickHouse views
+        run: docker compose --env-file ci/empty.env -f ci/compose.yaml run --rm --no-deps checks python tests/integration/test_historical_api.py
       - name: Stop only the ephemeral CI services
         if: always()
         run: docker compose --env-file ci/empty.env -f ci/compose.yaml stop

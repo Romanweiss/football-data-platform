@@ -1,7 +1,12 @@
 from django.urls import path
 from application import views
+from application.historical_views import historical
 
 urlpatterns = [
+    path("api/v1/competitions/historical", historical, {"section": "index"}),
+    path("api/v1/competitions/historical/<slug:competition_slug>/<str:start_year>", historical),
+    *[path("api/v1/competitions/historical/<slug:competition_slug>/<str:start_year>/" + section,
+           historical, {"section": section}) for section in ("fixtures", "participants", "coverage", "quality")],
     path("api/v1/health", views.health),
     path("api/v1/health/clickhouse", views.clickhouse_health),
     path("api/v1/competitions", views.competitions),
