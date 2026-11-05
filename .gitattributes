@@ -1,0 +1,3 @@
+# These exact transform bytes participate in the PET-3 content build identity.
+# Keep checkouts reproducible with Windows core.autocrlf=true as well as Linux.
+src/openfootball_etl/*.py text eol=lf

@@ -129,6 +129,28 @@ jobs:
       - run: docker pull clickhouse/clickhouse-server:25.8.23.13-alpine
       - name: Synthetic only; networkless tmpfs targets; no backup artifacts uploaded
         run: python ci/check_recovery.py
+      - name: OpenFootball synthetic ClickHouse atomic load, failure and replay
+        run: |
+          container_name="pet3-openfootball-ch-$(python -c 'import uuid; print(uuid.uuid4().hex)')"
+          container_id=$(docker run -d --rm --pull never --network none \
+            --name "$container_name" --label pet3.scope=openfootball-etl \
+            --cpus 2 --memory 1536m --ulimit nofile=262144:262144 \
+            --tmpfs /var/lib/clickhouse:rw,size=2g \
+            --tmpfs /var/log/clickhouse-server:rw,size=64m \
+            clickhouse/clickhouse-server:25.8.23.13-alpine)
+          # Stop only this step's freshly created ID; --rm removes its synthetic tmpfs.
+          trap 'docker stop --time 10 "$container_id" >/dev/null' EXIT
+          ready=false
+          for _ in $(seq 1 60); do
+            if docker exec "$container_id" clickhouse-client --query 'SELECT 1' >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          PET3_SYNTHETIC_CLICKHOUSE_CONTAINER="$container_name" \
+            python tests/integration/test_openfootball_etl.py --require-isolated
   databases:
     name: Ephemeral PostgreSQL and ClickHouse
     runs-on: ubuntu-24.04
@@ -187,7 +209,7 @@ jobs:
           # Ignored data/work exists locally but not in a fresh Git checkout.
           # The tmpfs mount needs an existing target inside the read-only bind.
           mkdir -p data/work
-          for suite in test_event_core test_s3a_event_core test_event_domains test_lineup_domains test_matches test_gold_match_stats test_match_results test_context; do
+          for suite in test_event_core test_s3a_event_core test_event_domains test_lineup_domains test_matches test_gold_match_stats test_match_results test_context test_openfootball_etl; do
             docker run --rm --network none --hostname localhost -e SPARK_LOCAL_IP=127.0.0.1 \
               --mount "type=bind,source=$PWD,target=/app,readonly" --tmpfs /app/data/work:mode=1777 \
               football-ci-spark:8a spark-submit "tests/spark/$suite.py"
@@ -204,7 +226,9 @@ jobs:
           cache-from: type=gha,scope=ci-airflow
           cache-to: type=gha,mode=max,scope=ci-airflow
       - name: DAG graph, parameters, schedules and no import-time IO
-        run: docker run --rm --network none football-ci-airflow:8a python /app/tests/airflow/test_dag.py
+        run: |
+          docker run --rm --network none football-ci-airflow:8a python /app/tests/airflow/test_dag.py
+          docker run --rm --network none football-ci-airflow:8a python /app/tests/airflow/test_openfootball_dag.py
   application-images:
     name: Application Docker builds
     runs-on: ubuntu-24.04
