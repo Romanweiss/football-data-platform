@@ -1,7 +1,8 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { LanguageSwitcher } from '../i18n';
 import { useResource } from '../useResource';
-import { CURRENT_PATH, CURRENT_UCL_PATH } from '../routes';
+import { CURRENT_PATH, CURRENT_UCL_PATH, HISTORICAL_PATH } from '../routes';
+import { useHistoricalText } from '../historical/messages';
 import { useCurrentText } from './messages';
 import { currentFilterSearch, filterCurrentFixtures, readCurrentFilters } from './filters';
 import type { CurrentFilters } from './filters';
@@ -16,11 +17,13 @@ function Link({ href, navigate, children, ...rest }: { href: string; navigate: N
     }
   }}>{children}</a>;
 }
-export function WorkspaceNav({ current, navigate }: { current: boolean; navigate: Navigate }) {
+export function WorkspaceNav({ current, historical = false, navigate }: { current: boolean; historical?: boolean; navigate: Navigate }) {
   const { ct } = useCurrentText();
+  const { ht } = useHistoricalText();
   return <nav className="workspace-nav" aria-label={ct('workspace')}>
-    <Link href="/" navigate={navigate} aria-current={!current ? 'page' : undefined}>{ct('historical')}</Link>
+    <Link href="/" navigate={navigate} aria-current={!current && !historical ? 'page' : undefined}>{ct('historical')}</Link>
     <Link href={CURRENT_PATH} navigate={navigate} aria-current={current ? 'page' : undefined}>{ct('nav')}</Link>
+    <Link href={HISTORICAL_PATH} navigate={navigate} aria-current={historical ? 'page' : undefined}>{ht('title')}</Link>
   </nav>;
 }
 function State({ error = false, empty = false, retry }: { error?: boolean; empty?: boolean; retry?: () => void }) {
@@ -34,6 +37,7 @@ export function CurrentCompetitions({ kind, search, navigate, source }: {
   kind: 'current-index' | 'current-league' | 'current-missing'; search: string; navigate: Navigate; source: CurrentSource;
 }) {
   const { ct, count } = useCurrentText();
+  const { ht } = useHistoricalText();
   const catalog = useResource(kind === 'current-index' ? 'current:catalog' : null, signal => source.catalog(signal));
   const league = useResource(kind === 'current-league' ? 'current:uefa-champions-league:2026' : null,
     signal => source.league('uefa-champions-league', 2026, signal));
@@ -44,6 +48,7 @@ export function CurrentCompetitions({ kind, search, navigate, source }: {
     <main id="current-content" tabIndex={-1}>
       <aside className="current-demo" aria-label={ct('demo')}><strong>{ct('demo')}</strong><p>{ct('demoNote')}</p></aside>
       {kind === 'current-index' ? <>
+        <p><Link href={HISTORICAL_PATH} navigate={navigate}>{ht('catalogLink')}</Link></p>
         <div className="page-heading"><div><span className="eyebrow">{ct('eyebrow')}</span><h1>{ct('title')}<span className="accent">.</span></h1><p>{ct('intro')}</p></div></div>
         {catalog.state.status === 'loading' ? <State /> : catalog.state.status === 'error' ? <State error retry={catalog.retry} />
           : !catalog.state.data.length ? <State empty /> : <div className="current-catalog">{catalog.state.data.map(card =>

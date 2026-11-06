@@ -22,17 +22,23 @@ import { CurrentCompetitions, WorkspaceNav } from './current/CurrentCompetitions
 import { syntheticCurrentSource } from './current/source';
 import type { CurrentSource } from './current/types';
 import { useCurrentText } from './current/messages';
+import { HistoricalCompetitions } from './historical/HistoricalCompetitions';
+import { historicalApiSource } from './historical/source';
+import type { HistoricalSource } from './historical/types';
+import { useHistoricalText } from './historical/messages';
 export { readRoute } from './routes';
 
-export default function App({ currentSource = syntheticCurrentSource }: { currentSource?: CurrentSource } = {}) {
-  return <I18nProvider><Page currentSource={currentSource} /></I18nProvider>;
+export default function App({ currentSource = syntheticCurrentSource, historicalSource = historicalApiSource }: { currentSource?: CurrentSource; historicalSource?: HistoricalSource } = {}) {
+  return <I18nProvider><Page currentSource={currentSource} historicalSource={historicalSource} /></I18nProvider>;
 }
-function Page({ currentSource }: { currentSource: CurrentSource }) {
+function Page({ currentSource, historicalSource }: { currentSource: CurrentSource; historicalSource: HistoricalSource }) {
   const { t, count, language } = useI18n();
   const { ct } = useCurrentText();
+  const { ht } = useHistoricalText();
   const [route, setRoute] = useState(() => readRoute(window.location.pathname));
   const [search, setSearch] = useState(() => window.location.search);
   const isCurrent = route.kind === 'current-index' || route.kind === 'current-league' || route.kind === 'current-missing';
+  const isHistorical = route.kind === 'historical-index' || route.kind === 'historical-league' || route.kind === 'historical-missing';
   const competitionId = 'competitionId' in route ? route.competitionId : null;
   const seasonId = 'seasonId' in route ? route.seasonId : null;
   const selected = route.kind === 'match' ? route.id : null;
@@ -47,8 +53,8 @@ function Page({ currentSource }: { currentSource: CurrentSource }) {
     window.addEventListener('popstate', listener);
     return () => window.removeEventListener('popstate', listener);
   }, []);
-  useEffect(() => { document.title = `Touchline — ${isCurrent ? ct('title') : t('title')}`; }, [isCurrent, language]);
-  const catalog = useResource(isCurrent ? null : 'competitions', fetchCompetitions);
+  useEffect(() => { document.title = `Touchline — ${isCurrent ? ct('title') : isHistorical ? ht('title') : t('title')}`; }, [isCurrent, isHistorical, language]);
+  const catalog = useResource(isCurrent || isHistorical ? null : 'competitions', fetchCompetitions);
   const seasons = useResource(competitionId === null ? null : `seasons:${competitionId}`, signal => fetchSeasons(competitionId!, signal));
   const list = useResource(context === null ? null : contextPath(context), signal => fetchMatches(context!, signal));
   const analysis = useResource(context === null || selected === null ? null : matchPath(context, selected),
@@ -72,6 +78,8 @@ function Page({ currentSource }: { currentSource: CurrentSource }) {
   const contextFailed = catalog.state.status === 'error' || seasons.state.status === 'error' || list.state.status === 'error';
   if (isCurrent) return <CurrentCompetitions kind={route.kind as 'current-index' | 'current-league' | 'current-missing'}
     search={search} navigate={navigate} source={currentSource} />;
+  if (isHistorical) return <HistoricalCompetitions kind={route.kind as 'historical-index' | 'historical-league' | 'historical-missing'}
+    search={search} navigate={navigate} source={historicalSource} />;
   return <div className="app-shell"><a className="skip-link" href="#analysis">{t('skip')}</a>
     <header className="app-header"><a className="brand" href="/"><span className="brand-mark">T/</span>touchline<span className="brand-sub">{t('intelligence')}</span></a>
       <div className="tournament"><span className="status-dot" />{competitionId === null ? t('competition') : competitionLabel(competitionId, t)}

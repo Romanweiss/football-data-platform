@@ -3,9 +3,13 @@ import { contextPath } from './api';
 
 export type Route = { kind: 'root' } | { kind: 'legacy'; id: number } | { kind: 'missing' }
   | { kind: 'current-index' } | { kind: 'current-league' } | { kind: 'current-missing' }
+  | { kind: 'historical-index' } | { kind: 'historical-league' } | { kind: 'historical-missing' }
   | { kind: 'competition'; competitionId: number }
   | ({ kind: 'context' } & Context) | ({ kind: 'match'; id: number } & Context);
 export function readRoute(path: string): Route {
+  if (/^\/competitions\/historical\/?$/.test(path)) return { kind: 'historical-index' };
+  if (/^\/competitions\/historical\/uefa-champions-league\/2024\/?$/.test(path)) return { kind: 'historical-league' };
+  if (path.startsWith('/competitions/historical/')) return { kind: 'historical-missing' };
   if (/^\/competitions\/current\/?$/.test(path)) return { kind: 'current-index' };
   if (/^\/competitions\/current\/uefa-champions-league\/2026\/?$/.test(path)) return { kind: 'current-league' };
   if (path.startsWith('/competitions/current/')) return { kind: 'current-missing' };
@@ -23,3 +27,5 @@ export function readRoute(path: string): Route {
 export const matchPath = (context: Context, id: number) => `${contextPath(context)}/matches/${id}`;
 export const CURRENT_PATH = '/competitions/current';
 export const CURRENT_UCL_PATH = `${CURRENT_PATH}/uefa-champions-league/2026`;
+export const HISTORICAL_PATH = '/competitions/historical';
+export const HISTORICAL_UCL_PATH = `${HISTORICAL_PATH}/uefa-champions-league/2024`;
