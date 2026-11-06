@@ -210,7 +210,11 @@ def main():
     modes.add_argument("--audit", action="store_true")
     modes.add_argument("--apply", action="store_true")
     modes.add_argument("--validate", action="store_true")
+    parser.add_argument("--contract", choices=("old", "ux2", "ux3-r1", "ux3-r2"), default="old")
+    parser.add_argument("--bundle-dir", type=Path)
     args = parser.parse_args()
+    if args.contract != "old" and (not args.validate or args.bundle_dir is None):
+        parser.error("New contracts require --validate and a trusted --bundle-dir; this CLI cannot apply them")
     # Driver/bootstrap logging can include raw connection exceptions. This CLI
     # emits only our safe audit/evidence and exception-class summary.
     logging.disable(logging.CRITICAL)
@@ -235,7 +239,21 @@ def main():
         elif args.validate:
             users = security_manager.get_all_users()
             user = next(u for u in users if u.active and any(r.name == "Admin" for r in u.roles))
-            validate(app, db.session, Slice, Dashboard, SqlaTable, user)
+            if args.contract == "old":
+                validate(app, db.session, Slice, Dashboard, SqlaTable, user)
+            else:
+                from src.analytics.superset_ux import BUNDLE_HASHES, load_bundle
+                from scripts.superset_ux_validate import validate_ux
+                raw = {}
+                for name in BUNDLE_HASHES:
+                    path = args.bundle_dir / name
+                    if path.is_symlink() or not path.is_file() or path.stat().st_size > 2 * 1024 * 1024:
+                        raise ValueError("Unsafe bundle input")
+                    with path.open("rb") as stream:
+                        raw[name] = stream.read(2 * 1024 * 1024 + 1)
+                revision = "ux1" if args.contract == "ux2" else args.contract
+                print(json.dumps(validate_ux(app, db.session, Slice, Dashboard, SqlaTable,
+                                            TableColumn, user, load_bundle(raw, revision))))
         else:
             charts, datasets, dashboards = audit(db.session, Slice, Dashboard, SqlaTable)
             print(json.dumps({"charts": charts, "datasets": datasets, "dashboards": dashboards}))
