@@ -124,7 +124,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12.14'
-      - run: python -m pip install -r requirements/recovery.txt
+      - run: python -m pip install -r requirements/recovery.txt -r requirements/api.txt
       - run: docker pull postgres:17.6-alpine3.22
       - run: docker pull clickhouse/clickhouse-server:25.8.23.13-alpine
       - name: Synthetic only; networkless tmpfs targets; no backup artifacts uploaded
@@ -151,6 +151,8 @@ jobs:
           test "$ready" = true
           PET3_SYNTHETIC_CLICKHOUSE_CONTAINER="$container_name" \
             python tests/integration/test_openfootball_etl.py --require-isolated
+      - name: Guarded historical publisher, concurrent Django readers and rollback (synthetic only)
+        run: python tests/integration/test_historical_handoff.py --require-isolated
   databases:
     name: Ephemeral PostgreSQL and ClickHouse
     runs-on: ubuntu-24.04

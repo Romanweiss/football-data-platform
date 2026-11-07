@@ -8,7 +8,9 @@ COPY requirements/api.txt /tmp/requirements-api.txt
 RUN python -m pip install --requirement /tmp/requirements-api.txt \
     && useradd --uid 10001 --create-home api
 COPY application /app/application
-COPY src/common/__init__.py src/common/clickhouse.py /app/src/common/
+COPY src/common/__init__.py src/common/clickhouse.py src/common/checksum.py /app/src/common/
+COPY src/providers /app/src/providers
+COPY src/openfootball_etl/__init__.py src/openfootball_etl/contract.py src/openfootball_etl/serving_contract.py /app/src/openfootball_etl/
 COPY manage.py /app/manage.py
 COPY scripts/check_application_api.py /app/scripts/check_application_api.py
 USER api

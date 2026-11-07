@@ -19,6 +19,8 @@ class HistoricalApiContracts(unittest.TestCase):
         self.assertIn("discover -s tests/ci -p 'test_*.py'", fast)
         integration = (ROOT / ".github/workflows/ci-integration.yml").read_text()
         self.assertIn("checks python tests/integration/test_historical_api.py", integration)
+        self.assertIn("python tests/integration/test_historical_handoff.py --require-isolated", integration)
+        self.assertIn("-r requirements/recovery.txt -r requirements/api.txt", integration)
         self.assertNotIn("check_historical_api.py --gold-store", integration)
         source = (ROOT / "tests/integration/test_historical_api.py").read_text()
         self.assertIn('guard("clickhouse")', source)
@@ -44,6 +46,23 @@ class HistoricalApiContracts(unittest.TestCase):
         self.assertIn("readonly=1", source)
         self.assertIn("row_digest(rows) != digest", source)
         self.assertIn("{database:Identifier}", source)
+
+    def test_explicit_pinned_production_gate_and_image_packaging(self):
+        source = (ROOT / "application/historical_connection.py").read_text()
+        for gate in ("HISTORICAL_PRODUCTION_AUTHORIZATION", "HISTORICAL_PINNED_BATCH", "HISTORICAL_DATASET_ID",
+                     "HISTORICAL_EXPECTED_SERVER_UUID", "serverUUID()", "Atomic"):
+            self.assertIn(gate, source)
+        self.assertNotIn('os.environ.get("CLICKHOUSE_', source)
+        dockerfile = (ROOT / "docker/api/Dockerfile").read_text()
+        self.assertIn("COPY src/providers /app/src/providers", dockerfile)
+        self.assertIn("src/openfootball_etl/serving_contract.py /app/src/openfootball_etl/", dockerfile)
+        for name in ("application/historical_connection.py", "src/openfootball_etl/serving_contract.py",
+                     "src/openfootball_etl/persistent.py", "tests/application/test_historical_production.py",
+                     "tests/test_historical_handoff.py", "scripts/check_historical_handoff.py",
+                     "tests/integration/historical_handoff_http.py", "tests/integration/test_historical_handoff.py",
+                     "ci/check_delivery.py", "docs/pet3d-production-readiness.md"):
+            self.assertTrue((ROOT / name).is_file(), name)
+            self.assertFalse(secret_findings((ROOT / name).read_text(encoding="utf8")))
 
     def test_runbook_does_not_claim_production_or_verified_scores(self):
         source = (ROOT / "docs/pet3b-historical-api.md").read_text(encoding="utf-8")

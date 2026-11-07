@@ -28,6 +28,15 @@ def audit(image, kind):
                'test -z "$(find /usr/share/nginx/html /etc/nginx -name .env -o -name .passes -o -name keys.txt '
                '-o -name .git -o -name node_modules -o -name __pycache__ -o -name .pytest_cache)"')
     else:
+        docker('run', '--rm', '--network', 'none', '-e', 'DJANGO_SECRET_KEY=synthetic-image-import-only',
+               '--entrypoint', 'python', image, '-c',
+               "import os; os.environ['DJANGO_SETTINGS_MODULE']='application.settings'; "
+               "import django; django.setup(); "
+               "import src.openfootball_etl.contract, application.historical_repository, application.historical_views; "
+               "from django.urls import resolve; from django.test import Client; "
+               "assert resolve('/api/v1/competitions/historical').func.__name__ == 'historical'; "
+               "assert Client(HTTP_HOST='localhost').get('/api/v1/competitions/historical').status_code == 503; "
+               "print('Historical API image imports, URL resolution and default 503 passed')")
         docker('run', '--rm', '--network', 'none', '--entrypoint', 'python', image, '-c',
                "from pathlib import Path; import os; assert os.getuid() != 0; "
                "names={'.env','.passes','keys.txt','.git','data','tests','node_modules','__pycache__','.pytest_cache'}; "
